@@ -1,0 +1,1822 @@
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: sans-serif;
+  background: #111827;
+}
+ 
+#titleBar {
+  height: 74px;
+  background: #1f2937;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px 0 78px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;
+  position: relative;
+  box-sizing: border-box;
+}
+ 
+.titleMain {
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+ 
+.headerFields {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+ 
+.headerFields label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+ 
+.headerFields input {
+  height: 28px;
+  border: 1px solid #6b7280;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+ 
+#headerDateTime { width: 250px; }
+#disasterName { width: 260px; }
+#createdUnit { width: 220px; }
+ 
+#sideToolbar {
+  position: absolute;
+  top: 74px;
+  left: 0;
+  bottom: 0;
+  width: 64px;
+  background: rgba(31, 41, 55, 0.96);
+  z-index: 1600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  box-sizing: border-box;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.35);
+}
+ 
+.toolBtn {
+  width: 58px;
+  min-height: 68px;
+  background: transparent;
+  color: white;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.16);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+ 
+.toolBtn span {
+  font-size: 24px;
+  line-height: 1;
+}
+ 
+.toolBtn small {
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+ 
+.toolBtn:hover,
+.toolBtn.active {
+  background: #2563eb;
+}
+ 
+#toolPanel {
+  position: absolute;
+  top: 84px;
+  left: 72px;
+  width: 340px;
+  max-height: calc(100vh - 104px);
+  background: white;
+  border-radius: 8px;
+  z-index: 1700;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  display: none;
+  overflow: hidden;
+}
+ 
+.panelHeader {
+  height: 42px;
+  background: #111827;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  box-sizing: border-box;
+  font-weight: bold;
+}
+ 
+#closeToolPanel {
+  width: 28px;
+  height: 28px;
+  background: #374151;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+ 
+.panelBody {
+  padding: 12px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+}
+ 
+.panelContent {
+  display: none;
+}
+ 
+.panelContent.active {
+  display: block;
+}
+ 
+.panelContent h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+ 
+.panelContent p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+}
+ 
+.searchBlock,
+.editBlock {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+ 
+.searchBlock label,
+.editBlock label {
+  display: block;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+ 
+.searchRow {
+  display: flex;
+  gap: 6px;
+}
+ 
+#gridSearchInput,
+#coordSearchInput,
+#incidentSearchInput {
+  flex: 1;
+  height: 32px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+ 
+#gridSearchBtn,
+#coordSearchBtn,
+#incidentSearchBtn {
+  width: 64px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: #2563eb;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+ 
+#gridSearchBtn:hover,
+#coordSearchBtn:hover,
+#incidentSearchBtn:hover {
+  background: #1d4ed8;
+}
+ 
+.searchHint {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+ 
+/* 編集ツール */
+#drawType,
+#lineStyle,
+#fillMode {
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: white;
+}
+ 
+.colorPresetRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+ 
+.colorPreset {
+  width: 26px;
+  height: 26px;
+  border: 2px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+}
+ 
+.colorPreset.active {
+  outline: 3px solid #2563eb;
+  outline-offset: 1px;
+}
+ 
+.whitePreset {
+  border: 2px solid #9ca3af;
+}
+ 
+.customColorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #374151;
+}
+ 
+#drawColor,
+#shapeEditColor {
+  width: 60px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+ 
+#lineWeight,
+#lineOpacity,
+#shapeEditWeight,
+#shapeEditOpacity,
+#gridLineOpacity,
+#gridLineWeight {
+  width: 100%;
+}
+ 
+.dangerButton {
+  width: 100%;
+  height: 34px;
+  border: none;
+  border-radius: 4px;
+  background: #dc2626;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+ 
+.dangerButton:hover {
+  background: #b91c1c;
+}
+ 
+.editStatus {
+  font-size: 12px;
+  line-height: 1.5;
+  background: #eef2ff;
+  color: #1e3a8a;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  padding: 8px;
+}
+ 
+.settingBlock {
+  margin-bottom: 16px;
+}
+ 
+.settingBlock label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #374151;
+}
+ 
+.settingStatus {
+  margin-top: 14px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+}
+ 
+.secondaryButton {
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: #475569;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+ 
+.secondaryButton:hover {
+  background: #334155;
+}
+ 
+.historyNote {
+  font-size: 12px;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 5px;
+  padding: 7px;
+  margin-bottom: 10px;
+}
+ 
+#activityHistoryList {
+  margin-top: 10px;
+  font-size: 13px;
+}
+ 
+.emptyHistory {
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 8px;
+  border-radius: 5px;
+}
+ 
+.historyDateGroup {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+ 
+.historyDateHeader {
+  width: 100%;
+  height: 38px;
+  border: none;
+  background: #374151;
+  color: white;
+  font-weight: bold;
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+ 
+.historyDateHeader:hover {
+  background: #2563eb;
+}
+ 
+.historyDateTitle {
+  font-size: 13px;
+}
+ 
+.historyDateCount {
+  font-size: 12px;
+  opacity: 0.9;
+}
+ 
+.historyDateBody {
+  display: block;
+  padding: 8px;
+  background: #f9fafb;
+}
+ 
+.historyDateBody.collapsed {
+  display: none;
+}
+ 
+.historyItem {
+  border: 1px solid #d1d5db;
+  border-left: 5px solid #6b7280;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: #ffffff;
+  line-height: 1.5;
+  cursor: pointer;
+}
+ 
+.historyItem:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+ 
+.historyItem:last-child {
+  margin-bottom: 0;
+}
+ 
+.historyItem b {
+  display: block;
+  margin-bottom: 4px;
+  color: #111827;
+}
+ 
+.historyTime {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+ 
+.historyMeta {
+  font-size: 12px;
+  color: #374151;
+}
+ 
+/* 地図 */
+#mapContainer {
+  position: absolute;
+  top: 74px;
+  left: 64px;
+  right: 0;
+  bottom: 0;
+}
+ 
+#map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+ 
+#gridOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 700;
+  pointer-events: none;
+}
+ 
+.edgeCell {
+  position: absolute;
+  background: rgba(220, 38, 38, 0.92);
+  color: white;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,0.75);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+}
+ 
+.edgeCell.blank {
+  color: transparent;
+}
+ 
+.gridHighlight {
+  pointer-events: none;
+}
+ 
+.blinkMarker {
+  width: 24px;
+  height: 24px;
+  background: #ef4444;
+  border: 4px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(239, 68, 68, 0.8);
+  animation: blinkPulse 1s infinite;
+}
+ 
+.blinkMarker.blue {
+  background: #2563eb;
+}
+ 
+@keyframes blinkPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8);
+  }
+ 
+  50% {
+    transform: scale(1.2);
+    opacity: 0.75;
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+  }
+ 
+  100% {
+    transform: scale(0.8);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+ 
+/* 選択中図形 */
+.selectedShape {
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.95));
+}
+ 
+/* 右クリックメニュー */
+#pinContextMenu,
+#historyContextMenu {
+  position: absolute;
+  display: none;
+  width: 160px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 3000;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+  border: 1px solid #d1d5db;
+}
+ 
+#pinContextMenu button,
+#historyContextMenu button {
+  display: block;
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  cursor: pointer;
+  font-weight: bold;
+  text-align: left;
+  padding-left: 12px;
+}
+ 
+#pinContextMenu button:hover,
+#historyContextMenu button:hover {
+  background: #f3f4f6;
+}
+ 
+#completePinBtn,
+#editHistoryBtn {
+  color: #2563eb;
+}
+ 
+#deletePinBtn,
+#cancelHistoryCaseBtn {
+  color: #dc2626;
+}
+ 
+#cancelPinMenuBtn,
+#closeHistoryMenuBtn {
+  color: #374151;
+}
+ 
+.numberedPinIcon {
+  background: transparent;
+  border: 0;
+}
+ 
+.numberedPinMarker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 7px rgba(0,0,0,0.55);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  line-height: 1;
+  font-family: Arial, "Yu Gothic", "Meiryo", sans-serif;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+  box-sizing: border-box;
+}
+ 
+.completedPinIcon .numberedPinMarker {
+  background: #000000 !important;
+}
+ 
+/* 各種編集パネル */
+#editPanel,
+#historyEditPanel,
+#shapeEditPanel {
+  position: absolute;
+  top: 90px;
+  right: 15px;
+  width: 280px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  background: white;
+  padding: 12px;
+  z-index: 2000;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  display: none;
+}
+ 
+#editPanel h3,
+#historyEditPanel h3,
+#shapeEditPanel h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+ 
+#editPanel label,
+#historyEditPanel label,
+#shapeEditPanel label {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: bold;
+}
+ 
+#editPanel input,
+#editPanel select,
+#editPanel textarea,
+#historyEditPanel input,
+#historyEditPanel select,
+#historyEditPanel textarea,
+#shapeEditPanel input,
+#shapeEditPanel select {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 3px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px;
+  font-family: inherit;
+}
+ 
+#editPanel input,
+#editPanel select,
+#historyEditPanel input,
+#historyEditPanel select,
+#shapeEditPanel input,
+#shapeEditPanel select {
+  height: 30px;
+}
+ 
+#editPanel textarea,
+#historyEditPanel textarea {
+  min-height: 90px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+ 
+#attachment {
+  height: auto;
+}
+ 
+#attachmentInfo {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 5px;
+  border-radius: 4px;
+}
+ 
+#attachmentPreview {
+  display: none;
+  width: 100%;
+  margin-top: 6px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+ 
+.buttonRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+ 
+.buttonRow button {
+  flex: 1;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+ 
+#savePin,
+#saveHistoryEdit,
+#saveShapeEdit {
+  background: #2563eb;
+  color: white;
+}
+ 
+#closePanel,
+#closeHistoryEdit,
+#closeShapeEdit {
+  background: #e5e7eb;
+  color: #111827;
+}
+ 
+#deleteShapeEdit {
+  background: #dc2626;
+  color: white;
+}
+ 
+.leaflet-popup-content {
+  font-size: 14px;
+  line-height: 1.5;
+}
+ 
+@media print {
+  #titleBar,
+  #sideToolbar,
+  #toolPanel,
+  #pinContextMenu,
+  #historyContextMenu,
+  #editPanel,
+  #historyEditPanel,
+  #shapeEditPanel {
+    display: none;
+  }
+ 
+  #mapContainer {
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+ 
+  #measureSummaryBanner {
+    display: none;
+  }
+}
+ 
+/* グリッドよりポップアップ・ホバーを前面表示 */
+.leaflet-popup-pane {
+  z-index: 5000 !important;
+}
+ 
+.leaflet-tooltip-pane {
+  z-index: 5000 !important;
+}
+ 
+.leaflet-popup {
+  z-index: 5001 !important;
+}
+ 
+.leaflet-tooltip {
+  z-index: 5001 !important;
+}
+ 
+/* ピンもグリッド番号より前面 */
+.leaflet-marker-pane {
+  z-index: 4500 !important;
+}
+ 
+/* グリッド番号・アルファベットは背面寄り */
+#gridOverlay {
+  z-index: 700;
+  pointer-events: none;
+}
+/* 図形編集ボタン */
+.shapeButtonRow {
+  display: flex;
+  gap: 8px;
+}
+ 
+#copyShapeEdit,
+#duplicateShapeEdit {
+  background: #16a34a;
+  color: white;
+}
+ 
+/* グリッドよりポップアップ・ホバーを前面表示 */
+.leaflet-popup-pane {
+  z-index: 5000 !important;
+}
+ 
+.leaflet-tooltip-pane {
+  z-index: 5000 !important;
+}
+ 
+.leaflet-popup {
+  z-index: 5001 !important;
+}
+ 
+.leaflet-tooltip {
+  z-index: 5001 !important;
+}
+ 
+.leaflet-marker-pane {
+  z-index: 4500 !important;
+}
+ 
+ 
+/* 図形操作時のカーソル */
+.leaflet-interactive {
+  cursor: pointer;
+}
+ 
+#map.shape-hover {
+  cursor: pointer;
+}
+ 
+#map.shape-dragging {
+  cursor: grabbing;
+}
+ 
+/* =========================================================
+   FireGrid Version1.4.4 計測バナー表示制御修正版
+   ・通常時は地図を右端まで全面表示する
+   ・計測図形がある時だけ右側バナーを表示する
+========================================================= */
+/* 計測結果バナー（地図右側・グリッド図と重ならない固定ドック） */
+.measureSummaryBanner {
+  position: absolute;
+  top: 86px;
+  right: 10px;
+  bottom: 12px;
+  z-index: 860;
+  width: 270px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #7e22ce;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  padding: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+ 
+.measureSummaryBanner.is-hidden {
+  display: none !important;
+}
+ 
+.measureSummaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(126, 34, 206, 0.25);
+  padding-bottom: 7px;
+}
+ 
+.measureSummaryHeaderTitle {
+  color: #5b21b6;
+  font-size: 15px;
+  font-weight: 900;
+}
+ 
+.measureSummaryHeaderCount {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+}
+ 
+.measureSummaryBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px;
+  background: rgba(250, 245, 255, 0.85);
+  border: 1px solid rgba(126, 34, 206, 0.25);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+ 
+.measureSummaryBlock.totalBlock {
+  min-height: auto;
+}
+ 
+.measureSummaryIcon {
+  color: #6b21a8;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+ 
+.measureSummaryTitle {
+  color: #5b21b6;
+  font-weight: 900;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+ 
+.measureSummaryMain {
+  color: #111827;
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1.05;
+}
+ 
+.measureSummarySub,
+.measureSummaryLine {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+ 
+.measureIndividualTitle {
+  color: #5b21b6;
+  font-size: 13px;
+  font-weight: 900;
+  margin-top: 2px;
+}
+ 
+.measureIndividualCards {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+ 
+.measureIndividualCards::-webkit-scrollbar {
+  width: 6px;
+}
+ 
+.measureIndividualCards::-webkit-scrollbar-thumb {
+  background: rgba(126, 34, 206, 0.45);
+  border-radius: 999px;
+}
+ 
+.measureIndividualEmpty {
+  padding: 10px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f9fafb;
+  border: 1px dashed #c4b5fd;
+  border-radius: 8px;
+  text-align: center;
+}
+ 
+.measureIndividualCard {
+  background: rgba(76, 29, 149, 0.92);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 9px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+}
+ 
+.measureIndividualCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(255,255,255,0.28);
+  padding-bottom: 4px;
+}
+ 
+.measureIndividualCardBody {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+ 
+@media (max-width: 1050px) {
+  .measureSummaryBanner {
+    width: 235px;
+  }
+ 
+  .measureSummaryMain {
+    font-size: 17px;
+  }
+ 
+  .measureSummaryLine,
+  .measureSummarySub,
+  .measureIndividualCardBody {
+    font-size: 11px;
+  }
+}
+ 
+.measureModeBox {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+ 
+.measureModeBtn,
+.measureModeEndBtn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 8px;
+  font-weight: 900;
+  cursor: pointer;
+}
+ 
+.measureModeBtn {
+  background: #7e22ce;
+  color: #fff;
+}
+ 
+.measureModeBtn.active {
+  background: #581c87;
+  box-shadow: 0 0 0 3px rgba(126,34,206,0.20);
+}
+ 
+.measureModeEndBtn {
+  background: #111827;
+  color: #fff;
+}
+ 
+.measureBlock {
+  margin-bottom: 12px;
+}
+ 
+.measureBlock label {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+ 
+.measureBlock select,
+.measureBlock input[type="color"],
+.measureBlock input[type="range"] {
+  width: 100%;
+}
+ 
+.measureHelp {
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 6px;
+}
+ 
+.measureStatus {
+  background: #faf5ff;
+  border: 1px solid rgba(126,34,206,0.30);
+  border-radius: 8px;
+  color: #3b0764;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+ 
+.measureListTitle {
+  margin-top: 14px;
+  color: #5b21b6;
+  font-weight: 900;
+  border-top: 1px solid #ddd;
+  padding-top: 12px;
+}
+ 
+.measureList {
+  margin-top: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+ 
+.measureListItem {
+  border: 1px solid rgba(126,34,206,0.25);
+  border-left: 5px solid #7e22ce;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+ 
+.measureListItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #4c1d95;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+ 
+.measureListItem button {
+  border: 1px solid #ef4444;
+  background: #fff;
+  color: #dc2626;
+  border-radius: 6px;
+  font-weight: 800;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+ 
+.emptyMeasure {
+  color: #6b7280;
+  font-size: 13px;
+  margin: 8px 0;
+}
+ 
+.measureNumberLabel {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6b21a8;
+  border: 2px solid #fff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+ 
+/* Version1.4.5 計測図形：名称編集・個別スタイル */
+.measureNameEditLabel {
+  display: block;
+  margin: 7px 0 6px;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+}
+ 
+.measureNameInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 3px;
+  border: 1px solid rgba(126,34,206,0.28);
+  border-radius: 7px;
+  padding: 5px 7px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #312e81;
+  background: #faf5ff;
+}
+ 
+.measureMiniStyleRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 5px 0;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+}
+ 
+.measureMiniStyleRow label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+ 
+.measureMiniStyleRow input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: #fff;
+}
+ 
+.measureMiniStyleRow input[type="range"] {
+  min-width: 0;
+  width: 100%;
+}
+ 
+.measureIndividualCard {
+  border-left-color: var(--measure-card-color, #7e22ce);
+}
+ 
+/* Version1.5 保存メニュー */
+.saveMenuNote {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d1d5db;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+ 
+.saveMenuGroup {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+ 
+.saveMenuButton {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.95);
+  color: #fff;
+  font-weight: 700;
+  text-align: left;
+  padding: 9px 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+ 
+.saveMenuButton:hover {
+  background: rgba(51, 65, 85, 0.98);
+  transform: translateY(-1px);
+}
+ 
+.saveMenuStatus {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e5e7eb;
+  background: rgba(14, 165, 233, 0.13);
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+ 
+/* =========================================================
+   Version1.5.1 Build001.4 Rev.2
+   指揮本部モード：座標・グリッド番号表示
+   ========================================================= */
+.currentInfoPanel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+  height: 48px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+ 
+.currentInfoItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+ 
+.currentInfoLabel {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+}
+ 
+.coordValueBox {
+  width: 184px;
+  height: 42px;
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #6b7280;
+  border-radius: 4px;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: Consolas, "Courier New", "Yu Gothic UI", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+ 
+.coordValueBox > div {
+  height: 20px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+ 
+.coordLabelText {
+  flex: 0 0 40px;
+  text-align: left;
+}
+ 
+.coordNumberText {
+  flex: 1 1 auto;
+  text-align: right;
+  letter-spacing: 0.1px;
+}
+ 
+.coordValueBox > div + div {
+  border-top: 1px solid #d1d5db;
+}
+ 
+.gridValueBox {
+  width: 78px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #6b7280;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+ 
+@media (max-width: 1280px) {
+  .currentInfoPanel {
+    gap: 10px;
+  }
+ 
+  .coordValueBox {
+    width: 168px;
+    font-size: 12px;
+  }
+ 
+  .gridValueBox {
+    width: 68px;
+    font-size: 12px;
+  }
+}
+ 
+/* =========================================================
+   G-Link Version1.5.1 Build001.6
+   設定メニュー分離・地図種類切替
+========================================================= */
+.settingMenuButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+ 
+.settingMenuButton {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 8px;
+  padding: 9px 8px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+ 
+.settingMenuButton:hover {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+}
+ 
+.settingMenuButton.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+ 
+.settingSection {
+  display: none;
+}
+ 
+.settingSection.active {
+  display: block;
+}
+ 
+.settingSelect {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  background: #ffffff;
+  color: #111827;
+  box-sizing: border-box;
+}
+ 
+/* Version1.6.0 Build001.4 設定メニュー復旧・地図種類切替 */
+.settingMenuTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+.settingMenuTab {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1f2937;
+  border-radius: 8px;
+  padding: 10px 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.settingMenuTab.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+.settingSubSection {
+  display: none;
+}
+.settingSubSection.active {
+  display: block;
+}
+.settingHelp {
+  margin-top: 8px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+#fixedMapType,
+#coordinateTypeSelect {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0 8px;
+  background: #fff;
+  font-size: 14px;
+}
+
+
+/* Version1.6.4 Build015: ヘッダー途切れ防止・住所検索補助表示 */
+#titleBar {
+  gap: 14px;
+  min-width: 0;
+}
+.titleMain {
+  flex: 0 1 auto;
+  min-width: 220px;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.headerFields {
+  flex: 1 1 620px;
+  min-width: 520px;
+  gap: 8px;
+}
+.headerFields label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.headerFields input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#headerDateTime,
+#disasterName,
+#createdUnit {
+  width: auto;
+}
+#headerDateTime {
+  flex-basis: 190px;
+}
+#disasterName {
+  flex-basis: 230px;
+}
+#createdUnit {
+  flex-basis: 190px;
+}
+.currentInfoPanel {
+  flex: 0 1 370px;
+  margin-left: 0;
+}
+.searchHelp {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+@media (max-width: 1360px) {
+  .titleMain { max-width: 290px; font-size: 16px; }
+  .headerFields { min-width: 470px; }
+  .currentInfoPanel { flex-basis: 330px; gap: 8px; }
+}
+@media (max-width: 1180px) {
+  .titleMain { display: none; }
+  .headerFields { min-width: 500px; }
+}
+
+
+/* Version1.6.4 Build016: ヘッダー文字切れ対策（折り返し無し・文字縮小・高さ自動調整） */
+:root {
+  --fixed-titlebar-height: 74px;
+}
+#titleBar {
+  height: auto !important;
+  min-height: 74px;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: visible;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.titleMain {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.headerFields {
+  min-width: 0 !important;
+  flex: 1 1 auto;
+  align-items: center;
+}
+.headerFields label {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: visible;
+}
+.headerFields input {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.2;
+  transition: font-size .08s ease;
+}
+#sideToolbar {
+  top: var(--fixed-titlebar-height, 74px) !important;
+}
+#mapContainer {
+  top: var(--fixed-titlebar-height, 74px) !important;
+}
+@media (max-width: 1180px) {
+  .headerFields { min-width: 0 !important; }
+}
+
+/* Version1.6.4 Build017: ヘッダー初期文字サイズ縮小＋はみ出し時縮小補強 */
+#titleBar {
+  min-height: 74px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.headerFields label {
+  font-size: 11px !important;
+  gap: 4px;
+  white-space: nowrap !important;
+}
+.headerFields input {
+  height: 26px;
+  padding: 2px 5px;
+  font-size: 11px !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+#headerDateTime { flex-basis: 170px; }
+#disasterName { flex-basis: 220px; }
+#createdUnit { flex-basis: 170px; }
+.currentInfoLabel {
+  font-size: 11px !important;
+}
+.gridValueBox {
+  width: 74px;
+  font-size: 11px !important;
+  overflow: hidden;
+  text-overflow: clip;
+}
+@media (max-width: 1280px) {
+  .headerFields label { font-size: 10px !important; }
+  .headerFields input { font-size: 10px !important; }
+  .currentInfoLabel { font-size: 10px !important; }
+  .gridValueBox { width: 68px; font-size: 10px !important; }
+}
+
+
+/* Version1.6.4 Build018: 指揮本部モード上部ヘッダーのみ調整（折り返し無し・大きめ・必要時縮小） */
+#titleBar {
+  height: auto !important;
+  min-height: 74px !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+.headerFields {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+.headerFields label {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  flex-shrink: 1 !important;
+}
+.headerFields input {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  min-width: 0 !important;
+}
+#headerDateTime { width: 280px !important; }
+#disasterName { width: 330px !important; }
+#createdUnit { width: 280px !important; }
+
+
+/* Version1.6.4 Build020: 指揮本部モードタイトル左寄せ・上部入力文字を通常太さへ戻す */
+#titleBar {
+  padding-left: 12px !important;
+  gap: 14px !important;
+}
+.titleMain {
+  flex: 0 0 auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  margin-right: 4px;
+}
+.headerFields {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+.headerFields input {
+  font-weight: 400 !important;
+}
+@media (max-width: 1180px) {
+  .titleMain {
+    display: block !important;
+    font-size: 15px !important;
+  }
+}
+
+
+/* === Version1.6 無料版：共有パネル（URL・QR表示） === */
+.shareNotice {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.shareBlock {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.shareBlock label {
+  display: block;
+  font-size: 12px;
+  font-weight: bold;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.shareUrlRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#shareUrlInput {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 7px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+#copyShareUrlBtn {
+  width: 72px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#copyShareUrlBtn:hover {
+  background: #1d4ed8;
+}
+
+.shareCopyStatus {
+  min-height: 18px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #166534;
+}
+
+.shareQrBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 196px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.shareQrCode {
+  width: 176px;
+  height: 176px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shareQrCode img,
+.shareQrCode canvas {
+  width: 176px !important;
+  height: 176px !important;
+  image-rendering: pixelated;
+}
+
+.shareQrFallback {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.shareButtonRow {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.shareRefreshBtn,
+.shareSaveQrBtn,
+.shareOpenViewerBtn {
+  width: 100%;
+  margin-top: 0;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 38px;
+  padding: 9px 8px;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+  font-size: 12px;
+  text-align: center;
+}
+
+.shareSaveQrBtn {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.shareSaveQrBtn:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.shareOpenViewerBtn {
+  background: #0f766e;
+  color: #ffffff;
+  border-color: #0f766e;
+}
+
+.shareOpenViewerBtn:hover {
+  background: #115e59;
+  border-color: #115e59;
+}
+
+.shareHelpBox {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px;
+}

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G-Link Viewer（閲覧専用）</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <header id="viewerHeader">
+    <div class="viewerBrand">
+      <div class="viewerTitle">G-Link Viewer</div>
+      <div class="viewerSubtitle">災害情報共有システム（閲覧専用）</div>
+    </div>
+    <div class="viewerHeaderActions">
+      <button id="viewerPrintBtn" type="button">印刷</button>
+      <div class="viewerBadge">閲覧専用</div>
+    </div>
+  </header>
+
+  <main id="viewerLayout">
+    <section id="viewerMapArea">
+      <div id="viewerMap"></div>
+      <div id="viewerLegend" class="viewerLegend"></div>
+    </section>
+
+    <aside id="viewerInfoPanel">
+      <section class="infoCard">
+        <h2>基本情報</h2>
+        <dl class="infoList">
+          <div><dt>年月日</dt><dd id="viewerDate">-</dd></div>
+          <div><dt>災害名</dt><dd id="viewerDisaster">-</dd></div>
+          <div><dt>作成部隊</dt><dd id="viewerUnit">-</dd></div>
+          <div><dt>グリッド幅</dt><dd id="viewerGridSize">-</dd></div>
+          <div><dt>共有日時</dt><dd id="viewerSharedAt">-</dd></div>
+        </dl>
+      </section>
+
+      <section class="infoCard viewerSummaryCard">
+        <h2>概要</h2>
+        <div id="viewerSummary" class="viewerSummary"></div>
+      </section>
+
+      <section class="infoCard">
+        <h2>ピン一覧</h2>
+        <div id="viewerPins" class="viewerPins emptyText">ピンはありません。</div>
+      </section>
+
+      <section class="infoCard">
+        <h2>活動履歴</h2>
+        <div id="viewerHistory" class="viewerHistory emptyText">活動履歴はありません。</div>
+      </section>
+
+      <section class="infoCard">
+        <h2>計測結果</h2>
+        <div id="viewerMeasurements" class="viewerMeasurements emptyText">計測図形はありません。</div>
+      </section>
+
+      <section class="viewerNotice">
+        このページは閲覧専用です。ピン追加・編集・削除・保存・設定変更はできません。<br>
+        指揮本部側で内容を更新した場合は、共有パネルからURL・QRコードを再発行してください。
+      </section>
+    </aside>
+  </main>
+
+  <div id="viewerError" class="viewerError" hidden>
+    <h1>共有データを読み込めませんでした</h1>
+    <p>指揮本部モードの共有パネルから発行されたViewer用URLを開いてください。</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

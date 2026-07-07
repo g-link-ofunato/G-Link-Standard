@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G-Link 保存センター</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="save.css">
+</head>
+<body>
+  <div class="saveApp">
+    <aside class="saveSidebar">
+      <div class="brand">
+        <div class="brandIcon">🔗</div>
+        <div class="brandText">G-Link</div>
+      </div>
+ 
+      <div class="sideSectionTitle">保存メニュー</div>
+ 
+      <button class="sideMenuItem active" data-mode="glink">
+        <span class="menuIcon">💼</span>
+        <span><strong>ファイル保存</strong><small>（.glink）</small></span>
+      </button>
+ 
+      <button class="sideMenuItem" data-mode="pdf">
+        <span class="menuIcon">📄</span>
+        <span><strong>PDF保存</strong></span>
+      </button>
+ 
+      <button class="sideMenuItem" data-mode="png">
+        <span class="menuIcon">🖼</span>
+        <span><strong>PNG保存</strong></span>
+      </button>
+ 
+      <div class="csvGroup">
+        <button class="sideMenuItem" data-mode="csv">
+          <span class="menuIcon green">CSV</span>
+          <span><strong>CSV出力</strong><small>活動履歴・計測図形</small></span>
+        </button>
+      </div>
+    </aside>
+ 
+    <main class="saveMain">
+      <header class="topBar">
+        <div>
+          <h1 id="screenTitle">保存センター - ファイル保存</h1>
+          <p id="screenLead">G-Link専用ファイルとして、指揮本部モードの編集状態を保存します。</p>
+        </div>
+        <div class="topActions">
+          <button class="circleBtn" title="ヘルプ">?</button>
+          <button class="circleBtn" id="closeBtn" title="保存センターを閉じる">×</button>
+        </div>
+      </header>
+ 
+      <section class="workArea">
+        <div class="previewColumn">
+          <div class="previewToolbar">
+            <strong id="previewTitle">保存内容確認（.glink）</strong>
+            <div class="previewControls">
+              <button id="prevPageBtn">‹</button>
+              <span class="pageBox" id="pageIndicator">1 / 2</span>
+              <button id="nextPageBtn">›</button>
+              <button type="button">🔍</button>
+              <select id="zoomSelect">
+                <option>50%</option>
+                <option>75%</option>
+                <option>100%</option>
+              </select>
+            </div>
+          </div>
+ 
+          <div class="glinkNoPreviewPanel hidden" id="glinkNoPreviewPanel">
+            <h2>ファイル保存</h2>
+            <p>.glinkファイルは、指揮本部モードで再編集するための保存データです。</p>
+            <p>PDF保存・PNG保存とは異なり、地図プレビューは表示しません。</p>
+            <p>右側の保存設定を確認し、「.glinkを保存」を押してください。</p>
+          </div>
+ 
+          <div class="previewCanvas" id="previewCanvas">
+            <article class="paperPreview mapOnlyPage" id="mapPage">
+              <div class="mapPrintHeader" id="mapPrintHeader">
+                <div><span>年月日：</span><strong id="mapHeaderDatePreview">-</strong></div>
+                <div><span>災害名：</span><strong id="mapHeaderDisasterPreview">-</strong></div>
+                <div><span>作成部隊：</span><strong id="mapHeaderUnitPreview">-</strong></div>
+                <div><span>グリッド幅：</span><strong id="mapHeaderGridPreview">-</strong></div>
+              </div>
+              <div class="mapPageFrame">
+                <div id="liveMapPreview" class="liveMapPreview" aria-label="指揮本部モードの地図プレビュー"></div>
+                <img id="mapPreviewImage" class="mapPreviewImage" alt="指揮本部モードの地図プレビュー">
+                <div id="mapPreviewFallback" class="mapPreviewFallback">
+                  <h2>地図プレビュー</h2>
+                  <p>指揮本部モードから保存センターを開くと、ここに実際の地図画面が表示されます。</p>
+                  <p>※地図タイルの読込状況や通信環境により、画像化できない場合があります。</p>
+                </div>
+              </div>
+            </article>
+ 
+            <article class="paperPreview infoPage hidden" id="infoPage">
+              <div class="infoPageHeader">
+                <div class="systemLabel">G-Link〈災害情報共有システム〉</div>
+                <h2 id="infoPageTitle">保存情報</h2>
+              </div>
+ 
+              <section class="infoSection" data-section="header">
+                <h3>ヘッダー情報</h3>
+                <table class="infoTable">
+                  <tbody>
+                    <tr><th>年月日</th><td id="headerDatePreview">-</td></tr>
+                    <tr><th>災害名</th><td id="headerDisasterPreview">-</td></tr>
+                    <tr><th>作成部隊</th><td id="headerUnitPreview">-</td></tr>
+                    <tr><th>グリッド幅</th><td id="headerGridPreview">-</td></tr>
+                  </tbody>
+                </table>
+              </section>
+ 
+              <section class="infoSection" data-section="legend">
+                <h3>凡例</h3>
+                <div class="legendGrid" id="legendPreviewList">
+                  <div><span class="legendCircle" style="background:#e60000;"></span>火災</div>
+                  <div><span class="legendCircle" style="background:#ff7a00;"></span>救助</div>
+                  <div><span class="legendCircle" style="background:#0066ff;"></span>救急</div>
+                </div>
+              </section>
+ 
+              <section class="infoSection" data-section="measurements">
+                <h3>計測図形一覧</h3>
+                <table class="infoTable">
+                  <thead><tr><th>No</th><th>名称</th><th>面積（㎡）</th><th>ha</th><th>範囲</th></tr></thead>
+                  <tbody id="measurementPreviewRows">
+                    <tr><td colspan="5">計測図形はありません。</td></tr>
+                  </tbody>
+                </table>
+              </section>
+ 
+              <section class="infoSection" data-section="history">
+                <h3>活動履歴</h3>
+                <table class="infoTable activityTable">
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>種別</th>
+                      <th>グリッド番号</th>
+                      <th>座標</th>
+                      <th>覚知日時</th>
+                      <th>完了日時</th>
+                      <th>災害番号</th>
+                      <th>概要</th>
+                      <th>出動部隊</th>
+                      <th>傷病者人数</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyPreviewRows">
+                    <tr><td colspan="10">活動履歴はありません。</td></tr>
+                  </tbody>
+                </table>
+              </section>
+ 
+              <p class="paperNote">※1ページ目はグリッド付き地図のみを用紙全面に表示します。チェックした情報は2ページ目以降に反映します。</p>
+            </article>
+          </div>
+ 
+          <div class="pagePreviewStrip" id="pagePreviewStrip">
+            <button type="button" class="pageThumb active" data-page="1">
+              <span class="pageThumbNo">1</span>
+              <span class="pageThumbLabel">1ページ目（地図）</span>
+            </button>
+            <button type="button" class="pageThumb" data-page="2">
+              <span class="pageThumbNo">2</span>
+              <span class="pageThumbLabel">2ページ目（情報）</span>
+            </button>
+            <p class="pagePreviewNote">※1ページ目はヘッダー情報とグリッド図のみ、2ページ目以降は右側で選択した情報を表示します。</p>
+          </div>
+        </div>
+ 
+        <aside class="settingsColumn">
+          <div class="settingsCard">
+            <h2 id="settingsTitle">ファイル保存設定</h2>
+ 
+            <label>用紙サイズ</label>
+            <select id="paperSize">
+              <option>A0（横向き）</option>
+              <option>A1（横向き）</option>
+              <option>A2（横向き）</option>
+              <option selected>A3（横向き）</option>
+              <option>A4（横向き）</option>
+            </select>
+ 
+            <label>向き</label>
+            <div class="radioRow">
+              <label><input type="radio" name="orientation"> 縦向き</label>
+              <label><input type="radio" name="orientation" checked> 横向き</label>
+            </div>
+ 
+            <label>災害名</label>
+            <input id="titleInput" type="text" value="">
+ 
+            <label>作成部隊</label>
+            <input id="createdUnitInput" type="text" value="">
+ 
+            <div class="checkGroup">
+              <div class="groupTitle">ヘッダー情報</div>
+              <label><input id="includeHeader" type="checkbox" checked> 年月日・災害名・作成部隊を表示</label>
+              <div class="headerInfoPreview">
+                <div>年月日：<span id="settingDatePreview">-</span></div>
+                <div>災害名：<span id="settingDisasterPreview">-</span></div>
+                <div>作成部隊：<span id="settingUnitPreview">-</span></div>
+                <div>グリッド幅：<span id="settingGridPreview">-</span></div>
+              </div>
+            </div>
+ 
+            <div class="checkGroup" id="displayItemOptions">
+              <div class="groupTitle">表示項目（2ページ目以降）</div>
+              <label><input id="includeLegend" type="checkbox" checked> 凡例</label>
+              <label><input id="includeMeasurements" type="checkbox" checked> 計測図形一覧</label>
+              <label><input id="includeHistory" type="checkbox" checked> 活動履歴</label>
+              <label><input id="includeHeaderSection" type="checkbox" checked> ヘッダー情報一覧</label>
+            </div>
+ 
+            <div class="checkGroup hidden" id="csvExportOptions">
+              <div class="groupTitle">CSV出力対象</div>
+              <label><input id="csvIncludeHistory" type="checkbox" checked> 活動履歴</label>
+              <label><input id="csvIncludeMeasurements" type="checkbox" checked> 計測図形</label>
+            </div>
+ 
+            <label>出力画質</label>
+            <select id="qualitySelect">
+              <option selected>標準（300dpi）</option>
+              <option>高画質（600dpi）</option>
+            </select>
+          </div>
+ 
+          <button class="primarySaveBtn" id="primarySaveBtn">💾 .glinkを保存</button>
+          <button class="cancelBtn" id="cancelBtn">保存センターを閉じる</button>
+        </aside>
+      </section>
+    </main>
+  </div>
+ 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="save.js"></script>
+</body>
+</html>

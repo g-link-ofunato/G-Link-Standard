@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
+ 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="fixed.css">
+</head>
+ 
+<body>
+ 
+  <div id="titleBar">
+    <div class="titleMain">G-Link〈災害情報共有システム〉【指揮本部モード】</div>
+ 
+    <div class="headerFields">
+      <label>年月日<input id="headerDateTime" type="text"></label>
+      <label>災害名<input id="disasterName" type="text"></label>
+      <label>作成部隊<input id="createdUnit" type="text"></label>
+    </div>
+ 
+    <div id="currentInfoPanel" class="currentInfoPanel" aria-label="現在位置情報">
+      <div class="currentInfoItem coordInfoItem">
+        <span class="currentInfoLabel">座標</span>
+        <div class="coordValueBox">
+          <div id="cursorLatDisplay">緯度：</div>
+          <div id="cursorLngDisplay">経度：</div>
+        </div>
+      </div>
+ 
+      <div class="currentInfoItem gridInfoItem">
+        <span class="currentInfoLabel">グリッド番号</span>
+        <div id="cursorGridDisplay" class="gridValueBox"></div>
+      </div>
+    </div>
+  </div>
+ 
+  <div id="sideToolbar">
+    <button class="toolBtn" data-panel="searchPanel"><span>🔍</span><small>検索</small></button>
+    <button class="toolBtn" data-panel="editToolPanel"><span>✏</span><small>編集</small></button>
+    <button class="toolBtn" data-panel="measurePanel"><span>📐</span><small>計測</small></button>
+    <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動履歴</small></button>
+    <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
+    <button class="toolBtn" data-panel="settingPanel"><span>⚙</span><small>設定</small></button>
+    <button class="toolBtn" data-panel="sharePanel"><span>🔗</span><small>共有</small></button>
+  </div>
+ 
+  <div id="toolPanel">
+    <div class="panelHeader">
+      <span id="panelTitle">ツール</span>
+      <button id="closeToolPanel">×</button>
+    </div>
+ 
+    <div class="panelBody">
+ 
+      <div class="panelContent" id="searchPanel">
+        <h3>検索</h3>
+ 
+        <div class="searchBlock">
+          <label>グリッド番号検索</label>
+          <div class="searchRow">
+            <input id="gridSearchInput" type="text" placeholder="例：A-3、D-12">
+            <button id="gridSearchBtn">検索</button>
+          </div>
+        </div>
+ 
+        <div class="searchBlock">
+          <label>座標検索</label>
+          <div class="searchRow">
+            <input id="coordSearchInput" type="text" placeholder="例：35度42分47.56秒, 139度40分57.29秒">
+            <button id="coordSearchBtn">検索</button>
+          </div>
+        </div>
+ 
+        <div class="searchBlock">
+          <label>住所検索</label>
+          <div class="searchRow">
+            <input id="addressSearchInput" type="text" placeholder="例：大船渡市盛町宇津野沢15">
+            <button id="addressSearchBtn">検索</button>
+          </div>
+          <div class="searchHelp">国土地理院の住所検索を使用します。検索結果の先頭候補へ移動します。</div>
+        </div>
+ 
+        <div class="searchBlock">
+          <label>災害番号検索</label>
+          <div class="searchRow">
+            <input id="incidentSearchInput" type="text" placeholder="例：火災001、救助3">
+            <button id="incidentSearchBtn">検索</button>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="panelContent" id="editToolPanel">
+        <h3>編集</h3>
+ 
+        <div class="editBlock">
+          <label>描画種類</label>
+          <select id="drawType">
+            <option value="none">選択してください</option>
+            <option value="line">直線</option>
+            <option value="polyline">折れ線</option>
+            <option value="rectangle">四角形</option>
+            <option value="circle">円</option>
+            <option value="arrow">矢印</option>
+            <option value="freehand">フリーハンド</option>
+          </select>
+        </div>
+ 
+        <div class="editBlock">
+          <label>線色</label>
+          <div class="colorPresetRow">
+            <button class="colorPreset active" data-color="#e60000" style="background:#e60000;"></button>
+            <button class="colorPreset" data-color="#0066ff" style="background:#0066ff;"></button>
+            <button class="colorPreset" data-color="#16a34a" style="background:#16a34a;"></button>
+            <button class="colorPreset" data-color="#facc15" style="background:#facc15;"></button>
+            <button class="colorPreset" data-color="#f97316" style="background:#f97316;"></button>
+            <button class="colorPreset" data-color="#9333ea" style="background:#9333ea;"></button>
+            <button class="colorPreset" data-color="#111111" style="background:#111111;"></button>
+            <button class="colorPreset whitePreset" data-color="#ffffff" style="background:#ffffff;"></button>
+          </div>
+ 
+          <div class="customColorRow">
+            <span>任意色</span>
+            <input id="drawColor" type="color" value="#e60000">
+          </div>
+        </div>
+ 
+        <div class="editBlock">
+          <label>線の太さ：<span id="lineWeightValue">4</span></label>
+          <input id="lineWeight" type="range" min="1" max="10" value="4">
+        </div>
+ 
+        <div class="editBlock">
+          <label>線種</label>
+          <select id="lineStyle">
+            <option value="solid">実線</option>
+            <option value="dash">破線</option>
+            <option value="dot">点線</option>
+          </select>
+        </div>
+ 
+        <div class="editBlock">
+          <label>透明度：<span id="lineOpacityValue">100</span>%</label>
+          <input id="lineOpacity" type="range" min="10" max="100" value="100">
+        </div>
+ 
+        <div class="editBlock">
+          <label>塗りつぶし</label>
+          <select id="fillMode">
+            <option value="none">なし</option>
+            <option value="semi">半透明</option>
+          </select>
+        </div>
+ 
+        <div class="editBlock">
+          <label>管理</label>
+          <button id="clearDrawingsBtn" class="dangerButton">図形を全削除</button>
+        </div>
+ 
+        <div class="editStatus">
+          現在の設定：<br>
+          <span id="drawStatusText">直線・赤・太さ4・実線</span>
+        </div>
+      </div>
+ 
+      <div class="panelContent" id="measurePanel">
+        <h3>計測</h3>
+ 
+        <div class="measureModeBox">
+          <button id="measureModeBtn" class="measureModeBtn" type="button">📏 計測モード開始</button>
+          <button id="measureModeEndBtn" class="measureModeEndBtn" type="button">計測終了</button>
+        </div>
+ 
+        <div class="measureBlock">
+          <label>面積算出方法</label>
+          <select id="measureDrawType">
+            <option value="none">選択してください</option>
+            <option value="polyline">折れ線（面積）</option>
+            <option value="freehand">フリーハンド（面積）</option>
+          </select>
+          <div class="measureHelp">編集と同じ操作です。折れ線はクリックで頂点を追加し、ダブルクリックで確定します。フリーハンドはドラッグで囲みます。</div>
+        </div>
+ 
+        <div class="measureBlock">
+          <label>線色</label>
+          <div class="colorPresetRow measureColorPresetRow">
+            <button class="measureLinePreset active" data-color="#7e22ce" style="background:#7e22ce;"></button>
+            <button class="measureLinePreset" data-color="#e60000" style="background:#e60000;"></button>
+            <button class="measureLinePreset" data-color="#0066ff" style="background:#0066ff;"></button>
+            <button class="measureLinePreset" data-color="#16a34a" style="background:#16a34a;"></button>
+            <button class="measureLinePreset" data-color="#facc15" style="background:#facc15;"></button>
+            <button class="measureLinePreset" data-color="#f97316" style="background:#f97316;"></button>
+            <button class="measureLinePreset" data-color="#111111" style="background:#111111;"></button>
+            <button class="measureLinePreset whitePreset" data-color="#ffffff" style="background:#ffffff;"></button>
+          </div>
+          <div class="customColorRow">
+            <span>任意色</span>
+            <input id="measureLineColor" type="color" value="#7e22ce">
+          </div>
+        </div>
+ 
+        <div class="measureBlock">
+          <label>塗りつぶし色</label>
+          <div class="colorPresetRow measureColorPresetRow">
+            <button class="measureFillPreset active" data-color="#a855f7" style="background:#a855f7;"></button>
+            <button class="measureFillPreset" data-color="#fca5a5" style="background:#fca5a5;"></button>
+            <button class="measureFillPreset" data-color="#93c5fd" style="background:#93c5fd;"></button>
+            <button class="measureFillPreset" data-color="#86efac" style="background:#86efac;"></button>
+            <button class="measureFillPreset" data-color="#fde047" style="background:#fde047;"></button>
+            <button class="measureFillPreset" data-color="#fdba74" style="background:#fdba74;"></button>
+            <button class="measureFillPreset" data-color="#9ca3af" style="background:#9ca3af;"></button>
+            <button class="measureFillPreset whitePreset" data-color="#ffffff" style="background:#ffffff;"></button>
+          </div>
+          <div class="customColorRow">
+            <span>任意色</span>
+            <input id="measureFillColor" type="color" value="#a855f7">
+          </div>
+        </div>
+ 
+        <div class="measureBlock">
+          <label>線の太さ：<span id="measureWeightValue">3</span></label>
+          <input id="measureWeight" type="range" min="1" max="10" value="3">
+        </div>
+ 
+        <div class="measureBlock">
+          <label>透明度：<span id="measureOpacityValue">35</span>%</label>
+          <input id="measureOpacity" type="range" min="5" max="80" value="35">
+        </div>
+ 
+        <div class="measureBlock">
+          <button id="clearLastMeasureBtn" class="secondaryButton" type="button">最後の計測を削除</button>
+          <button id="clearAllMeasureBtn" class="dangerButton" type="button">すべての計測を削除</button>
+        </div>
+ 
+        <div class="measureStatus">
+          現在の計測：<br>
+          <span id="measureStatusText">未選択</span>
+        </div>
+ 
+        <div class="measureListTitle">面積・範囲一覧（個別）</div>
+        <div id="measureList" class="measureList">
+          <p class="emptyMeasure">計測図形はありません。</p>
+        </div>
+      </div>
+ 
+      <div class="panelContent" id="historyPanel">
+        <h3>活動履歴</h3>
+        <div class="historyNote">
+          活動完了した事案を日付ごとに表示します。
+        </div>
+        <div id="activityHistoryList">
+          <p class="emptyHistory">活動完了した事案はありません。</p>
+        </div>
+      </div>
+ 
+      <div class="panelContent" id="settingPanel">
+        <h3>設定</h3>
+ 
+        <div class="settingMenuTabs">
+          <button type="button" id="openGridSettingBtn" class="settingMenuTab active">グリッド編集</button>
+          <button type="button" id="openMapTypeSettingBtn" class="settingMenuTab">地図種類</button>
+          <button type="button" id="openCoordinateSettingBtn" class="settingMenuTab">座標種類</button>
+        </div>
+ 
+        <div id="gridSettingSection" class="settingSubSection active">
+          <div class="settingBlock">
+            <label>グリッド線色</label>
+            <div class="customColorRow">
+              <span>任意色</span>
+              <input id="gridLineColor" type="color" value="#888888">
+            </div>
+          </div>
+ 
+          <div class="settingBlock">
+            <label>グリッド線の濃さ：<span id="gridLineOpacityValue">50</span>%</label>
+            <input id="gridLineOpacity" type="range" min="10" max="100" value="50">
+          </div>
+ 
+          <div class="settingBlock">
+            <label>グリッド線の太さ：<span id="gridLineWeightValue">1</span></label>
+            <input id="gridLineWeight" type="range" min="1" max="4" value="1">
+          </div>
+ 
+          <div class="settingBlock">
+            <button id="resetGridLineStyle" class="secondaryButton">標準設定に戻す</button>
+          </div>
+ 
+          <div class="settingStatus">
+            現在のグリッド線：<br>
+            <span id="gridLineStatusText">色 #888888・濃さ50%・太さ1</span>
+          </div>
+        </div>
+ 
+        <div id="mapTypeSettingSection" class="settingSubSection">
+          <div class="settingBlock">
+            <label>地図種類</label>
+            <select id="fixedMapType">
+              <option value="pale">淡色地図</option>
+              <option value="std">標準地図</option>
+              <option value="photo">写真</option>
+              <option value="relief">色別標高図</option>
+              <option value="hillshade">陰影起伏図</option>
+            </select>
+            <div class="settingHelp">起動ページと同じ地図種類を、指揮本部モードでも切り替えできます。</div>
+          </div>
+ 
+          <div class="settingStatus">
+            現在の地図：<br>
+            <span id="mapTypeStatusText">淡色地図</span>
+          </div>
+        </div>
+        <div id="coordinateSettingSection" class="settingSubSection">
+          <div class="settingBlock">
+            <label>座標種類</label>
+            <select id="coordinateTypeSelect">
+              <option value="dms">緯度・経度（60進法）</option>
+              <option value="decimal">緯度・経度（10進法）</option>
+            </select>
+            <div class="settingHelp">上部の座標表示、ピン情報、活動履歴などの座標表示に反映されます。内部データは10進法で保持します。</div>
+          </div>
+ 
+          <div class="settingStatus">
+            現在の座標種類：<br>
+            <span id="coordinateTypeStatusText">緯度・経度（60進法）</span>
+          </div>
+        </div>
+ 
+      </div>
+
+      <div class="panelContent" id="sharePanel">
+        <h3>共有</h3>
+
+        <div class="shareNotice">
+          現在の指揮本部モードを閲覧専用ページとして開くURLとQRコードを表示します。<br>
+          無料版では、閲覧専用です。リアルタイム同期・チャット・写真共有は行いません。
+        </div>
+
+        <div class="shareBlock">
+          <label for="shareUrlInput">閲覧専用URL</label>
+          <div class="shareUrlRow">
+            <input id="shareUrlInput" type="text" readonly>
+            <button id="copyShareUrlBtn" type="button">コピー</button>
+          </div>
+          <div id="shareCopyStatus" class="shareCopyStatus" aria-live="polite"></div>
+        </div>
+
+        <div class="shareBlock">
+          <label>QRコード</label>
+          <div id="shareQrBox" class="shareQrBox">
+            <div id="shareQrCode" class="shareQrCode"></div>
+          </div>
+          <div class="shareButtonRow">
+            <button id="refreshShareQrBtn" type="button" class="secondaryButton shareRefreshBtn">URL・QRを更新</button>
+            <button id="saveShareQrBtn" type="button" class="secondaryButton shareSaveQrBtn">QR画像を保存</button>
+            <button id="openViewerBtn" type="button" class="secondaryButton shareOpenViewerBtn">Viewerを開く</button>
+          </div>
+        </div>
+
+        <div class="shareHelpBox">
+          このURLやQRコードは、メール・LINE・Teams等に貼り付けて共有できます。<br>
+          「Viewerを開く」で、別タブに閲覧専用ページを表示して確認できます。<br>
+          無料版のViewerは閲覧専用です。編集内容を更新した場合は、共有パネルでURL・QRを更新して再共有してください。
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+ 
+  <div id="mapContainer">
+    <div id="map"></div>
+    <div id="gridOverlay"></div>
+ 
+ 
+  </div>
+ 
+  <div id="measureSummaryBanner" class="measureSummaryBanner is-hidden" aria-hidden="true">
+    <div class="measureSummaryHeader">
+      <div class="measureSummaryHeaderTitle">計測結果</div>
+      <div class="measureSummaryHeaderCount">図形数：<strong><span id="measureShapeCount">0</span></strong> 個</div>
+    </div>
+ 
+    <div class="measureSummaryBlock totalBlock">
+      <div class="measureSummaryIcon">📐</div>
+      <div>
+        <div class="measureSummaryTitle">面積（合計）</div>
+        <div class="measureSummaryMain"><span id="measureTotalAreaM2">0</span> ㎡</div>
+        <div class="measureSummarySub"><span id="measureTotalAreaHa">0.000</span> ha</div>
+      </div>
+    </div>
+ 
+    <div class="measureSummaryBlock totalBlock">
+      <div class="measureSummaryIcon">▦</div>
+      <div>
+        <div class="measureSummaryTitle">範囲（グリッド合計）</div>
+        <div class="measureSummaryLine">総グリッド数：<strong id="measureTotalGridCount">0</strong> グリッド</div>
+        <div class="measureSummaryLine">概算面積：<strong id="measureGridAreaM2">0</strong> ㎡</div>
+        <div class="measureSummaryLine">概算面積：<strong id="measureGridAreaHa">0.000</strong> ha</div>
+        <div class="measureSummaryLine">グリッド：<strong id="measureGridSpan">横0 × 縦0</strong></div>
+      </div>
+    </div>
+ 
+    <div class="measureIndividualTitle">個別</div>
+    <div id="measureIndividualCards" class="measureIndividualCards">
+      <div class="measureIndividualEmpty">計測図形はありません。</div>
+    </div>
+  </div>
+ 
+  <div id="pinContextMenu">
+    <button id="completePinBtn">活動完了</button>
+    <button id="deletePinBtn">削除</button>
+    <button id="cancelPinMenuBtn">キャンセル</button>
+  </div>
+ 
+  <div id="historyContextMenu">
+    <button id="editHistoryBtn">編集</button>
+    <button id="cancelHistoryCaseBtn">事案取消し</button>
+    <button id="closeHistoryMenuBtn">閉じる</button>
+  </div>
+ 
+  <div id="editPanel">
+    <h3>ピン情報</h3>
+ 
+    <label>種別</label>
+    <select id="pinType">
+      <option value="fire">火災</option>
+      <option value="rescue">救助</option>
+      <option value="emergency">救急</option>
+    </select>
+ 
+    <label>座標</label>
+    <input id="pinLatLng" disabled>
+ 
+    <label>グリッド番号</label>
+    <input id="gridNo" type="text" placeholder="例：A-1">
+ 
+    <label>災害番号</label>
+    <input id="incidentNo" type="text">
+ 
+    <label>概要</label>
+    <textarea id="summary" rows="4" placeholder="災害概要を入力してください"></textarea>
+ 
+    <label>出動部隊</label>
+    <input id="units" type="text">
+ 
+    <label>傷病者人数</label>
+    <input id="injuredCount" type="number" min="0" value="0">
+ 
+    <label>添付</label>
+    <input id="attachment" type="file" accept="image/*">
+ 
+    <div id="attachmentInfo">添付なし</div>
+    <img id="attachmentPreview" alt="添付画像プレビュー">
+ 
+    <div class="buttonRow">
+      <button id="savePin">保存</button>
+      <button id="closePanel">閉じる</button>
+    </div>
+  </div>
+ 
+  <div id="historyEditPanel">
+    <h3>活動履歴編集</h3>
+ 
+    <label>種別</label>
+    <select id="historyEditType">
+      <option value="fire">火災</option>
+      <option value="rescue">救助</option>
+      <option value="emergency">救急</option>
+    </select>
+ 
+    <label>覚知日時</label>
+    <input id="historyEditAwareness" type="text">
+ 
+    <label>完了日時</label>
+    <input id="historyEditCompleted" type="text">
+ 
+    <label>グリッド番号</label>
+    <input id="historyEditGridNo" type="text">
+ 
+    <label>災害番号</label>
+    <input id="historyEditIncidentNo" type="text">
+ 
+    <label>概要</label>
+    <textarea id="historyEditSummary" rows="4"></textarea>
+ 
+    <label>出動部隊</label>
+    <input id="historyEditUnits" type="text">
+ 
+    <label>傷病者人数</label>
+    <input id="historyEditInjured" type="number" min="0">
+ 
+    <div class="buttonRow">
+      <button id="saveHistoryEdit">保存</button>
+      <button id="closeHistoryEdit">閉じる</button>
+    </div>
+  </div>
+ 
+  <!-- ★追加：図形編集パネル -->
+  <div id="shapeEditPanel">
+    <h3>図形編集</h3>
+ 
+    <label>線色</label>
+    <div class="customColorRow">
+      <span>色を選択</span>
+      <input id="shapeEditColor" type="color" value="#e60000">
+    </div>
+ 
+    <label>線の太さ：<span id="shapeEditWeightValue">4</span></label>
+    <input id="shapeEditWeight" type="range" min="1" max="10" value="4">
+ 
+    <label>線種</label>
+    <select id="shapeEditStyle">
+      <option value="solid">実線</option>
+      <option value="dash">破線</option>
+      <option value="dot">点線</option>
+    </select>
+ 
+    <label>透明度：<span id="shapeEditOpacityValue">100</span>%</label>
+    <input id="shapeEditOpacity" type="range" min="10" max="100" value="100">
+ 
+    <label>塗りつぶし</label>
+    <select id="shapeEditFillMode">
+      <option value="none">なし</option>
+      <option value="semi">半透明</option>
+    </select>
+ 
+    <div class="buttonRow shapeButtonRow">
+      <button id="saveShapeEdit">保存</button>
+      <button id="copyShapeEdit">コピー</button>
+      <button id="duplicateShapeEdit">複製</button>
+    </div>
+ 
+    <div class="buttonRow shapeButtonRow">
+      <button id="deleteShapeEdit">削除</button>
+      <button id="closeShapeEdit">閉じる</button>
+    </div>
+  </div>
+ 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="fixed.js"></script>
+ 
+</body>
+</html>

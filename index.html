@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>G-Link〈災害情報共有システム〉</title>
+ 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+ 
+<body>
+ 
+<div id="toolbar">
+ 
+  <div class="toolItem">
+    <label>縮尺</label>
+    <div id="currentScale" class="scaleReadout">縮尺：約1/-</div>
+  </div>
+ 
+  <div class="toolItem">
+    <label>用紙</label>
+    <select id="paper">
+      <option value="A0">A0</option>
+      <option value="A1">A1</option>
+      <option value="A2">A2</option>
+      <option value="A3" selected>A3</option>
+      <option value="A4">A4</option>
+    </select>
+  </div>
+ 
+  <div class="toolItem">
+    <label>向き</label>
+    <select id="orientation">
+      <option value="portrait">タテ</option>
+      <option value="landscape" selected>ヨコ</option>
+    </select>
+  </div>
+ 
+  <div class="toolItem">
+    <label>グリッド</label>
+    <select id="grid">
+      <option value="0" selected>無し</option>
+      <option value="5">5m</option>
+      <option value="10">10m</option>
+      <option value="100">100m</option>
+      <option value="200">200m</option>
+      <option value="300">300m</option>
+    </select>
+  </div>
+ 
+  <div class="toolItem">
+    <label>地図種類</label>
+    <select id="mapType">
+      <option value="pale" selected>淡色地図</option>
+      <option value="std">標準地図</option>
+      <option value="photo">写真</option>
+      <option value="relief">色別標高図</option>
+      <option value="hillshade">陰影起伏図</option>
+    </select>
+  </div>
+ 
+  <div class="toolItem searchItem">
+    <label>名称・住所検索</label>
+    <div class="searchRow">
+      <input id="searchBox" type="text" placeholder="地名・施設名・住所を入力してください">
+      <button id="searchBtn">検索</button>
+    </div>
+  </div>
+ 
+ 
+  <div class="toolItem commitItem">
+    <button id="commitSessionBtn">この範囲で確定</button>
+  </div>
+ 
+</div>
+ 
+<div id="map"></div>
+<div id="printFrame"></div>
+ 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+ 
+</body>
+</html>
