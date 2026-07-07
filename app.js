@@ -384,10 +384,19 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
  
-    sessionStorage.setItem(
-      "disasterSession",
-      JSON.stringify(session)
-    );
+    const disasterSessionJson = JSON.stringify(session);
+    sessionStorage.setItem("disasterSession", disasterSessionJson);
+    // Build021 Web公開対応：
+    // Cloudflare Pages等で fixed.html を新しいタブで開く場合、
+    // ブラウザによって sessionStorage が新規タブへ引き継がれないことがある。
+    // その対策として localStorage にも同じ作業状態を退避し、
+    // fixed.html 側で fallback 復元できるようにする。
+    try {
+      localStorage.setItem("disasterSession", disasterSessionJson);
+      localStorage.setItem("glinkLastSessionSavedAt", new Date().toISOString());
+    } catch (error) {
+      console.warn("G-Link作業状態のバックアップ保存に失敗しました。", error);
+    }
  
     window.open("fixed.html", "_blank");
  

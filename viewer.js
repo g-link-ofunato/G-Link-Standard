@@ -161,7 +161,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: data.v || "1.6",
-      build: data.b || "Build019",
+      build: data.b || "Build021",
       viewerMode: true,
       sharedAt: data.t || "",
       notice: data.n || "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -192,9 +192,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function decodeViewerPayload() {
     const hash = window.location.hash || "";
-    const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-    const compressed = params.get("z");
-    const encoded = params.get("data");
+    const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+    const queryParams = new URLSearchParams(window.location.search || "");
+
+    // Build021 Web公開対応：
+    // 基本は #z=... / #data=... を使用するが、
+    // QRリーダーや共有方法によって ?z=... / ?data=... 形式になった場合も読み込めるようにする。
+    const compressed = hashParams.get("z") || queryParams.get("z");
+    const encoded = hashParams.get("data") || queryParams.get("data");
     if (!compressed && !encoded) return null;
 
     try {

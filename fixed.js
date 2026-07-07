@@ -1,8 +1,23 @@
 window.addEventListener("DOMContentLoaded", () => {
  
-  const sessionData = sessionStorage.getItem("disasterSession");
+  let sessionData = sessionStorage.getItem("disasterSession");
+
+  // Build021 Web公開対応：
+  // Cloudflare Pages等で fixed.html を新しいタブで開いた場合、
+  // sessionStorage が引き継がれず「災害情報が見つかりません」となることがある。
+  // エリア選択時に localStorage へ退避した作業状態を fallback として復元する。
   if (!sessionData) {
-    alert("災害情報が見つかりません。");
+    try {
+      sessionData = localStorage.getItem("disasterSession");
+      if (sessionData) sessionStorage.setItem("disasterSession", sessionData);
+    } catch (error) {
+      console.warn("G-Link作業状態の復元に失敗しました。", error);
+    }
+  }
+
+  if (!sessionData) {
+    alert("災害情報が見つかりません。起動画面からエリアを確定し直してください。");
+    window.location.href = "index.html";
     return;
   }
  
@@ -835,7 +850,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build019",
+      b: "Build021",
       t: data.sharedAt || new Date().toISOString(),
       n: "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || "dms",
@@ -850,8 +865,17 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function getViewerBaseUrl() {
-    const current = window.location.href.split("#")[0].split("?")[0];
-    return current.replace(/fixed\.html$/i, "viewer.html");
+    // Build021 Web公開対応：
+    // fixed.html のURL形式に依存せず、常に同じ階層の viewer.html を指す。
+    // これにより Cloudflare Pages上でも Viewer URL が fixed.html へ戻る事故を防ぐ。
+    try {
+      const url = new URL("viewer.html", window.location.href);
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch (error) {
+      return "viewer.html";
+    }
   }
 
   function stripAttachmentForViewer(pin) {
@@ -878,7 +902,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build019",
+      build: "Build021",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -4679,7 +4703,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build019",
+      build: "Build021",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
