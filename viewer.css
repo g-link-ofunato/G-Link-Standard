@@ -267,6 +267,10 @@ body {
   line-height: 1.6;
 }
 
+.viewerError[hidden] {
+  display: none !important;
+}
+
 .viewerError {
   position: fixed;
   inset: 0;
@@ -513,4 +517,31 @@ body {
   word-break: break-all;
   font-size: 12px;
   line-height: 1.55;
+}
+
+
+.viewerDiagnosticSuccess {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1200;
+  max-width: 360px;
+  background: rgba(17, 24, 39, 0.88);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.viewerDiagnosticSuccess summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.viewerDiagnosticSuccess[hidden] {
+  display: none !important;
 }

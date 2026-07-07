@@ -48,6 +48,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (mapEl) mapEl.style.display = "none";
   }
 
+  function hideError() {
+    if (viewerError) viewerError.hidden = true;
+    if (mapEl) mapEl.style.display = "block";
+  }
+
+  function showSuccessDiagnostic() {
+    let box = document.getElementById("viewerSuccessDiagnostic");
+    if (!box) {
+      box = document.createElement("details");
+      box.id = "viewerSuccessDiagnostic";
+      box.className = "viewerDiagnosticSuccess";
+      box.innerHTML = `<summary>Viewer読込成功</summary><pre id="viewerSuccessDiagnosticLog"></pre>`;
+      document.body.appendChild(box);
+    }
+    const log = document.getElementById("viewerSuccessDiagnosticLog");
+    if (log) log.textContent = viewerDiag.steps.join("\n");
+  }
+
   function escapeHtml(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -254,7 +272,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: data.v || "1.6",
-      build: data.b || "Build022.2",
+      build: data.b || "Build022.3",
       viewerMode: true,
       sharedAt: data.t || "",
       notice: data.n || "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -758,6 +776,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   diag("共有データ読込完了", true, `ピン${(data.pins || []).length}件 / 履歴${(data.activityHistory || []).length}件`);
+  // Build022.3：ピン0件・履歴0件でも、地図情報があれば正常な共有データとして表示する。
+  // CSSのdisplay指定によりhidden属性が効かない環境もあるため、成功時は明示的にエラー画面を非表示にする。
+  hideError();
 
   renderHeaderInfo(data);
   renderSummary(data);
@@ -797,6 +818,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     }).addTo(map);
     marker.bindPopup(pinPopup(pin, index + 1));
   });
+
+  showSuccessDiagnostic();
 
   renderDrawings(map, data);
   renderMeasurements(map, data);
