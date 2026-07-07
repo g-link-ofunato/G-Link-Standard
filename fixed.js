@@ -736,7 +736,16 @@ window.addEventListener("DOMContentLoaded", () => {
   function encodeViewerPayload(data) {
     try {
       const json = JSON.stringify(data || {});
-      const binary = unescape(encodeURIComponent(json));
+      let binary = "";
+      if (typeof TextEncoder === "function") {
+        const bytes = new TextEncoder().encode(json);
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+        }
+      } else {
+        binary = unescape(encodeURIComponent(json));
+      }
       const base64 = btoa(binary);
       return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
     } catch (error) {
@@ -746,7 +755,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function encodeViewerPayloadPortable(data) {
-    // Build022.1 Viewer共有エンジン刷新：
+    // Build022.2 Viewer共有エンジン刷新：
     // Cloudflare Pages公開環境では CompressionStream / DecompressionStream の対応差により、
     // #z=... の復号に失敗する端末がある。
     // 無料版Viewerでは端末互換性を最優先し、UTF-8 JSONをBase64URL化した #data=... 方式へ統一する。
@@ -843,7 +852,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build022.1",
+      b: "Build022.2",
       t: data.sharedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || "dms",
@@ -895,7 +904,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build022.1",
+      build: "Build022.2",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -4703,7 +4712,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build022.1",
+      build: "Build022.2",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),

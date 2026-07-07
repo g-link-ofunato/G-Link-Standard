@@ -25,8 +25,26 @@ window.addEventListener("DOMContentLoaded", async () => {
     emergency: "救急"
   };
 
-  function showError() {
+  const viewerDiag = {
+    steps: [],
+    error: ""
+  };
+
+  function diag(label, ok = true, detail = "") {
+    const mark = ok ? "✓" : "✕";
+    const line = `${mark} ${label}${detail ? "：" + detail : ""}`;
+    viewerDiag.steps.push(line);
+    try { console.log(`[G-Link Viewer] ${line}`); } catch (_) {}
+    const logEl = document.getElementById("viewerDiagnosticLog");
+    if (logEl) logEl.textContent = viewerDiag.steps.join("\n");
+  }
+
+  function showError(message = "指揮本部モードの共有パネルから発行されたViewer用URLを開いてください。") {
     if (viewerError) viewerError.hidden = false;
+    const messageEl = document.getElementById("viewerErrorMessage");
+    if (messageEl) messageEl.textContent = message;
+    const logEl = document.getElementById("viewerDiagnosticLog");
+    if (logEl) logEl.textContent = viewerDiag.steps.join("\n") || "診断情報はありません。";
     if (mapEl) mapEl.style.display = "none";
   }
 
@@ -39,34 +57,109 @@ window.addEventListener("DOMContentLoaded", async () => {
       .replace(/'/g, "&#39;");
   }
 
+  function normalizeShareText(value) {
+    return String(value || "").trim().replace(/\s+/g, "");
+  }
+
+  function base64UrlToBase64(value) {
+    const cleaned = normalizeShareText(value).replace(/-/g, "+").replace(/_/g, "/");
+    const mod = cleaned.length % 4;
+    if (mod === 1) throw new Error(`Base64文字数が不正です（length=${cleaned.length}）。URLが途中で切れている可能性があります。`);
+    return cleaned + (mod ? "=".repeat(4 - mod) : "");
+  }
+
   function bytesFromBase64Url(encoded) {
-    const base64 = String(encoded || "").replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "===".slice((base64.length + 3) % 4);
-    const binary = atob(padded);
+    const base64 = base64UrlToBase64(encoded);
+    const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
     return bytes;
   }
 
+  function utf8DecodeBytes(bytes) {
+    if (typeof TextDecoder === "function") {
+      return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    }
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+    }
+    return decodeURIComponent(escape(binary));
+  }
+
+  function parseJsonText(text) {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) throw new Error("復号後のテキストが空です。");
+    const parsed = JSON.parse(trimmed);
+    return typeof parsed === "string" ? JSON.parse(parsed) : parsed;
+  }
+
   function decodeJsonBase64Url(encoded) {
-    // Build022.1 Viewer共有エンジン刷新：
-    // UTF-8 JSONをBase64URL化した #data=... を標準方式にする。
-    // decodeURIComponent(escape(...)) では端末差が出るため TextDecoder で復号する。
+    diag("URLデータ取得", true, `${String(encoded || "").length}文字`);
     const bytes = bytesFromBase64Url(encoded);
-    const text = new TextDecoder("utf-8").decode(bytes);
-    return JSON.parse(text);
+    diag("Base64復号", true, `${bytes.length} bytes`);
+    const text = utf8DecodeBytes(bytes);
+    diag("UTF-8復号", true, `${text.length}文字`);
+    const parsed = parseJsonText(text);
+    diag("JSON解析", true, parsed && parsed.f ? `形式=${parsed.f}` : "通常形式");
+    return parsed;
   }
 
   async function decodeCompressedJsonBase64Url(encoded) {
-    // 旧Build互換：過去に発行した #z=... URLも読めるように残す。
-    // ただし新規発行URLは #data=... を使用する。
+    diag("旧圧縮URL取得", true, `${String(encoded || "").length}文字`);
     if (typeof DecompressionStream !== "function") {
       throw new Error("このブラウザは圧縮Viewerデータの展開に対応していません。");
     }
     const bytes = bytesFromBase64Url(encoded);
+    diag("旧圧縮Base64復号", true, `${bytes.length} bytes`);
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
     const text = await new Response(stream).text();
-    return JSON.parse(text);
+    diag("旧圧縮データ展開", true, `${text.length}文字`);
+    const parsed = parseJsonText(text);
+    diag("JSON解析", true, parsed && parsed.f ? `形式=${parsed.f}` : "通常形式");
+    return parsed;
+  }
+
+  function getShareValueFromLocation() {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    diag("Viewer起動URL", true, `hash=${hash.length}文字 / search=${search.length}文字`);
+
+    function pick(raw, keys) {
+      if (!raw) return null;
+      const body = raw.startsWith("#") || raw.startsWith("?") ? raw.slice(1) : raw;
+      for (const key of keys) {
+        const prefix = key + "=";
+        if (body.startsWith(prefix)) return { key, value: body.slice(prefix.length) };
+        const marker = "&" + prefix;
+        const idx = body.indexOf(marker);
+        if (idx >= 0) return { key, value: body.slice(idx + marker.length).split("&")[0] };
+      }
+      try {
+        const params = new URLSearchParams(body);
+        for (const key of keys) {
+          const value = params.get(key);
+          if (value) return { key, value };
+        }
+      } catch (error) {
+        diag("URLSearchParams解析", false, error.message);
+      }
+      return null;
+    }
+
+    const found = pick(hash, ["data", "z", "share"]) || pick(search, ["data", "z", "share"]);
+    if (!found) return null;
+    let value = found.value || "";
+    try {
+      const decoded = decodeURIComponent(value);
+      if (decoded && decoded.length >= value.length * 0.9) value = decoded;
+    } catch (_) {
+      // すでにURL安全文字のみの場合は何もしない。
+    }
+    value = normalizeShareText(value);
+    diag("共有パラメータ検出", true, `${found.key} / ${value.length}文字`);
+    return { key: found.key, value };
   }
 
   function expandPoint(value) {
@@ -161,7 +254,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: data.v || "1.6",
-      build: data.b || "Build022.1",
+      build: data.b || "Build022.2",
       viewerMode: true,
       sharedAt: data.t || "",
       notice: data.n || "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -191,29 +284,28 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function decodeViewerPayload() {
-    const hash = window.location.hash || "";
-    const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-    const queryParams = new URLSearchParams(window.location.search || "");
-
-    // Build021 Web公開対応：
-    // 基本は #z=... / #data=... を使用するが、
-    // QRリーダーや共有方法によって ?z=... / ?data=... 形式になった場合も読み込めるようにする。
-    const compressed = hashParams.get("z") || queryParams.get("z");
-    const encoded = hashParams.get("data") || queryParams.get("data");
-
     try {
-      if (encoded) {
-        return expandCompactViewerData(decodeJsonBase64Url(encoded));
+      const found = getShareValueFromLocation();
+      if (found && (found.key === "data" || found.key === "share")) {
+        return expandCompactViewerData(decodeJsonBase64Url(found.value));
       }
-      if (compressed) {
-        return expandCompactViewerData(await decodeCompressedJsonBase64Url(compressed));
+      if (found && found.key === "z") {
+        return expandCompactViewerData(await decodeCompressedJsonBase64Url(found.value));
       }
-      // 同一端末で viewer.html を直接開いた場合の保険。
-      // 別端末・QR共有では必ずURL内の #data=... を使用する。
+      diag("共有URL確認", false, "#data= / ?data= がありません。共有パネルからViewer用URLを再発行してください。");
+
       const lastData = localStorage.getItem("glinkViewerLastData");
-      if (lastData) return expandCompactViewerData(JSON.parse(lastData));
+      if (lastData) {
+        diag("ローカル退避データ検出", true, `${lastData.length}文字`);
+        const parsed = parseJsonText(lastData);
+        diag("ローカル退避データ解析", true, parsed && parsed.f ? `形式=${parsed.f}` : "通常形式");
+        return expandCompactViewerData(parsed);
+      }
       return null;
     } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      diag("読込処理", false, message);
+      viewerDiag.error = message;
       console.warn("Viewer用データを読み込めませんでした。", error);
       return null;
     }
@@ -662,9 +754,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const data = await decodeViewerPayload();
   if (!data) {
-    showError();
+    showError(viewerDiag.error ? `共有データの読込に失敗しました：${viewerDiag.error}` : "共有データを取得できませんでした。指揮本部モードの共有パネルからViewer用URLを再発行してください。");
     return;
   }
+  diag("共有データ読込完了", true, `ピン${(data.pins || []).length}件 / 履歴${(data.activityHistory || []).length}件`);
 
   renderHeaderInfo(data);
   renderSummary(data);
@@ -676,6 +769,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const layerType = data.mapType || data.session?.mapType || "pale";
   const layer = mapLayers[layerType] || mapLayers.pale;
   const center = latLngFromPlain(data.session?.center) || L.latLng(39.0819, 141.7085);
+  diag("地図生成開始", true);
   const map = L.map("viewerMap", {
     zoomControl: true,
     attributionControl: true
@@ -707,6 +801,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderDrawings(map, data);
   renderMeasurements(map, data);
   setupViewerInteraction(map, data, bounds);
+  diag("地図表示完了", true);
 
   setTimeout(() => map.invalidateSize(), 100);
 });

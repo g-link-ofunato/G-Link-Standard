@@ -489,3 +489,28 @@ body {
     display: none;
   }
 }
+
+.viewerDiagnosticBox {
+  margin-top: 14px;
+  width: min(760px, 90vw);
+  color: #cbd5e1;
+  text-align: left;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.viewerDiagnosticBox summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+#viewerDiagnosticLog {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 12px;
+  line-height: 1.55;
+}
