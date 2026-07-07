@@ -49,17 +49,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function decodeJsonBase64Url(encoded) {
+    // Build022.1 Viewer共有エンジン刷新：
+    // UTF-8 JSONをBase64URL化した #data=... を標準方式にする。
+    // decodeURIComponent(escape(...)) では端末差が出るため TextDecoder で復号する。
     const bytes = bytesFromBase64Url(encoded);
-    let binary = "";
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
-    }
-    const json = decodeURIComponent(escape(binary));
-    return JSON.parse(json);
+    const text = new TextDecoder("utf-8").decode(bytes);
+    return JSON.parse(text);
   }
 
   async function decodeCompressedJsonBase64Url(encoded) {
+    // 旧Build互換：過去に発行した #z=... URLも読めるように残す。
+    // ただし新規発行URLは #data=... を使用する。
     if (typeof DecompressionStream !== "function") {
       throw new Error("このブラウザは圧縮Viewerデータの展開に対応していません。");
     }
@@ -161,7 +161,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: data.v || "1.6",
-      build: data.b || "Build022",
+      build: data.b || "Build022.1",
       viewerMode: true,
       sharedAt: data.t || "",
       notice: data.n || "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -200,11 +200,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     // QRリーダーや共有方法によって ?z=... / ?data=... 形式になった場合も読み込めるようにする。
     const compressed = hashParams.get("z") || queryParams.get("z");
     const encoded = hashParams.get("data") || queryParams.get("data");
-    if (!compressed && !encoded) return null;
 
     try {
-      const raw = compressed ? await decodeCompressedJsonBase64Url(compressed) : decodeJsonBase64Url(encoded);
-      return expandCompactViewerData(raw);
+      if (encoded) {
+        return expandCompactViewerData(decodeJsonBase64Url(encoded));
+      }
+      if (compressed) {
+        return expandCompactViewerData(await decodeCompressedJsonBase64Url(compressed));
+      }
+      // 同一端末で viewer.html を直接開いた場合の保険。
+      // 別端末・QR共有では必ずURL内の #data=... を使用する。
+      const lastData = localStorage.getItem("glinkViewerLastData");
+      if (lastData) return expandCompactViewerData(JSON.parse(lastData));
+      return null;
     } catch (error) {
       console.warn("Viewer用データを読み込めませんでした。", error);
       return null;

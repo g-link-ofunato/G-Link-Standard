@@ -745,19 +745,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function encodeViewerPayloadCompressed(data) {
-    const json = JSON.stringify(data || {});
-    if (typeof CompressionStream !== "function") {
-      return { mode: "data", value: encodeViewerPayload(data) };
-    }
-    try {
-      const stream = new Blob([json], { type: "application/json" }).stream().pipeThrough(new CompressionStream("deflate-raw"));
-      const buffer = await new Response(stream).arrayBuffer();
-      return { mode: "z", value: toBase64UrlFromBytes(new Uint8Array(buffer)) };
-    } catch (error) {
-      console.warn("Viewer用データの圧縮に失敗しました。通常形式で生成します。", error);
-      return { mode: "data", value: encodeViewerPayload(data) };
-    }
+  function encodeViewerPayloadPortable(data) {
+    // Build022.1 Viewer共有エンジン刷新：
+    // Cloudflare Pages公開環境では CompressionStream / DecompressionStream の対応差により、
+    // #z=... の復号に失敗する端末がある。
+    // 無料版Viewerでは端末互換性を最優先し、UTF-8 JSONをBase64URL化した #data=... 方式へ統一する。
+    return { mode: "data", value: encodeViewerPayload(data) };
   }
 
   function compactPoint(point) {
@@ -850,7 +843,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build022",
+      b: "Build022.1",
       t: data.sharedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || "dms",
@@ -902,7 +895,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build022",
+      build: "Build022.1",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -929,8 +922,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
   async function getCurrentShareUrl() {
     const compact = compactViewerData(buildViewerShareData());
-    const encoded = await encodeViewerPayloadCompressed(compact);
+    const encoded = encodeViewerPayloadPortable(compact);
     if (!encoded.value) return getViewerBaseUrl();
+    try {
+      // 同一端末・同一ブラウザでViewerを開く場合の保険として、直近データをlocalStorageにも退避する。
+      // 別端末共有ではURL内の #data=... を使用するため、外部DBや専用サーバーは不要。
+      localStorage.setItem("glinkViewerLastData", JSON.stringify(compact));
+    } catch (error) {
+      console.warn("Viewer用データの一時保存に失敗しました。", error);
+    }
     return `${getViewerBaseUrl()}#${encoded.mode}=${encoded.value}`;
   }
 
@@ -982,7 +982,7 @@ window.addEventListener("DOMContentLoaded", () => {
       shareUrlInput.value = url;
     }
     renderShareQr(url);
-    if (url.length > 1600) {
+    if (url.length > 2200) {
       setShareStatus("共有データ量が多いため、QRが読みにくい場合があります。URLコピーでの共有も併用してください。", true);
     }
   }
@@ -4703,7 +4703,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build022",
+      build: "Build022.1",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
