@@ -95,7 +95,7 @@
     }
 
     saveLauncherHeader(disasterName, createdUnit);
-    window.location.href = "index.html";
+    window.location.href = "area.html";
   }
 
   window.addEventListener("resize", resizeStage);

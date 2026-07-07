@@ -2,84 +2,123 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>G-Link〈災害情報共有システム〉</title>
- 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <link rel="stylesheet" href="style.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>G-Link Standard 起動画面</title>
+  <link rel="stylesheet" href="launcher.css" />
 </head>
- 
 <body>
- 
-<div id="toolbar">
- 
-  <div class="toolItem">
-    <label>縮尺</label>
-    <div id="currentScale" class="scaleReadout">縮尺：約1/-</div>
-  </div>
- 
-  <div class="toolItem">
-    <label>用紙</label>
-    <select id="paper">
-      <option value="A0">A0</option>
-      <option value="A1">A1</option>
-      <option value="A2">A2</option>
-      <option value="A3" selected>A3</option>
-      <option value="A4">A4</option>
-    </select>
-  </div>
- 
-  <div class="toolItem">
-    <label>向き</label>
-    <select id="orientation">
-      <option value="portrait">タテ</option>
-      <option value="landscape" selected>ヨコ</option>
-    </select>
-  </div>
- 
-  <div class="toolItem">
-    <label>グリッド</label>
-    <select id="grid">
-      <option value="0" selected>無し</option>
-      <option value="5">5m</option>
-      <option value="10">10m</option>
-      <option value="100">100m</option>
-      <option value="200">200m</option>
-      <option value="300">300m</option>
-    </select>
-  </div>
- 
-  <div class="toolItem">
-    <label>地図種類</label>
-    <select id="mapType">
-      <option value="pale" selected>淡色地図</option>
-      <option value="std">標準地図</option>
-      <option value="photo">写真</option>
-      <option value="relief">色別標高図</option>
-      <option value="hillshade">陰影起伏図</option>
-    </select>
-  </div>
- 
-  <div class="toolItem searchItem">
-    <label>名称・住所検索</label>
-    <div class="searchRow">
-      <input id="searchBox" type="text" placeholder="地名・施設名・住所を入力してください">
-      <button id="searchBtn">検索</button>
-    </div>
-  </div>
- 
- 
-  <div class="toolItem commitItem">
-    <button id="commitSessionBtn">この範囲で確定</button>
-  </div>
- 
-</div>
- 
-<div id="map"></div>
-<div id="printFrame"></div>
- 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
- 
+  <main id="launcherStage" class="launcher-stage" aria-label="G-Link 起動画面">
+    <img class="launcher-bg" src="launcher-bg.png" alt="G-Link 起動画面背景" />
+
+    <section class="launcher-panel" aria-label="G-Link 初期設定">
+      <header class="launcher-brand">
+        <h1 class="brand-logo">G<span>-</span>Link</h1>
+        <h2 class="brand-title">災害情報共有システム</h2>
+        <p class="brand-subtitle">Disaster Information Sharing System</p>
+        <div class="brand-line" aria-hidden="true"></div>
+      </header>
+
+      <section class="feature-list" aria-label="G-Link 機能概要">
+        <article class="feature-item">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" focusable="false">
+              <path d="M32 52V37" />
+              <path d="M22 52h20" />
+              <path d="M24 34c-5-5-5-13 0-18" />
+              <path d="M40 34c5-5 5-13 0-18" />
+              <path d="M18 40c-11-11-11-29 0-40" transform="translate(6 8) scale(.75)" />
+              <path d="M46 40c11-11 11-29 0-40" transform="translate(10 8) scale(.75)" />
+              <circle cx="32" cy="24" r="6" />
+            </svg>
+          </div>
+          <div class="feature-text">
+            <h3>情報収集</h3>
+            <p>多様な情報をリアルタイムに収集</p>
+          </div>
+        </article>
+
+        <article class="feature-item">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" focusable="false">
+              <rect x="12" y="12" width="40" height="40" rx="2" />
+              <path d="M25 12v40M38 12v40M12 25h40M12 38h40" />
+            </svg>
+          </div>
+          <div class="feature-text">
+            <h3>災害の可視化</h3>
+            <p>グリッド図で災害状況をわかりやすく可視化</p>
+          </div>
+        </article>
+
+        <article class="feature-item">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" focusable="false">
+              <circle cx="32" cy="22" r="9" />
+              <path d="M18 52c2-10 9-16 14-16s12 6 14 16" />
+              <path d="M14 52h36" />
+            </svg>
+          </div>
+          <div class="feature-text">
+            <h3>状況把握</h3>
+            <p>現場の状況を正確に把握・分析</p>
+          </div>
+        </article>
+
+        <article class="feature-item">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" focusable="false">
+              <path d="M25 39l14-14" />
+              <path d="M26 18l5-5a12 12 0 0 1 17 17l-5 5" />
+              <path d="M38 46l-5 5a12 12 0 0 1-17-17l5-5" />
+            </svg>
+          </div>
+          <div class="feature-text">
+            <h3>情報共有</h3>
+            <p>必要な情報を関係機関と迅速に共有</p>
+          </div>
+        </article>
+      </section>
+
+      <form id="launcherForm" class="launch-form" autocomplete="off">
+        <div class="form-row">
+          <label for="disasterName">災害名</label>
+          <input
+            id="disasterName"
+            name="disasterName"
+            type="text"
+            placeholder="例：〇〇〇市大規模災害"
+            maxlength="80"
+            required
+          />
+        </div>
+
+        <div class="form-row">
+          <label for="createdUnit">作成部隊</label>
+          <input
+            id="createdUnit"
+            name="createdUnit"
+            type="text"
+            placeholder="例：〇〇〇消防本部　指揮本部"
+            maxlength="80"
+            required
+          />
+        </div>
+
+        <button id="startButton" class="start-button" type="submit">
+          <span class="start-label">確　定</span>
+          <span class="start-arrow" aria-hidden="true">›</span>
+        </button>
+      </form>
+    </section>
+
+    <footer class="launcher-footer">
+      <span>G-Link Standard Version 1.6 Build020</span>
+      <span class="footer-separator">|</span>
+      <span>© G-Link Disaster Information Sharing System</span>
+    </footer>
+  </main>
+
+  <script src="launcher.js"></script>
 </body>
 </html>
+
