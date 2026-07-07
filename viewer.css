@@ -40,7 +40,8 @@ body {
   gap: 10px;
 }
 
-#viewerPrintBtn {
+#viewerPrintBtn,
+.viewerSearchRow button {
   border: 1px solid rgba(255,255,255,0.7);
   border-radius: 8px;
   padding: 6px 12px;
@@ -50,7 +51,8 @@ body {
   cursor: pointer;
 }
 
-#viewerPrintBtn:hover {
+#viewerPrintBtn:hover,
+.viewerSearchRow button:hover {
   background: rgba(255,255,255,0.24);
 }
 
@@ -324,7 +326,8 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  #viewerPrintBtn {
+  #viewerPrintBtn,
+.viewerSearchRow button {
     display: none;
   }
   #viewerLayout {
@@ -338,5 +341,151 @@ body {
   #viewerInfoPanel {
     height: auto;
     border-left: none;
+  }
+}
+
+
+.viewerSearchPanel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 820;
+  width: min(520px, calc(100% - 24px));
+  background: rgba(255,255,255,0.96);
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+  box-sizing: border-box;
+}
+
+.viewerSearchTitle {
+  font-weight: bold;
+  font-size: 13px;
+  color: #064e3b;
+  margin-bottom: 6px;
+}
+
+.viewerSearchRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.viewerSearchRow input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 8px 9px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.viewerSearchRow button {
+  border-color: #065f46;
+  background: #047857;
+  border-radius: 7px;
+  padding: 8px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.viewerSearchStatus {
+  min-height: 16px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.viewerTapInfo {
+  position: absolute;
+  right: 12px;
+  bottom: 18px;
+  z-index: 820;
+  max-width: min(440px, calc(100% - 160px));
+  background: rgba(17, 24, 39, 0.88);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.55;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+}
+
+.tapPopupText {
+  line-height: 1.55;
+}
+
+.tapPopupText b {
+  color: #064e3b;
+}
+
+.searchMarkerPulse {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.24), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+@media (max-width: 900px) {
+  #viewerHeader {
+    height: auto;
+    min-height: 64px;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .viewerTitle {
+    font-size: 18px;
+  }
+
+  .viewerHeaderActions {
+    gap: 6px;
+  }
+
+  #viewerMapArea {
+    height: 68vh;
+  }
+
+  .viewerSearchPanel {
+    top: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+    padding: 8px;
+  }
+
+  .viewerSearchRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .viewerSearchRow button {
+    width: 100%;
+    padding: 9px;
+  }
+
+  .viewerTapInfo {
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+    max-width: none;
+    font-size: 11px;
+  }
+
+  .viewerLegend {
+    display: none;
+  }
+}
+
+@media print {
+  .viewerSearchPanel,
+  .viewerTapInfo {
+    display: none;
   }
 }

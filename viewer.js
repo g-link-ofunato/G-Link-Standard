@@ -161,7 +161,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: data.v || "1.6",
-      build: data.b || "Build021",
+      build: data.b || "Build022",
       viewerMode: true,
       sharedAt: data.t || "",
       notice: data.n || "無料版Viewerは閲覧専用です。リアルタイム同期は行いません。",
@@ -473,6 +473,185 @@ window.addEventListener("DOMContentLoaded", async () => {
       <tr><td>${escapeHtml(item.number || i + 1)}</td><td>${escapeHtml(item.name || "名称未設定")}</td><td>${Number(item.areaM2 || 0).toLocaleString()}㎡<br>${Number(item.areaHa || 0).toFixed(3)}ha</td></tr>`).join("")}</tbody></table>`;
   }
 
+
+  function decimalToDmsParts(value) {
+    const abs = Math.abs(Number(value));
+    let degrees = Math.floor(abs);
+    const minFloat = (abs - degrees) * 60;
+    let minutes = Math.floor(minFloat);
+    let seconds = (minFloat - minutes) * 60;
+    seconds = Math.round(seconds * 100) / 100;
+    if (seconds >= 60) { seconds = 0; minutes += 1; }
+    if (minutes >= 60) { minutes = 0; degrees += 1; }
+    return { degrees, minutes, seconds };
+  }
+
+  function formatDmsValue(value, axis) {
+    if (!Number.isFinite(Number(value))) return "-";
+    const parts = decimalToDmsParts(value);
+    const suffix = axis === "lat" ? (Number(value) >= 0 ? "N" : "S") : (Number(value) >= 0 ? "E" : "W");
+    return `${parts.degrees}°${String(parts.minutes).padStart(2, "0")}′${parts.seconds.toFixed(2).padStart(5, "0")}″${suffix}`;
+  }
+
+  function formatViewerCoordinate(latlng, data) {
+    const type = data.coordinateType || data.session?.coordinateType || "dms";
+    if (type === "decimal") return `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+    return `${formatDmsValue(latlng.lat, "lat")}, ${formatDmsValue(latlng.lng, "lng")}`;
+  }
+
+  function getColumnName(index) {
+    let name = "";
+    let n = index;
+    while (n >= 0) {
+      name = String.fromCharCode((n % 26) + 65) + name;
+      n = Math.floor(n / 26) - 1;
+    }
+    return name;
+  }
+
+  function getViewerGridInfo(bounds, gridSize) {
+    const size = Number(gridSize || 0);
+    if (!bounds || !size) return null;
+    const centerLat = bounds.getCenter().lat;
+    const latStep = size / 111320;
+    const lngStep = size / (111320 * Math.cos(centerLat * Math.PI / 180));
+    return {
+      latStep,
+      lngStep,
+      westLine: Math.floor(bounds.getWest() / lngStep) * lngStep,
+      eastLine: Math.ceil(bounds.getEast() / lngStep) * lngStep,
+      southLine: Math.floor(bounds.getSouth() / latStep) * latStep,
+      northLine: Math.ceil(bounds.getNorth() / latStep) * latStep
+    };
+  }
+
+  function getViewerGridNumber(latlng, bounds, gridSize) {
+    const info = getViewerGridInfo(bounds, gridSize);
+    if (!info || !latlng) return "-";
+    const colCount = Math.round((info.eastLine - info.westLine) / info.lngStep);
+    const rowCount = Math.round((info.northLine - info.southLine) / info.latStep);
+    if (colCount <= 0 || rowCount <= 0) return "-";
+    const epsilonLat = info.latStep * 1e-9;
+    const epsilonLng = info.lngStep * 1e-9;
+    const inLng = latlng.lng >= info.westLine - epsilonLng && latlng.lng <= info.eastLine + epsilonLng;
+    const inLat = latlng.lat <= info.northLine + epsilonLat && latlng.lat >= info.southLine - epsilonLat;
+    if (!inLng || !inLat) return "範囲外";
+    let colIndex = Math.floor((latlng.lng - info.westLine) / info.lngStep);
+    let rowIndex = Math.floor((info.northLine - latlng.lat) / info.latStep);
+    colIndex = Math.min(Math.max(colIndex, 0), colCount - 1);
+    rowIndex = Math.min(Math.max(rowIndex, 0), rowCount - 1);
+    return `${getColumnName(colIndex)}-${rowIndex + 1}`;
+  }
+
+  function parseViewerCoordinate(value) {
+    const text = String(value || "").trim();
+    if (!text) return null;
+    const normalized = text
+      .replace(/[，、]/g, ",")
+      .replace(/[°º˚]/g, "度")
+      .replace(/[′’']/g, "分")
+      .replace(/[″”\"]/g, "秒")
+      .replace(/北緯/g, "N")
+      .replace(/南緯/g, "S")
+      .replace(/東経/g, "E")
+      .replace(/西経/g, "W")
+      .replace(/[()（）]/g, " ")
+      .trim();
+    const decimals = normalized.match(/[-+]?\d+(?:\.\d+)?/g);
+    if (!decimals || decimals.length < 2) return null;
+    let lat = Number(decimals[0]);
+    let lng = Number(decimals[1]);
+
+    // 60進法らしい入力（度・分・秒を含む、かつ数値が4個以上）の簡易対応。
+    if (/[度分秒NSEW]/i.test(normalized) && decimals.length >= 4) {
+      const nums = decimals.map(Number);
+      lat = nums[0] + (nums[1] || 0) / 60 + (nums[2] || 0) / 3600;
+      lng = nums[3] + (nums[4] || 0) / 60 + (nums[5] || 0) / 3600;
+      if (/S|南/i.test(normalized)) lat *= -1;
+      if (/W|西/i.test(normalized)) lng *= -1;
+    }
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return L.latLng(lat, lng);
+  }
+
+  function setViewerSearchStatus(message, isError = false) {
+    const status = document.getElementById("viewerSearchStatus");
+    if (!status) return;
+    status.textContent = message || "";
+    status.style.color = isError ? "#b91c1c" : "#475569";
+  }
+
+  function createSearchMarker(map, latlng, html) {
+    if (window.viewerSearchLayer) window.viewerSearchLayer.clearLayers();
+    else window.viewerSearchLayer = L.layerGroup().addTo(map);
+    const icon = L.divIcon({ className: "", html: '<div class="searchMarkerPulse"></div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+    const marker = L.marker(latlng, { icon }).bindPopup(html).addTo(window.viewerSearchLayer);
+    marker.openPopup();
+  }
+
+  async function searchViewerAddress(map, data, bounds) {
+    const input = document.getElementById("viewerAddressInput");
+    const value = input ? input.value.trim() : "";
+    if (!value) { setViewerSearchStatus("地名・施設名・住所を入力してください。", true); return; }
+    setViewerSearchStatus("住所検索中です...");
+    try {
+      const url = "https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(value);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("address search failed");
+      const results = await response.json();
+      const first = Array.isArray(results) ? results[0] : null;
+      const coordinates = first?.geometry?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        setViewerSearchStatus("該当する住所が見つかりませんでした。", true);
+        return;
+      }
+      const latlng = L.latLng(Number(coordinates[1]), Number(coordinates[0]));
+      const grid = getViewerGridNumber(latlng, bounds, data.gridSize || data.session?.gridSize);
+      const label = first?.properties?.title || value;
+      map.setView(latlng, Math.max(map.getZoom(), 16), { animate: true });
+      createSearchMarker(map, latlng, `<div class="tapPopupText"><b>住所検索</b><br>${escapeHtml(label)}<br>座標：${escapeHtml(formatViewerCoordinate(latlng, data))}<br>グリッド番号：${escapeHtml(grid)}</div>`);
+      setViewerSearchStatus(`検索結果：${label} / グリッド：${grid}`);
+    } catch (error) {
+      console.warn("Viewer住所検索に失敗しました。", error);
+      setViewerSearchStatus("住所検索に失敗しました。通信状況を確認してください。", true);
+    }
+  }
+
+  function searchViewerCoordinate(map, data, bounds) {
+    const input = document.getElementById("viewerCoordInput");
+    const value = input ? input.value.trim() : "";
+    const latlng = parseViewerCoordinate(value);
+    if (!latlng) { setViewerSearchStatus("座標を読み取れませんでした。例：39.0819, 141.7085", true); return; }
+    const grid = getViewerGridNumber(latlng, bounds, data.gridSize || data.session?.gridSize);
+    map.setView(latlng, Math.max(map.getZoom(), 16), { animate: true });
+    createSearchMarker(map, latlng, `<div class="tapPopupText"><b>座標検索</b><br>座標：${escapeHtml(formatViewerCoordinate(latlng, data))}<br>グリッド番号：${escapeHtml(grid)}</div>`);
+    setViewerSearchStatus(`座標検索：${formatViewerCoordinate(latlng, data)} / グリッド：${grid}`);
+  }
+
+  function setupViewerInteraction(map, data, bounds) {
+    const addressBtn = document.getElementById("viewerAddressSearchBtn");
+    const coordBtn = document.getElementById("viewerCoordSearchBtn");
+    const addressInput = document.getElementById("viewerAddressInput");
+    const coordInput = document.getElementById("viewerCoordInput");
+    const tapInfo = document.getElementById("viewerTapInfo");
+
+    if (addressBtn) addressBtn.addEventListener("click", () => searchViewerAddress(map, data, bounds));
+    if (coordBtn) coordBtn.addEventListener("click", () => searchViewerCoordinate(map, data, bounds));
+    if (addressInput) addressInput.addEventListener("keydown", e => { if (e.key === "Enter") searchViewerAddress(map, data, bounds); });
+    if (coordInput) coordInput.addEventListener("keydown", e => { if (e.key === "Enter") searchViewerCoordinate(map, data, bounds); });
+
+    map.on("click", event => {
+      const latlng = event.latlng;
+      const grid = getViewerGridNumber(latlng, bounds, data.gridSize || data.session?.gridSize);
+      const coord = formatViewerCoordinate(latlng, data);
+      const html = `<div class="tapPopupText"><b>地点情報</b><br>座標：${escapeHtml(coord)}<br>グリッド番号：${escapeHtml(grid)}</div>`;
+      L.popup().setLatLng(latlng).setContent(html).openOn(map);
+      if (tapInfo) tapInfo.innerHTML = `座標：${escapeHtml(coord)}<br>グリッド番号：${escapeHtml(grid)}`;
+    });
+  }
+
   const data = await decodeViewerPayload();
   if (!data) {
     showError();
@@ -519,6 +698,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   renderDrawings(map, data);
   renderMeasurements(map, data);
+  setupViewerInteraction(map, data, bounds);
 
   setTimeout(() => map.invalidateSize(), 100);
 });

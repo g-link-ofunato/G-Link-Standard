@@ -3,25 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>G-Link Viewer（閲覧専用）</title>
+  <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="viewer.css">
 </head>
 <body>
   <header id="viewerHeader">
     <div class="viewerBrand">
-      <div class="viewerTitle">G-Link Viewer</div>
+      <div class="viewerTitle">G-Link 現場閲覧モード</div>
       <div class="viewerSubtitle">災害情報共有システム（閲覧専用）</div>
     </div>
     <div class="viewerHeaderActions">
       <button id="viewerPrintBtn" type="button">印刷</button>
-      <div class="viewerBadge">閲覧専用</div>
+      <div class="viewerBadge">現場閲覧</div>
     </div>
   </header>
 
   <main id="viewerLayout">
     <section id="viewerMapArea">
       <div id="viewerMap"></div>
+      <div id="viewerSearchPanel" class="viewerSearchPanel">
+        <div class="viewerSearchTitle">検索</div>
+        <div class="viewerSearchRow">
+          <input id="viewerAddressInput" type="text" placeholder="地名・施設名・住所検索">
+          <button id="viewerAddressSearchBtn" type="button">住所検索</button>
+        </div>
+        <div class="viewerSearchRow">
+          <input id="viewerCoordInput" type="text" placeholder="座標検索 例：39.0819, 141.7085">
+          <button id="viewerCoordSearchBtn" type="button">座標検索</button>
+        </div>
+        <div id="viewerSearchStatus" class="viewerSearchStatus"></div>
+      </div>
+      <div id="viewerTapInfo" class="viewerTapInfo">地図をタップすると座標とグリッド番号を表示します。</div>
       <div id="viewerLegend" class="viewerLegend"></div>
     </section>
 
@@ -58,7 +71,7 @@
       </section>
 
       <section class="viewerNotice">
-        このページは閲覧専用です。ピン追加・編集・削除・保存・設定変更はできません。<br>
+        このページは現場閲覧モードです。ピン追加・編集・削除・保存・設定変更はできません。<br>
         指揮本部側で内容を更新した場合は、共有パネルからURL・QRコードを再発行してください。
       </section>
     </aside>
