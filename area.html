@@ -43,6 +43,7 @@
       <option value="0" selected>無し</option>
       <option value="5">5m</option>
       <option value="10">10m</option>
+      <option value="50">50m</option>
       <option value="100">100m</option>
       <option value="200">200m</option>
       <option value="300">300m</option>
@@ -77,6 +78,11 @@
  
 <div id="map"></div>
 <div id="printFrame"></div>
+
+<details id="areaDiagnostic" class="diagPanel">
+  <summary>診断情報</summary>
+  <div id="areaDiagnosticBody">診断情報を取得中です。</div>
+</details>
  
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="app.js"></script>

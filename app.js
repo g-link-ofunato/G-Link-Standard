@@ -209,8 +209,43 @@ window.addEventListener("DOMContentLoaded", () => {
   const searchBox = document.getElementById("searchBox");
   const searchBtn = document.getElementById("searchBtn");
   const commitBtn = document.getElementById("commitSessionBtn");
+  const toolbar = document.getElementById("toolbar");
+  const diagnosticBody = document.getElementById("areaDiagnosticBody");
  
   let gridLayer = null;
+  let lastSearchMode = "住所・名称検索のみ";
+  let lastSearchKeyword = "";
+  let lastSearchResult = "未実行";
+
+  function updateLayoutMetrics() {
+    const toolbarHeight = toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 82;
+    document.documentElement.style.setProperty("--toolbar-height", toolbarHeight + "px");
+
+    window.requestAnimationFrame(() => {
+      map.invalidateSize(false);
+      updatePrintFrame();
+      updateDiagnostic();
+    });
+  }
+
+  function updateDiagnostic() {
+    if (!diagnosticBody) return;
+
+    const toolbarHeight = toolbar ? Math.round(toolbar.getBoundingClientRect().height) : 0;
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const frameRect = frame.getBoundingClientRect();
+
+    diagnosticBody.innerHTML = [
+      `グリッド選択：${grid ? grid.value : "取得不可"}m`,
+      `検索モード：${lastSearchMode}`,
+      `検索語：${lastSearchKeyword || "未入力"}`,
+      `検索結果：${lastSearchResult}`,
+      `画面：${window.innerWidth} × ${window.innerHeight}px`,
+      `ツールバー高さ：${toolbarHeight}px`,
+      `地図領域：${Math.round(mapRect.width)} × ${Math.round(mapRect.height)}px`,
+      `赤枠：${Math.round(frameRect.width)} × ${Math.round(frameRect.height)}px`
+    ].join("<br>");
+  }
  
   function roundScaleDenominator(value) {
     if (!Number.isFinite(value) || value <= 0) {
@@ -267,40 +302,41 @@ window.addEventListener("DOMContentLoaded", () => {
       A3: { w: 420, h: 297 },
       A4: { w: 297, h: 210 }
     };
- 
-    let width = paperSize[settings.paper].w;
-    let height = paperSize[settings.paper].h;
- 
-    const ratio = 0.8;
- 
-    width *= ratio;
-    height *= ratio;
- 
+
+    const selectedPaper = paperSize[settings.paper] || paperSize.A3;
+    let paperWidth = selectedPaper.w;
+    let paperHeight = selectedPaper.h;
+
     if (settings.orientation === "portrait") {
-      [width, height] = [height, width];
+      [paperWidth, paperHeight] = [paperHeight, paperWidth];
     }
- 
+
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const maxWidth = Math.max(180, mapRect.width * 0.9);
+    const maxHeight = Math.max(140, mapRect.height * 0.86);
+    const fitRatio = Math.min(maxWidth / paperWidth, maxHeight / paperHeight);
+
+    const width = Math.round(paperWidth * fitRatio);
+    const height = Math.round(paperHeight * fitRatio);
+
     frame.style.width = width + "px";
     frame.style.height = height + "px";
+
+    updateDiagnostic();
   }
  
  
   async function searchLocation() {
     const keyword = searchBox.value.trim();
+    lastSearchMode = "住所・名称検索のみ";
+    lastSearchKeyword = keyword;
+    lastSearchResult = "検索開始";
+    updateDiagnostic();
  
     if (!keyword) {
+      lastSearchResult = "未入力";
+      updateDiagnostic();
       alert("検索する地名・施設名・住所を入力してください。");
-      return;
-    }
- 
-    const coord = parseLatLngInput(keyword);
-    if (coord) {
-      map.setView([coord.lat, coord.lng], 15);
-      if (searchMarker) {
-        map.removeLayer(searchMarker);
-      }
-      searchMarker = L.marker([coord.lat, coord.lng]).addTo(map);
-      searchMarker.bindPopup(`座標検索<br>緯度：${coord.lat.toFixed(6)}<br>経度：${coord.lng.toFixed(6)}`).openPopup();
       return;
     }
  
@@ -313,6 +349,8 @@ window.addEventListener("DOMContentLoaded", () => {
       const results = await response.json();
  
       if (!results || results.length === 0) {
+        lastSearchResult = "該当なし";
+        updateDiagnostic();
         alert("検索結果が見つかりませんでした。");
         return;
       }
@@ -329,8 +367,13 @@ window.addEventListener("DOMContentLoaded", () => {
  
       searchMarker = L.marker([lat, lng]).addTo(map);
       searchMarker.bindPopup(result.properties.title || keyword).openPopup();
+
+      lastSearchResult = result.properties.title || "検索成功";
+      updateDiagnostic();
  
     } catch (error) {
+      lastSearchResult = "エラー";
+      updateDiagnostic();
       alert("検索中にエラーが発生しました。");
       console.error(error);
     }
@@ -516,21 +559,35 @@ window.addEventListener("DOMContentLoaded", () => {
     updateScaleDisplay();
     updatePrintFrame();
     updateGrid();
+    updateDiagnostic();
   }
  
   paper.addEventListener("change", sync);
   orientation.addEventListener("change", sync);
   grid.addEventListener("change", sync);
   mapType.addEventListener("change", sync);
+
+  if (window.ResizeObserver && toolbar) {
+    const toolbarObserver = new ResizeObserver(updateLayoutMetrics);
+    toolbarObserver.observe(toolbar);
+  }
+
+  window.addEventListener("resize", updateLayoutMetrics);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(updateLayoutMetrics, 250);
+  });
  
   map.on("moveend zoomend", () => {
     updateScaleDisplay();
     updateGrid();
+    updateDiagnostic();
   });
  
   setBaseMap(settings.mapType);
+  updateLayoutMetrics();
   updateScaleDisplay();
   updatePrintFrame();
   updateGrid();
+  updateDiagnostic();
  
 });
