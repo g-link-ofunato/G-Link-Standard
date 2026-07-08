@@ -1968,20 +1968,27 @@ body {
   font-weight: bold;
 }
 
-/* Build022.6: 指揮本部ヘッダーを指定レイアウトへ修正
-   上段：タイトル2段中央／下段：年月日左・災害名右／作成部隊はその下に左揃い */
+/* Build022.7: 指揮本部ヘッダーをユーザー指定レイアウトへ再修正
+   ・通常時：タイトル2段＋年月日／災害名／作成部隊を横一列
+   ・狭い画面：年月日／災害名を上段、作成部隊を下段
+   ・座標／グリッド番号は従来どおり右側に維持 */
+:root {
+  --header-date-width: 232px;
+  --header-disaster-width: 220px;
+  --header-unit-width: 232px;
+}
+
 #titleBar {
-  min-height: 126px !important;
+  min-height: 84px !important;
   height: auto !important;
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  grid-template-areas:
-    "title info"
-    "fields info" !important;
-  align-items: start !important;
-  gap: 6px 12px !important;
-  padding: 8px 12px 10px 12px !important;
+  grid-template-columns: minmax(245px, 330px) minmax(0, 1fr) auto !important;
+  grid-template-areas: "title fields info" !important;
+  align-items: center !important;
+  gap: 8px 14px !important;
+  padding: 8px 12px 8px 78px !important;
   overflow: visible !important;
+  box-sizing: border-box !important;
 }
 
 .titleMain {
@@ -1994,36 +2001,45 @@ body {
   justify-content: center !important;
   min-width: 0 !important;
   max-width: 100% !important;
-  width: auto !important;
+  width: 100% !important;
   text-align: center !important;
   white-space: nowrap !important;
   line-height: 1.18 !important;
-  font-size: clamp(15px, 1.6vw, 20px) !important;
+  font-size: clamp(15px, 1.45vw, 20px) !important;
   font-weight: 800 !important;
   margin: 0 !important;
   overflow: visible !important;
 }
 
+.titleMain span:first-child {
+  display: block !important;
+}
+
+.titleMain span:last-child {
+  display: block !important;
+  margin-top: 3px !important;
+  font-size: 0.92em !important;
+}
+
 .headerFields {
   grid-area: fields !important;
-  width: min(100%, 920px) !important;
-  justify-self: center !important;
+  width: 100% !important;
+  justify-self: start !important;
   display: grid !important;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) !important;
-  grid-template-areas:
-    "date disaster"
-    "unit unit" !important;
-  gap: 6px 14px !important;
-  align-items: start !important;
-  justify-content: stretch !important;
+  grid-template-columns: var(--header-date-width) minmax(160px, var(--header-disaster-width)) var(--header-unit-width) !important;
+  grid-template-areas: "date disaster unit" !important;
+  gap: 8px 10px !important;
+  align-items: center !important;
+  justify-content: start !important;
   min-width: 0 !important;
   overflow: visible !important;
 }
 
+.headerField,
 .headerFields label {
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
@@ -2033,33 +2049,56 @@ body {
   box-sizing: border-box !important;
 }
 
+.headerDateField,
 .headerFields label:nth-child(1) { grid-area: date !important; }
+.headerDisasterField,
 .headerFields label:nth-child(2) { grid-area: disaster !important; }
-.headerFields label:nth-child(3) { grid-area: unit !important; justify-content: flex-start !important; }
+.headerUnitField,
+.headerFields label:nth-child(3) { grid-area: unit !important; }
+
+.fieldLabel {
+  flex: 0 0 auto !important;
+  display: inline-block !important;
+  min-width: 4.2em !important;
+  text-align: right !important;
+  line-height: 1 !important;
+}
+
+.dateLabel {
+  min-width: 4.6em !important;
+  text-align: justify !important;
+  text-align-last: justify !important;
+  white-space: nowrap !important;
+}
 
 .headerFields input {
   flex: 1 1 auto !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: auto !important;
+  height: 30px !important;
   min-height: 30px !important;
   padding: 4px 8px !important;
   box-sizing: border-box !important;
-  font-size: 14px !important;
+  border: 1px solid #6b7280 !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
   font-weight: 400 !important;
   line-height: 1.35 !important;
-  white-space: normal !important;
-  overflow: visible !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
   text-overflow: clip !important;
+  background: #ffffff !important;
+  color: #111827 !important;
 }
 
 #headerDateTime,
-#disasterName,
 #createdUnit {
   width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
+}
+
+#headerDateTime {
+  font-variant-numeric: tabular-nums !important;
 }
 
 #createdUnit {
@@ -2068,37 +2107,77 @@ body {
 
 #currentInfoPanel {
   grid-area: info !important;
-  align-self: start !important;
+  align-self: center !important;
   justify-self: end !important;
   margin: 0 !important;
+  flex-shrink: 0 !important;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1280px) {
+  #titleBar {
+    grid-template-columns: minmax(235px, 320px) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "title fields"
+      "title info" !important;
+    align-items: center !important;
+  }
+  #currentInfoPanel {
+    justify-self: end !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  #titleBar {
+    grid-template-columns: minmax(220px, 310px) minmax(0, 1fr) !important;
+    grid-template-areas: "title fields" !important;
+  }
+  .headerFields {
+    grid-template-columns: var(--header-date-width) minmax(150px, 1fr) !important;
+    grid-template-areas:
+      "date disaster"
+      "unit unit" !important;
+    align-items: center !important;
+  }
+  .headerUnitField,
+  .headerFields label:nth-child(3) {
+    width: var(--header-date-width) !important;
+    max-width: var(--header-date-width) !important;
+  }
+  #currentInfoPanel {
+    position: absolute !important;
+    right: 10px !important;
+    bottom: 6px !important;
+    transform: scale(0.92) !important;
+    transform-origin: right bottom !important;
+  }
+}
+
+@media (max-width: 820px) {
   #titleBar {
     grid-template-columns: 1fr !important;
     grid-template-areas:
       "title"
-      "fields"
-      "info" !important;
+      "fields" !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
   }
-  #currentInfoPanel {
-    justify-self: center !important;
+  .titleMain {
+    font-size: 15px !important;
   }
-}
-
-@media (max-width: 640px) {
   .headerFields {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
       "date"
       "disaster"
       "unit" !important;
+    justify-content: stretch !important;
+  }
+  .headerUnitField,
+  .headerFields label:nth-child(3) {
     width: 100% !important;
+    max-width: none !important;
   }
-  .headerFields label {
-    font-size: 11px !important;
-  }
-  .headerFields input {
-    font-size: 12px !important;
+  #currentInfoPanel {
+    display: none !important;
   }
 }

@@ -474,6 +474,25 @@ window.addEventListener("DOMContentLoaded", () => {
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
     return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${weekdays[now.getDay()]}）${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}　現在`;
   }
+
+  function startLiveHeaderClock() {
+    if (!headerDateTime) return;
+    let lastSavedMinute = "";
+    const tick = () => {
+      const nextValue = getFormattedNowForHeader();
+      headerDateTime.value = nextValue;
+      headerDateTime.setAttribute("readonly", "readonly");
+      const currentMinute = nextValue.replace(/秒.*/, "");
+      if (currentMinute !== lastSavedMinute) {
+        lastSavedMinute = currentMinute;
+        saveSharedHeader({ dateTime: nextValue, coordinateType });
+      }
+      updateTitleBarHeightForHeader();
+      updateFixedHeaderDiagnostic();
+    };
+    tick();
+    window.setInterval(tick, 1000);
+  }
  
  
   const HEADER_STORAGE_KEY = "gLink_header";
@@ -588,43 +607,38 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!body) return;
     const titleBar = document.getElementById("titleBar");
     const titleMain = document.querySelector(".titleMain");
+    const headerFields = document.querySelector(".headerFields");
     const disasterNameInput = document.getElementById("disasterName");
     const createdUnitInput = document.getElementById("createdUnit");
+    const currentInfoPanel = document.getElementById("currentInfoPanel");
     const fields = [headerDateTime, disasterNameInput, createdUnitInput].filter(Boolean);
     const line = (name, el) => {
       if (!el) return `${name}：取得不可`;
       return `${name}：表示幅 ${Math.round(el.getBoundingClientRect().width)}px / 内容幅 ${Math.round(el.scrollWidth)}px / 文字数 ${(el.value || el.textContent || "").length}`;
     };
+    const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
+    const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
     body.innerHTML = [
-      `タイトルバー高さ：${titleBar ? Math.round(titleBar.getBoundingClientRect().height) : "取得不可"}px`,
+      `Build：022.7 ヘッダー再修正`,
+      `画面幅：${window.innerWidth}px`,
+      `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
+      `ヘッダー列：${fieldsStyle ? fieldsStyle.gridTemplateColumns : "取得不可"}`,
       line("タイトル", titleMain),
       line("年月日", headerDateTime),
       line("災害名", disasterNameInput),
       line("作成部隊", createdUnitInput),
+      line("座標・グリッド", currentInfoPanel),
+      `現在時刻更新：${headerDateTime && headerDateTime.readOnly ? "ON" : "要確認"}`,
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
     ].join("<br>");
   }
 
   function fitHeaderInputWidth(input) {
     if (!input) return;
-    input.style.fontSize = "14px";
-    input.style.letterSpacing = "0";
-
-    const textLength = Math.max(1, (input.value || input.placeholder || "").length);
-    let baseWidth = Math.ceil(textLength * 15 + 32);
-
-    if (input.id === "headerDateTime") baseWidth = Math.max(baseWidth, 210);
-    if (input.id === "disasterName") baseWidth = Math.max(baseWidth, 160);
-    if (input.id === "createdUnit") baseWidth = Math.max(baseWidth, 140);
-
-    const titleBar = document.getElementById("titleBar");
-    const maxWidth = titleBar ? Math.max(130, Math.min(560, titleBar.getBoundingClientRect().width * 0.42)) : 520;
-    const width = Math.min(baseWidth, maxWidth);
-    input.style.width = `${width}px`;
-
-    if (input.scrollWidth > input.clientWidth + 2) {
-      input.style.fontSize = "13px";
-    }
+    input.style.width = "";
+    input.style.maxWidth = "";
+    input.style.fontSize = "";
+    input.style.letterSpacing = "";
   }
 
   function adjustHeaderFieldsNoWrap() {
@@ -651,6 +665,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   applySharedHeaderToScreen();
+  startLiveHeaderClock();
   adjustHeaderFieldsNoWrap();
   window.addEventListener("resize", adjustHeaderFieldsNoWrap);
  
@@ -664,7 +679,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
  
  
-  [headerDateTime, document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(input => {
+  [document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(input => {
     if (!input) return;
     input.addEventListener("input", () => { syncHeaderFromScreen(); adjustHeaderFieldsNoWrap(); });
     input.addEventListener("change", () => { syncHeaderFromScreen(); adjustHeaderFieldsNoWrap(); });

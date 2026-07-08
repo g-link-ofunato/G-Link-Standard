@@ -14,10 +14,10 @@
   <div id="titleBar">
     <div class="titleMain"><span>G-Link〈災害情報共有システム〉</span><span>【指揮本部モード】</span></div>
  
-    <div class="headerFields">
-      <label>年月日<input id="headerDateTime" type="text"></label>
-      <label>災害名<input id="disasterName" type="text"></label>
-      <label>作成部隊<input id="createdUnit" type="text"></label>
+    <div class="headerFields" aria-label="指揮本部ヘッダー情報">
+      <label class="headerField headerDateField"><span class="fieldLabel dateLabel">年　月　日</span><input id="headerDateTime" type="text" readonly></label>
+      <label class="headerField headerDisasterField"><span class="fieldLabel">災害名</span><input id="disasterName" type="text"></label>
+      <label class="headerField headerUnitField"><span class="fieldLabel">作成部隊</span><input id="createdUnit" type="text"></label>
     </div>
  
     <div id="currentInfoPanel" class="currentInfoPanel" aria-label="現在位置情報">
