@@ -296,9 +296,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
  
   function loadCoordinateType() {
+    // Build022.8: 起動時のデフォルトは必ず60進法に戻す。
+    // 画面内の設定で10進法へ切替えた場合のみ、その場で反映する。
     const fromSession = session.coordinateType;
-    const fromStorage = localStorage.getItem("gLinkCoordinateType");
-    const value = fromSession || fromStorage || "dms";
+    const value = fromSession || "dms";
     return value === "decimal" ? "decimal" : "dms";
   }
  
@@ -472,7 +473,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function getFormattedNowForHeader() {
     const now = new Date();
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-    return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${weekdays[now.getDay()]}）${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}　現在`;
+    return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${weekdays[now.getDay()]}）${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   }
 
   function startLiveHeaderClock() {
@@ -619,16 +620,19 @@ window.addEventListener("DOMContentLoaded", () => {
     const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
     const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
     body.innerHTML = [
-      `Build：022.7 ヘッダー再修正`,
+      `Build：022.8 ヘッダー被り・座標・グリッド線色修正`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
       `ヘッダー列：${fieldsStyle ? fieldsStyle.gridTemplateColumns : "取得不可"}`,
+      `項目間隔：${fieldsStyle ? fieldsStyle.columnGap : "取得不可"}`,
+      `グリッド線色：${gridLineSettings.color}`,
+      `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
       line("タイトル", titleMain),
       line("年月日", headerDateTime),
       line("災害名", disasterNameInput),
       line("作成部隊", createdUnitInput),
       line("座標・グリッド", currentInfoPanel),
-      `現在時刻更新：${headerDateTime && headerDateTime.readOnly ? "ON" : "要確認"}`,
+      `時刻更新：${headerDateTime && headerDateTime.readOnly ? "ON" : "要確認"}`,
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
     ].join("<br>");
   }
@@ -1996,8 +2000,11 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!saved) return { ...defaultGridLineSettings };
  
       const parsed = JSON.parse(saved);
+      const savedColor = String(parsed.color || "").toLowerCase();
+      const redLikeColors = new Set(["#ff0000", "#f00", "#e60000", "red"]);
+      const safeColor = redLikeColors.has(savedColor) ? defaultGridLineSettings.color : (parsed.color || defaultGridLineSettings.color);
       return {
-        color: parsed.color || defaultGridLineSettings.color,
+        color: safeColor,
         opacity: Number.isFinite(Number(parsed.opacity)) ? Number(parsed.opacity) : defaultGridLineSettings.opacity,
         weight: Number.isFinite(Number(parsed.weight)) ? Number(parsed.weight) : defaultGridLineSettings.weight
       };

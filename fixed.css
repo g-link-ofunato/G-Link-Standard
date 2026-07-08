@@ -2181,3 +2181,97 @@ body {
     display: none !important;
   }
 }
+
+
+/* Build022.8: ヘッダー被り・年月日欄・座標初期値・グリッド線色の再修正
+   ・年月日欄の入力枠が災害名ラベルへ被らないよう、各項目を独立ブロック化
+   ・項目間の余白を固定確保
+   ・狭い画面では年月日と作成部隊の白枠幅を統一
+   ・座標／グリッド番号表示は従来位置を維持 */
+:root {
+  --header-date-width: 290px;
+  --header-disaster-width: minmax(190px, 1fr);
+  --header-unit-width: 260px;
+  --header-item-gap: 18px;
+}
+
+.headerFields {
+  grid-template-columns: var(--header-date-width) var(--header-disaster-width) var(--header-unit-width) !important;
+  gap: 8px var(--header-item-gap) !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.headerField,
+.headerFields label {
+  min-width: 0 !important;
+  overflow: visible !important;
+  column-gap: 6px !important;
+}
+
+.fieldLabel {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.dateLabel {
+  flex-basis: 4.8em !important;
+  min-width: 4.8em !important;
+}
+
+.headerFields input,
+#headerDateTime,
+#disasterName,
+#createdUnit {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#headerDateTime {
+  min-width: 212px !important;
+}
+
+@media (max-width: 1080px) {
+  .headerFields {
+    grid-template-columns: var(--header-date-width) minmax(170px, 1fr) !important;
+    grid-template-areas:
+      "date disaster"
+      "unit unit" !important;
+  }
+
+  .headerUnitField,
+  .headerFields label:nth-child(3) {
+    width: var(--header-date-width) !important;
+    max-width: var(--header-date-width) !important;
+    justify-self: start !important;
+  }
+
+  .headerUnitField input,
+  .headerFields label:nth-child(3) input {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .headerFields {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "date"
+      "disaster"
+      "unit" !important;
+    gap: 6px !important;
+  }
+
+  .headerUnitField,
+  .headerFields label:nth-child(3) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  #headerDateTime {
+    min-width: 0 !important;
+  }
+}
