@@ -2453,3 +2453,104 @@ body {
     max-width: none !important;
   }
 }
+
+/* Build023.1: 指揮本部ヘッダー自動折返し判定修正・白枠幅最適化
+   ・短い災害名／作成部隊では白枠を必要幅へ縮小
+   ・文字数が多い場合のみ折返し許可
+   ・画面幅だけで常時2段にならないよう、JSの実測判定と連携 */
+:root {
+  --header-date-input-w-0231: 156px;
+  --header-disaster-input-w-0231: 10em;
+  --header-unit-input-w-0231: 11em;
+  --header-min-input-w-0231: 7.5em;
+  --header-max-input-w-0231: 30em;
+}
+
+#titleBar {
+  overflow: visible !important;
+}
+
+.headerFields {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px 16px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.headerField,
+.headerFields label {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+.headerFields input,
+#headerDateTime,
+#disasterName,
+#createdUnit {
+  flex: 0 0 auto !important;
+  min-width: var(--header-min-input-w-0231) !important;
+  max-width: min(var(--header-max-input-w-0231), 42vw) !important;
+  width: auto !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+#headerDateTime {
+  width: var(--header-date-input-w-0231) !important;
+  min-width: var(--header-date-input-w-0231) !important;
+  max-width: var(--header-date-input-w-0231) !important;
+}
+
+#disasterName {
+  width: var(--header-disaster-input-w-0231) !important;
+}
+
+#createdUnit {
+  width: var(--header-unit-input-w-0231) !important;
+}
+
+#titleBar.headerCompact0231 .headerFields {
+  flex-wrap: wrap !important;
+  row-gap: 6px !important;
+}
+
+#titleBar.headerCompact0231 .headerFields label {
+  flex: 0 1 auto !important;
+}
+
+#titleBar.headerCompact0231 #disasterName,
+#titleBar.headerCompact0231 #createdUnit {
+  max-width: min(var(--header-max-input-w-0231), 62vw) !important;
+}
+
+@media (max-width: 760px) {
+  .headerFields {
+    flex-wrap: wrap !important;
+    gap: 6px 10px !important;
+  }
+
+  .headerFields input,
+  #disasterName,
+  #createdUnit {
+    max-width: 58vw !important;
+  }
+
+  #headerDateTime {
+    width: 148px !important;
+    min-width: 148px !important;
+    max-width: 148px !important;
+  }
+}

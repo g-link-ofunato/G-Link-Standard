@@ -5059,6 +5059,116 @@ window.addEventListener("DOMContentLoaded", () => {
     renderActivityHistory();
   }
  
+
+
+  /* Build023.1: 指揮本部ヘッダー自動折返し判定修正・白枠幅最適化 */
+  function calculateHeaderInputCh(value, minCh, maxCh) {
+    const text = String(value || "").trim();
+    const count = Array.from(text).length;
+    return Math.max(minCh, Math.min(maxCh, Math.ceil(count * 1.05 + 3)));
+  }
+
+  function setHeaderAdaptiveInputWidths() {
+    const disasterNameInput = document.getElementById("disasterName");
+    const createdUnitInput = document.getElementById("createdUnit");
+    const root = document.documentElement;
+
+    const disasterCh = calculateHeaderInputCh(disasterNameInput ? disasterNameInput.value : "", 8, 28);
+    const unitCh = calculateHeaderInputCh(createdUnitInput ? createdUnitInput.value : "", 9, 30);
+
+    root.style.setProperty("--header-disaster-input-w-0231", `${disasterCh}em`);
+    root.style.setProperty("--header-unit-input-w-0231", `${unitCh}em`);
+  }
+
+  function applyHeaderWrapMode0231() {
+    const titleBar = document.getElementById("titleBar");
+    const headerFields = document.querySelector(".headerFields");
+    if (!titleBar || !headerFields) return;
+
+    titleBar.classList.remove("headerCompact0231");
+    // レイアウト反映後に実際の横幅を確認し、収まらない場合だけ折返しを許可する。
+    const overflow = headerFields.scrollWidth > headerFields.clientWidth + 2;
+    if (overflow || window.innerWidth <= 760) {
+      titleBar.classList.add("headerCompact0231");
+    }
+  }
+
+  function updateTitleBarHeightForHeader() {
+    const titleBar = document.getElementById("titleBar");
+    if (!titleBar) return;
+    const height = Math.ceil(titleBar.getBoundingClientRect().height || 74);
+    document.documentElement.style.setProperty("--fixed-titlebar-height", `${height}px`);
+    if (typeof map !== "undefined" && map && typeof map.invalidateSize === "function") {
+      window.setTimeout(() => map.invalidateSize(), 0);
+    }
+  }
+
+  function updateFixedHeaderDiagnostic() {
+    const body = document.getElementById("fixedHeaderDiagnosticBody");
+    if (!body) return;
+    const titleBar = document.getElementById("titleBar");
+    const titleMain = document.querySelector(".titleMain");
+    const headerFields = document.querySelector(".headerFields");
+    const disasterNameInput = document.getElementById("disasterName");
+    const createdUnitInput = document.getElementById("createdUnit");
+    const currentInfoPanel = document.getElementById("currentInfoPanel");
+    const fields = [headerDateTime, disasterNameInput, createdUnitInput].filter(Boolean);
+    const line = (name, el) => {
+      if (!el) return `${name}：取得不可`;
+      return `${name}：表示幅 ${Math.round(el.getBoundingClientRect().width)}px / 内容幅 ${Math.round(el.scrollWidth)}px / 文字数 ${(el.value || el.textContent || "").length}`;
+    };
+    const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
+    const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
+    const overflow = headerFields ? headerFields.scrollWidth > headerFields.clientWidth + 2 : false;
+    body.innerHTML = [
+      `Build：023.1 指揮本部ヘッダー自動折返し判定・白枠幅最適化`,
+      `画面幅：${window.innerWidth}px`,
+      `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
+      `ヘッダー表示幅：${headerFields ? Math.round(headerFields.clientWidth) : "取得不可"}px`,
+      `ヘッダー内容幅：${headerFields ? Math.round(headerFields.scrollWidth) : "取得不可"}px`,
+      `折返し判定：${titleBar && titleBar.classList.contains("headerCompact0231") ? "2段許可" : "1段優先"}`,
+      `実測オーバー：${overflow ? "あり" : "なし"}`,
+      `項目間隔：${fieldsStyle ? fieldsStyle.columnGap : "取得不可"}`,
+      `グリッド線色：${gridLineSettings.color}`,
+      `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
+      line("タイトル", titleMain),
+      line("年月日", headerDateTime),
+      line("災害名", disasterNameInput),
+      line("作成部隊", createdUnitInput),
+      line("座標・グリッド", currentInfoPanel),
+      `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
+    ].join("<br>");
+  }
+
+  function fitHeaderInputWidth(input) {
+    if (!input) return;
+    input.style.width = "";
+    input.style.maxWidth = "";
+    input.style.fontSize = "";
+    input.style.letterSpacing = "";
+  }
+
+  function adjustHeaderFieldsNoWrap() {
+    [headerDateTime, document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(fitHeaderInputWidth);
+    setHeaderAdaptiveInputWidths();
+    window.requestAnimationFrame(() => {
+      applyHeaderWrapMode0231();
+      updateTitleBarHeightForHeader();
+      updateFixedHeaderDiagnostic();
+    });
+  }
+
+  [document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", adjustHeaderFieldsNoWrap);
+    el.addEventListener("change", adjustHeaderFieldsNoWrap);
+  });
+  window.addEventListener("resize", adjustHeaderFieldsNoWrap);
+  window.addEventListener("orientationchange", adjustHeaderFieldsNoWrap);
+  window.setTimeout(adjustHeaderFieldsNoWrap, 0);
+  window.setTimeout(adjustHeaderFieldsNoWrap, 250);
+
+
   console.log("固定表示モード：G-Link Standard Version1.6 Build018");
   console.log(session);
  
