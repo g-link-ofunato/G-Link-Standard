@@ -2994,3 +2994,128 @@ body {
   letter-spacing: 0 !important;
   font-variant-numeric: tabular-nums !important;
 }
+
+/* =========================================================
+   Build023.5: 指揮本部ヘッダー左寄せ・座標余白・グリッド番号枠最終調整
+   - titleBar内の全体基準を左寄せに固定
+   - 緯度・経度ラベルと数値の余白を最小化し、数値右揃えは維持
+   - グリッド番号欄の最小幅を確保して切れを防止
+   ========================================================= */
+#titleBar,
+#titleBar.headerCompact0231,
+#titleBar.headerCompact0232 {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding-left: 0 !important;
+  padding-right: 8px !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+.titleMain {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  flex: 0 0 330px !important;
+  width: 330px !important;
+  min-width: 330px !important;
+  max-width: 330px !important;
+  margin: 0 !important;
+  padding-left: 10px !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+  transform-origin: left center !important;
+}
+
+.titleMain span {
+  display: block !important;
+  width: auto !important;
+  text-align: left !important;
+}
+
+.headerDataWrap {
+  margin-left: 0 !important;
+  transform-origin: left center !important;
+}
+
+#currentInfoPanel,
+#titleBar.headerCompact0232 #currentInfoPanel,
+#titleBar.headerCompact0231 #currentInfoPanel {
+  gap: 6px !important;
+}
+
+.currentInfoItem,
+.coordInfoItem,
+.gridInfoItem {
+  gap: 3px !important;
+}
+
+.coordValueBox {
+  width: var(--coord-box-width-0235, 172px) !important;
+  min-width: var(--coord-box-width-0235, 172px) !important;
+  max-width: var(--coord-box-width-0235, 172px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.coordValueBox > div {
+  display: grid !important;
+  grid-template-columns: max-content 112px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  column-gap: 0 !important;
+  padding: 0 3px !important;
+  box-sizing: border-box !important;
+  line-height: 1.24 !important;
+}
+
+.coordLabelText {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.coordNumberText {
+  width: 112px !important;
+  min-width: 112px !important;
+  max-width: 112px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  letter-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.gridValueBox {
+  width: var(--grid-box-width-0235, 118px) !important;
+  min-width: var(--grid-box-width-0235, 118px) !important;
+  max-width: var(--grid-box-width-0235, 118px) !important;
+  padding: 0 6px !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 760px) {
+  .titleMain {
+    flex-basis: 245px !important;
+    width: 245px !important;
+    min-width: 245px !important;
+    max-width: 245px !important;
+    padding-left: 6px !important;
+    font-size: 14px !important;
+  }
+  #titleBar,
+  #titleBar.headerCompact0231,
+  #titleBar.headerCompact0232 {
+    padding-left: 0 !important;
+    padding-right: 4px !important;
+    gap: 5px !important;
+  }
+}
