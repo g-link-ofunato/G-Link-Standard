@@ -2747,3 +2747,166 @@ body {
     max-width: 100% !important;
   }
 }
+
+/* Build023.3: 指揮本部ヘッダーを1段固定・全体比例縮小方式へ変更
+   ・2段折返しを廃止
+   ・年月日／災害名／作成部隊／座標／グリッド番号を常に1段に固定
+   ・画面幅が不足する場合はヘッダー情報全体を縮小して収める
+   ・白枠と文字を同じ比率で縮小し、被り・文字切れを防止 */
+:root {
+  --header-scale-0233: 1;
+  --header-date-input-w-0233: 270px;
+  --header-disaster-input-w-0233: 8em;
+  --header-unit-input-w-0233: 9em;
+  --coord-box-width-0233: 355px;
+  --grid-box-width-0233: 96px;
+  --header-item-gap-0233: 14px;
+}
+
+#titleBar,
+#titleBar.headerCompact0231,
+#titleBar.headerCompact0232 {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 14px !important;
+  min-height: 72px !important;
+  height: 72px !important;
+  padding: 7px 10px 7px 78px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.titleMain {
+  flex: 0 0 330px !important;
+  width: 330px !important;
+  max-width: 330px !important;
+  min-width: 330px !important;
+  text-align: center !important;
+  transform-origin: left center !important;
+  line-height: 1.28 !important;
+}
+
+.headerDataWrap {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: var(--header-item-gap-0233) !important;
+  width: max-content !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  transform: scale(var(--header-scale-0233)) !important;
+  transform-origin: left center !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.headerFields,
+#titleBar.headerCompact0232 .headerFields,
+#titleBar.headerCompact0231 .headerFields,
+#currentInfoPanel,
+#titleBar.headerCompact0232 #currentInfoPanel {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px var(--header-item-gap-0233) !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  position: static !important;
+  inset: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.headerField,
+.headerFields label,
+.currentInfoItem {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.headerFields input,
+#headerDateTime,
+#disasterName,
+#createdUnit {
+  flex: 0 0 auto !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+#headerDateTime {
+  width: var(--header-date-input-w-0233) !important;
+  min-width: var(--header-date-input-w-0233) !important;
+  max-width: var(--header-date-input-w-0233) !important;
+  font-size: 12px !important;
+}
+
+#disasterName {
+  width: var(--header-disaster-input-w-0233) !important;
+  min-width: 8em !important;
+  max-width: 28em !important;
+}
+
+#createdUnit {
+  width: var(--header-unit-input-w-0233) !important;
+  min-width: 9em !important;
+  max-width: 30em !important;
+}
+
+.coordValueBox {
+  width: var(--coord-box-width-0233) !important;
+  min-width: var(--coord-box-width-0233) !important;
+  max-width: var(--coord-box-width-0233) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.gridValueBox {
+  width: var(--grid-box-width-0233) !important;
+  min-width: var(--grid-box-width-0233) !important;
+  max-width: var(--grid-box-width-0233) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 760px) {
+  #titleBar,
+  #titleBar.headerCompact0231,
+  #titleBar.headerCompact0232 {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    height: 66px !important;
+    min-height: 66px !important;
+    padding: 6px 8px !important;
+    gap: 8px !important;
+  }
+
+  .titleMain {
+    flex-basis: 250px !important;
+    width: 250px !important;
+    min-width: 250px !important;
+    max-width: 250px !important;
+    font-size: 15px !important;
+  }
+}
