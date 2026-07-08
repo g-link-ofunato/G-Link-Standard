@@ -5169,6 +5169,119 @@ window.addEventListener("DOMContentLoaded", () => {
   window.setTimeout(adjustHeaderFieldsNoWrap, 250);
 
 
+
+
+  /* Build023.2: 指揮本部ヘッダー実測判定方式
+     flex-wrap任せを廃止し、年月日・災害名・作成部隊・座標・グリッド番号の合計必要幅で
+     1段／2段をG-Link側が明示的に判定する。 */
+  function measureHeaderItemWidth0232(el) {
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    return Math.ceil(rect.width || el.scrollWidth || 0);
+  }
+
+  function calculateHeaderInputCh0232(value, minCh, maxCh) {
+    const text = String(value || "").trim();
+    const count = Array.from(text).length;
+    return Math.max(minCh, Math.min(maxCh, Math.ceil(count * 1.05 + 3)));
+  }
+
+  function setHeaderAdaptiveInputWidths0232() {
+    const root = document.documentElement;
+    const disasterEl = document.getElementById("disasterName");
+    const unitEl = document.getElementById("createdUnit");
+    const disasterCh = calculateHeaderInputCh0232(disasterEl ? disasterEl.value : "", 8, 28);
+    const unitCh = calculateHeaderInputCh0232(unitEl ? unitEl.value : "", 9, 30);
+    root.style.setProperty("--header-disaster-input-w-0232", `${disasterCh}em`);
+    root.style.setProperty("--header-unit-input-w-0232", `${unitCh}em`);
+  }
+
+  function applyHeaderLayoutMode0232() {
+    const titleBar = document.getElementById("titleBar");
+    const titleMain = document.querySelector(".titleMain");
+    const headerFields = document.querySelector(".headerFields");
+    const currentInfoPanel = document.getElementById("currentInfoPanel");
+    if (!titleBar || !titleMain || !headerFields || !currentInfoPanel) return;
+
+    titleBar.classList.remove("headerCompact0231", "headerCompact0232");
+
+    // まず必ず1段候補で実測する。
+    const barWidth = Math.floor(titleBar.clientWidth || window.innerWidth || 0);
+    const cs = getComputedStyle(titleBar);
+    const gap = parseFloat(cs.columnGap || cs.gap || "14") || 14;
+    const titleWidth = measureHeaderItemWidth0232(titleMain);
+    const fieldsWidth = Math.ceil(headerFields.scrollWidth || measureHeaderItemWidth0232(headerFields));
+    const infoWidth = Math.ceil(currentInfoPanel.scrollWidth || measureHeaderItemWidth0232(currentInfoPanel));
+    const neededWidth = titleWidth + fieldsWidth + infoWidth + gap * 2 + 100; // 左ツールバー余白込みの安全幅
+
+    if (window.innerWidth <= 760 || neededWidth > barWidth) {
+      titleBar.classList.add("headerCompact0232");
+    }
+  }
+
+  function updateTitleBarHeightForHeader() {
+    const titleBar = document.getElementById("titleBar");
+    if (!titleBar) return;
+    const height = Math.ceil(titleBar.getBoundingClientRect().height || 74);
+    document.documentElement.style.setProperty("--fixed-titlebar-height", `${height}px`);
+    if (typeof map !== "undefined" && map && typeof map.invalidateSize === "function") {
+      window.setTimeout(() => map.invalidateSize(), 0);
+    }
+  }
+
+  function updateFixedHeaderDiagnostic() {
+    const body = document.getElementById("fixedHeaderDiagnosticBody");
+    if (!body) return;
+    const titleBar = document.getElementById("titleBar");
+    const titleMain = document.querySelector(".titleMain");
+    const headerFields = document.querySelector(".headerFields");
+    const currentInfoPanel = document.getElementById("currentInfoPanel");
+    const disasterEl = document.getElementById("disasterName");
+    const unitEl = document.getElementById("createdUnit");
+    const fields = [headerDateTime, disasterEl, unitEl].filter(Boolean);
+    const line = (name, el) => {
+      if (!el) return `${name}：取得不可`;
+      return `${name}：表示幅 ${Math.round(el.getBoundingClientRect().width)}px / 内容幅 ${Math.round(el.scrollWidth)}px / 文字数 ${(el.value || el.textContent || "").length}`;
+    };
+    const barWidth = titleBar ? Math.round(titleBar.clientWidth) : 0;
+    const titleWidth = measureHeaderItemWidth0232(titleMain);
+    const fieldsWidth = headerFields ? Math.ceil(headerFields.scrollWidth) : 0;
+    const infoWidth = currentInfoPanel ? Math.ceil(currentInfoPanel.scrollWidth) : 0;
+    const gap = titleBar ? (parseFloat(getComputedStyle(titleBar).columnGap || "14") || 14) : 14;
+    const needed = titleWidth + fieldsWidth + infoWidth + gap * 2 + 100;
+    body.innerHTML = [
+      `Build：023.2 指揮本部ヘッダー実測判定方式`,
+      `画面幅：${window.innerWidth}px`,
+      `タイトルバー表示幅：${barWidth}px`,
+      `必要幅（タイトル＋3項目＋座標＋グリッド）：${Math.round(needed)}px`,
+      `表示モード：${titleBar && titleBar.classList.contains("headerCompact0232") ? "2段" : "1段"}`,
+      `判定：${needed <= barWidth ? "1段で収まる" : "2段が必要"}`,
+      line("年月日", headerDateTime),
+      line("災害名", disasterEl),
+      line("作成部隊", unitEl),
+      line("座標", currentInfoPanel),
+      `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`,
+      `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
+      `グリッド線色：${gridLineSettings.color}`
+    ].join("<br>");
+  }
+
+  function adjustHeaderFieldsNoWrap() {
+    [headerDateTime, document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(fitHeaderInputWidth);
+    setHeaderAdaptiveInputWidths0232();
+    window.requestAnimationFrame(() => {
+      applyHeaderLayoutMode0232();
+      updateTitleBarHeightForHeader();
+      updateFixedHeaderDiagnostic();
+    });
+  }
+
+  window.addEventListener("resize", adjustHeaderFieldsNoWrap);
+  window.addEventListener("orientationchange", adjustHeaderFieldsNoWrap);
+  window.setTimeout(adjustHeaderFieldsNoWrap, 0);
+  window.setTimeout(adjustHeaderFieldsNoWrap, 250);
+  window.setTimeout(adjustHeaderFieldsNoWrap, 1000);
+
   console.log("固定表示モード：G-Link Standard Version1.6 Build018");
   console.log(session);
  
