@@ -2275,3 +2275,181 @@ body {
     min-width: 0 !important;
   }
 }
+
+/* Build022.9: ヘッダー項目被り防止・小画面2段表示
+   ・年月日／災害名／作成部隊と座標／グリッド番号を別行の独立グリッドとして管理
+   ・座標欄を絶対配置しないことで作成部隊欄への被りを防止
+   ・小画面では指定どおり 1段目=年月日/災害名/作成部隊、2段目=座標/グリッド番号 */
+:root {
+  --header-date-width-0229: 285px;
+  --header-disaster-width-0229: minmax(185px, 1fr);
+  --header-unit-width-0229: minmax(190px, 1fr);
+  --header-gap-0229: 14px;
+  --coord-box-width-0229: 250px;
+  --grid-box-width-0229: 98px;
+}
+
+#titleBar {
+  min-height: 96px !important;
+  height: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(250px, 340px) minmax(0, 1fr) !important;
+  grid-template-areas:
+    "title fields"
+    "title info" !important;
+  align-items: center !important;
+  gap: 6px 18px !important;
+  padding: 8px 12px 8px 78px !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.titleMain {
+  grid-area: title !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+
+.headerFields {
+  grid-area: fields !important;
+  display: grid !important;
+  grid-template-columns: var(--header-date-width-0229) var(--header-disaster-width-0229) var(--header-unit-width-0229) !important;
+  grid-template-areas: "date disaster unit" !important;
+  gap: 8px var(--header-gap-0229) !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.headerField,
+.headerFields label,
+.currentInfoItem {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.headerFields input,
+#headerDateTime,
+#disasterName,
+#createdUnit {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#currentInfoPanel {
+  grid-area: info !important;
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  transform-origin: center !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, var(--coord-box-width-0229)) minmax(0, var(--grid-box-width-0229)) !important;
+  justify-content: start !important;
+  justify-self: start !important;
+  align-items: center !important;
+  gap: 8px 18px !important;
+  margin: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.currentInfoItem {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.coordValueBox {
+  width: min(var(--coord-box-width-0229), 100%) !important;
+  min-width: 0 !important;
+  max-width: var(--coord-box-width-0229) !important;
+}
+
+.gridValueBox {
+  width: var(--grid-box-width-0229) !important;
+  min-width: var(--grid-box-width-0229) !important;
+  max-width: var(--grid-box-width-0229) !important;
+}
+
+@media (max-width: 1280px) {
+  #titleBar {
+    grid-template-columns: minmax(230px, 320px) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "title fields"
+      "title info" !important;
+  }
+
+  .headerFields {
+    grid-template-columns: minmax(240px, var(--header-date-width-0229)) minmax(150px, 1fr) minmax(150px, 1fr) !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  #titleBar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "title"
+      "fields"
+      "info" !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+
+  .headerFields {
+    grid-template-columns: minmax(245px, 1.25fr) minmax(145px, 1fr) minmax(145px, 1fr) !important;
+    grid-template-areas: "date disaster unit" !important;
+    width: 100% !important;
+  }
+
+  .headerUnitField,
+  .headerFields label:nth-child(3) {
+    width: 100% !important;
+    max-width: none !important;
+    justify-self: stretch !important;
+  }
+
+  #currentInfoPanel {
+    grid-template-columns: minmax(245px, var(--coord-box-width-0229)) minmax(150px, var(--grid-box-width-0229)) !important;
+    justify-content: start !important;
+    justify-self: start !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .titleMain {
+    font-size: 14px !important;
+  }
+
+  .headerFields {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "date"
+      "disaster"
+      "unit" !important;
+  }
+
+  #currentInfoPanel {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .currentInfoItem {
+    width: 100% !important;
+  }
+
+  .coordValueBox,
+  .gridValueBox {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}

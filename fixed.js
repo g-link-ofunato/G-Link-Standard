@@ -620,7 +620,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
     const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
     body.innerHTML = [
-      `Build：022.8 ヘッダー被り・座標・グリッド線色修正`,
+      `Build：022.9 ヘッダー全項目被り防止・小画面2段表示`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
       `ヘッダー列：${fieldsStyle ? fieldsStyle.gridTemplateColumns : "取得不可"}`,
@@ -632,6 +632,7 @@ window.addEventListener("DOMContentLoaded", () => {
       line("災害名", disasterNameInput),
       line("作成部隊", createdUnitInput),
       line("座標・グリッド", currentInfoPanel),
+      `ヘッダー配置：${window.innerWidth <= 1080 ? "小画面2段" : "標準2段"}`,
       `時刻更新：${headerDateTime && headerDateTime.readOnly ? "ON" : "要確認"}`,
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
     ].join("<br>");
