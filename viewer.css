@@ -545,3 +545,182 @@ body {
 .viewerDiagnosticSuccess[hidden] {
   display: none !important;
 }
+
+/* Build023.0 Viewer UI改善：検索・情報パネルを必要時のみ表示 */
+.viewerModeBtn {
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 8px;
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.14);
+  color: #ffffff;
+  font-weight: bold;
+  cursor: pointer;
+  min-width: 72px;
+}
+.viewerModeBtn:hover,
+.viewerModeBtn.is-active {
+  background: rgba(255,255,255,0.28);
+}
+
+#viewerLayout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.viewerFloatingPanel[hidden] {
+  display: none !important;
+}
+
+.viewerFloatingPanel {
+  resize: both;
+  overflow: auto;
+  min-width: 280px;
+  min-height: 74px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 92px);
+}
+
+.viewerPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255,255,255,0.98);
+  border-bottom: 1px solid #e5e7eb;
+  margin: -10px -10px 8px -10px;
+  padding: 8px 10px;
+  border-radius: 10px 10px 0 0;
+}
+
+.viewerPanelActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.viewerPanelBtn {
+  width: 28px;
+  height: 26px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #111827;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.viewerPanelBtn:hover {
+  background: #e5e7eb;
+}
+
+.viewerInfoTitle {
+  font-weight: bold;
+  color: #064e3b;
+  font-size: 14px;
+}
+
+#viewerInfoPanel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 830;
+  width: min(380px, calc(100% - 24px));
+  height: auto;
+  max-height: calc(100% - 24px);
+  background: rgba(243,244,246,0.98);
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  box-sizing: border-box;
+}
+
+#viewerInfoPanel .infoCard:last-of-type {
+  margin-bottom: 8px;
+}
+
+#viewerSearchPanel[data-panel-state="min"],
+#viewerInfoPanel[data-panel-state="min"] {
+  height: 46px !important;
+  min-height: 46px;
+  overflow: hidden;
+}
+
+#viewerSearchPanel[data-panel-state="max"],
+#viewerInfoPanel[data-panel-state="max"] {
+  top: 10px;
+  left: 10px;
+  right: auto;
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
+  max-height: calc(100% - 20px);
+}
+
+.viewerSearchPanel .viewerSearchTitle {
+  margin-bottom: 0;
+}
+
+.viewerDiagnosticSuccess {
+  bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow: hidden;
+  }
+
+  #viewerLayout {
+    height: calc(100vh - 64px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #viewerMapArea {
+    height: 100%;
+  }
+
+  .viewerHeaderActions {
+    margin-left: auto;
+  }
+
+  .viewerModeBtn {
+    padding: 7px 10px;
+    min-width: 58px;
+  }
+
+  .viewerSearchPanel,
+  #viewerInfoPanel {
+    top: 8px;
+    left: 8px;
+    right: auto;
+    width: calc(100% - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100% - 16px);
+  }
+
+  #viewerSearchPanel[data-panel-state="max"],
+  #viewerInfoPanel[data-panel-state="max"] {
+    top: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    max-height: calc(100% - 16px);
+  }
+
+  .viewerTapInfo {
+    bottom: 10px;
+  }
+}
+
+@media print {
+  .viewerModeBtn,
+  .viewerPanelHeader,
+  .viewerSearchPanel,
+  #viewerInfoPanel {
+    display: none !important;
+  }
+}

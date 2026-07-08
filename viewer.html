@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="viewer.css?v=0223">
+  <link rel="stylesheet" href="viewer.css?v=0230">
 </head>
 <body>
   <header id="viewerHeader">
@@ -14,16 +14,23 @@
       <div class="viewerSubtitle">災害情報共有システム（閲覧専用）</div>
     </div>
     <div class="viewerHeaderActions">
-      <button id="viewerPrintBtn" type="button">印刷</button>
-      <div class="viewerBadge">現場閲覧</div>
+      <button id="viewerSearchToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerSearchPanel" aria-expanded="false">検索</button>
+      <button id="viewerInfoToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerInfoPanel" aria-expanded="false">情報</button>
     </div>
   </header>
 
   <main id="viewerLayout">
     <section id="viewerMapArea">
       <div id="viewerMap"></div>
-      <div id="viewerSearchPanel" class="viewerSearchPanel">
-        <div class="viewerSearchTitle">検索</div>
+      <div id="viewerSearchPanel" class="viewerSearchPanel viewerFloatingPanel" data-panel-state="normal" hidden>
+        <div class="viewerPanelHeader">
+          <div class="viewerSearchTitle">検索</div>
+          <div class="viewerPanelActions">
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerSearchPanel" data-panel-action="min" aria-label="検索パネルを縮小">－</button>
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerSearchPanel" data-panel-action="max" aria-label="検索パネルを拡大">□</button>
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerSearchPanel" data-panel-action="close" aria-label="検索パネルを閉じる">×</button>
+          </div>
+        </div>
         <div class="viewerSearchRow">
           <input id="viewerAddressInput" type="text" placeholder="地名・施設名・住所検索">
           <button id="viewerAddressSearchBtn" type="button">住所検索</button>
@@ -38,7 +45,15 @@
       <div id="viewerLegend" class="viewerLegend"></div>
     </section>
 
-    <aside id="viewerInfoPanel">
+    <aside id="viewerInfoPanel" class="viewerFloatingPanel" data-panel-state="normal" hidden>
+      <div class="viewerPanelHeader viewerInfoPanelHeader">
+        <div class="viewerInfoTitle">情報</div>
+        <div class="viewerPanelActions">
+          <button type="button" class="viewerPanelBtn" data-panel-target="viewerInfoPanel" data-panel-action="min" aria-label="情報パネルを縮小">－</button>
+          <button type="button" class="viewerPanelBtn" data-panel-target="viewerInfoPanel" data-panel-action="max" aria-label="情報パネルを拡大">□</button>
+          <button type="button" class="viewerPanelBtn" data-panel-target="viewerInfoPanel" data-panel-action="close" aria-label="情報パネルを閉じる">×</button>
+        </div>
+      </div>
       <section class="infoCard">
         <h2>基本情報</h2>
         <dl class="infoList">
@@ -87,6 +102,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="viewer.js?v=0223"></script>
+  <script src="viewer.js?v=0230"></script>
 </body>
 </html>

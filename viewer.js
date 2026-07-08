@@ -1,8 +1,10 @@
 window.addEventListener("DOMContentLoaded", async () => {
   const viewerError = document.getElementById("viewerError");
   const mapEl = document.getElementById("viewerMap");
-  const viewerPrintBtn = document.getElementById("viewerPrintBtn");
-  if (viewerPrintBtn) viewerPrintBtn.addEventListener("click", () => window.print());
+  const viewerSearchToggleBtn = document.getElementById("viewerSearchToggleBtn");
+  const viewerInfoToggleBtn = document.getElementById("viewerInfoToggleBtn");
+  const viewerSearchPanel = document.getElementById("viewerSearchPanel");
+  const viewerInfoPanel = document.getElementById("viewerInfoPanel");
 
   const mapLayers = {
     pale: { url: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", maxZoom: 18 },
@@ -64,6 +66,73 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     const log = document.getElementById("viewerSuccessDiagnosticLog");
     if (log) log.textContent = viewerDiag.steps.join("\n");
+  }
+
+
+
+  function isPanelOpen(panel) {
+    return !!panel && panel.hidden === false;
+  }
+
+  function updatePanelButtonState(button, panel) {
+    if (!button || !panel) return;
+    const open = isPanelOpen(panel);
+    button.classList.toggle("is-active", open);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function setPanelOpen(panel, button, open, map = null) {
+    if (!panel) return;
+    panel.hidden = !open;
+    if (open && !panel.dataset.panelState) panel.dataset.panelState = "normal";
+    updatePanelButtonState(button, panel);
+    setTimeout(() => { if (map && typeof map.invalidateSize === "function") map.invalidateSize(); }, 80);
+  }
+
+  function closeViewerPanel(panelId, map = null) {
+    if (panelId === "viewerSearchPanel") setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, false, map);
+    if (panelId === "viewerInfoPanel") setPanelOpen(viewerInfoPanel, viewerInfoToggleBtn, false, map);
+  }
+
+  function setupViewerPanels(map) {
+    setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, false, map);
+    setPanelOpen(viewerInfoPanel, viewerInfoToggleBtn, false, map);
+
+    if (viewerSearchToggleBtn) {
+      viewerSearchToggleBtn.addEventListener("click", () => {
+        setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, !isPanelOpen(viewerSearchPanel), map);
+      });
+    }
+    if (viewerInfoToggleBtn) {
+      viewerInfoToggleBtn.addEventListener("click", () => {
+        setPanelOpen(viewerInfoPanel, viewerInfoToggleBtn, !isPanelOpen(viewerInfoPanel), map);
+      });
+    }
+
+    document.querySelectorAll(".viewerPanelBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.dataset.panelTarget;
+        const action = btn.dataset.panelAction;
+        const panel = document.getElementById(targetId);
+        if (!panel) return;
+        if (action === "close") {
+          closeViewerPanel(targetId, map);
+          return;
+        }
+        if (action === "min") {
+          panel.dataset.panelState = panel.dataset.panelState === "min" ? "normal" : "min";
+        } else if (action === "max") {
+          panel.dataset.panelState = panel.dataset.panelState === "max" ? "normal" : "max";
+        }
+        setTimeout(() => { if (map && typeof map.invalidateSize === "function") map.invalidateSize(); }, 80);
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      if (map && typeof map.invalidateSize === "function") map.invalidateSize();
+    });
+
+    diag("Viewerパネル制御", true, "検索/情報ボタン・拡大縮小・閉じるを初期化");
   }
 
   function escapeHtml(value) {
@@ -795,6 +864,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     zoomControl: true,
     attributionControl: true
   }).setView(center, Number(data.session?.zoom || 14));
+  setupViewerPanels(map);
 
   L.tileLayer(layer.url, {
     maxZoom: layer.maxZoom,
@@ -824,6 +894,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   renderDrawings(map, data);
   renderMeasurements(map, data);
   setupViewerInteraction(map, data, bounds);
+  diag("パネル状態", true, `検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);
+  diag("地図表示領域", true, `${mapEl ? mapEl.clientWidth : 0}×${mapEl ? mapEl.clientHeight : 0}px`);
   diag("地図表示完了", true);
 
   setTimeout(() => map.invalidateSize(), 100);
