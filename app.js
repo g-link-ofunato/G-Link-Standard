@@ -48,7 +48,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   const settings = {
     scale: null,
-    paper: "A3",
+    paper: "A2",
     orientation: "landscape",
     grid: 0,
     mapType: "pale"
@@ -298,14 +298,14 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function updatePrintFrame() {
     const paperSize = {
-      A0: { w: 1189, h: 841 },
-      A1: { w: 841, h: 594 },
-      A2: { w: 594, h: 420 },
-      A3: { w: 420, h: 297 },
-      A4: { w: 297, h: 210 }
+      A0: { w: 1189, h: 841, label: "極大", ratio: 1.00 },
+      A1: { w: 841, h: 594, label: "大", ratio: 0.82 },
+      A2: { w: 594, h: 420, label: "中", ratio: 0.66 },
+      A3: { w: 420, h: 297, label: "小", ratio: 0.53 },
+      A4: { w: 297, h: 210, label: "極小", ratio: 0.43 }
     };
 
-    const selectedPaper = paperSize[settings.paper] || paperSize.A3;
+    const selectedPaper = paperSize[settings.paper] || paperSize.A2;
     let paperWidth = selectedPaper.w;
     let paperHeight = selectedPaper.h;
 
@@ -316,16 +316,29 @@ window.addEventListener("DOMContentLoaded", () => {
     const mapRect = map.getContainer().getBoundingClientRect();
     const maxWidth = Math.max(180, mapRect.width * 0.9);
     const maxHeight = Math.max(140, mapRect.height * 0.86);
-    const fitRatio = Math.min(maxWidth / paperWidth, maxHeight / paperHeight);
 
-    const width = Math.round(paperWidth * fitRatio);
-    const height = Math.round(paperHeight * fitRatio);
+    // Build022.6:
+    // A判サイズは縦横比が同じため、単純に「画面内最大」で合わせると
+    // 極大〜極小の赤枠がすべて同じ表示サイズになる。
+    // そのため、A0を基準に画面へ収める比率を作り、選択サイズごとの相対倍率を残す。
+    let baseWidth = paperSize.A0.w;
+    let baseHeight = paperSize.A0.h;
+    if (settings.orientation === "portrait") {
+      [baseWidth, baseHeight] = [baseHeight, baseWidth];
+    }
+    const baseFitRatio = Math.min(maxWidth / baseWidth, maxHeight / baseHeight);
+    const selectedRatio = selectedPaper.ratio || 0.66;
+    const fitRatio = baseFitRatio * selectedRatio;
+
+    const width = Math.max(120, Math.round(baseWidth * fitRatio));
+    const height = Math.max(90, Math.round(baseHeight * fitRatio));
 
     frame.style.setProperty("--print-frame-width", width + "px");
     frame.style.setProperty("--print-frame-height", height + "px");
     frame.style.width = width + "px";
     frame.style.height = height + "px";
     frame.dataset.paper = settings.paper;
+    frame.dataset.paperLabel = selectedPaper.label;
     frame.dataset.orientation = settings.orientation;
 
     updateDiagnostic();
