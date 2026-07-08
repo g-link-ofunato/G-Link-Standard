@@ -2910,3 +2910,87 @@ body {
     font-size: 15px !important;
   }
 }
+
+/* =========================================================
+   Build023.4: 指揮本部ヘッダー左寄せ・座標表示最終調整
+   - ヘッダー全体をG-Linkタイトルから左基準に配置
+   - 座標ラベルと数値の間隔を詰める
+   - 緯度・経度の数値は右揃いを維持
+   ========================================================= */
+#titleBar,
+#titleBar.headerCompact0231,
+#titleBar.headerCompact0232 {
+  justify-content: flex-start !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  gap: 10px !important;
+}
+
+.titleMain {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  margin: 0 !important;
+}
+
+.titleMain span {
+  text-align: left !important;
+}
+
+.headerDataWrap {
+  transform-origin: left center !important;
+  margin-left: 0 !important;
+}
+
+#currentInfoPanel,
+#titleBar.headerCompact0232 #currentInfoPanel,
+#titleBar.headerCompact0231 #currentInfoPanel {
+  gap: 8px !important;
+}
+
+.currentInfoItem,
+.coordInfoItem,
+.gridInfoItem {
+  gap: 4px !important;
+}
+
+.coordValueBox {
+  width: var(--coord-box-width-0234, 205px) !important;
+  min-width: var(--coord-box-width-0234, 205px) !important;
+  max-width: var(--coord-box-width-0234, 205px) !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+}
+
+.coordValueBox > div {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  align-items: center !important;
+  column-gap: 1px !important;
+  justify-content: start !important;
+  padding: 0 5px !important;
+}
+
+.coordLabelText {
+  flex: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.coordNumberText {
+  flex: none !important;
+  width: 148px !important;
+  min-width: 148px !important;
+  max-width: 148px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  letter-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+}

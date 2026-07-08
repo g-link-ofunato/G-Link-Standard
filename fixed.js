@@ -5262,6 +5262,8 @@ window.addEventListener("DOMContentLoaded", () => {
       line("座標", currentInfoPanel),
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`,
       `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
+      `座標欄：ラベル余白最小・数値右揃え`,
+      `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
     ].join("<br>");
   }
@@ -5347,7 +5349,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const dataRawWidth = headerDataWrap ? Math.round(headerDataWrap.scrollWidth) : 0;
     const dataScaledWidth = Math.round(dataRawWidth * scale);
     body.innerHTML = [
-      `Build：023.3 指揮本部ヘッダー1段固定・全体縮小方式`,
+      `Build：023.4 指揮本部ヘッダー左寄せ・座標表示最終調整`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー表示幅：${barWidth}px`,
       `タイトル幅：${titleWidth}px`,
@@ -5360,6 +5362,8 @@ window.addEventListener("DOMContentLoaded", () => {
       line("作成部隊", unitEl),
       line("座標・グリッド", headerDataWrap),
       `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
+      `座標欄：ラベル余白最小・数値右揃え`,
+      `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
     ].join("<br>");
   }
