@@ -583,30 +583,54 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function shrinkHeaderInputToFit(input) {
+  function updateFixedHeaderDiagnostic() {
+    const body = document.getElementById("fixedHeaderDiagnosticBody");
+    if (!body) return;
+    const titleBar = document.getElementById("titleBar");
+    const titleMain = document.querySelector(".titleMain");
+    const disasterNameInput = document.getElementById("disasterName");
+    const createdUnitInput = document.getElementById("createdUnit");
+    const fields = [headerDateTime, disasterNameInput, createdUnitInput].filter(Boolean);
+    const line = (name, el) => {
+      if (!el) return `${name}：取得不可`;
+      return `${name}：表示幅 ${Math.round(el.getBoundingClientRect().width)}px / 内容幅 ${Math.round(el.scrollWidth)}px / 文字数 ${(el.value || el.textContent || "").length}`;
+    };
+    body.innerHTML = [
+      `タイトルバー高さ：${titleBar ? Math.round(titleBar.getBoundingClientRect().height) : "取得不可"}px`,
+      line("タイトル", titleMain),
+      line("年月日", headerDateTime),
+      line("災害名", disasterNameInput),
+      line("作成部隊", createdUnitInput),
+      `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
+    ].join("<br>");
+  }
+
+  function fitHeaderInputWidth(input) {
     if (!input) return;
-    const maxSize = 16;
-    const minSize = 10;
-    input.style.fontSize = `${maxSize}px`;
+    input.style.fontSize = "14px";
     input.style.letterSpacing = "0";
 
-    const availableWidth = Math.max(0, input.clientWidth - 4);
-    if (!availableWidth) return;
+    const textLength = Math.max(1, (input.value || input.placeholder || "").length);
+    let baseWidth = Math.ceil(textLength * 15 + 32);
 
-    let size = maxSize;
-    while (size > minSize && input.scrollWidth > availableWidth) {
-      size -= 0.5;
-      input.style.fontSize = `${size}px`;
-    }
+    if (input.id === "headerDateTime") baseWidth = Math.max(baseWidth, 210);
+    if (input.id === "disasterName") baseWidth = Math.max(baseWidth, 160);
+    if (input.id === "createdUnit") baseWidth = Math.max(baseWidth, 140);
 
-    if (input.scrollWidth > availableWidth) {
-      input.style.letterSpacing = "-0.6px";
+    const titleBar = document.getElementById("titleBar");
+    const maxWidth = titleBar ? Math.max(130, Math.min(560, titleBar.getBoundingClientRect().width * 0.42)) : 520;
+    const width = Math.min(baseWidth, maxWidth);
+    input.style.width = `${width}px`;
+
+    if (input.scrollWidth > input.clientWidth + 2) {
+      input.style.fontSize = "13px";
     }
   }
 
   function adjustHeaderFieldsNoWrap() {
-    [headerDateTime, document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(shrinkHeaderInputToFit);
+    [headerDateTime, document.getElementById("disasterName"), document.getElementById("createdUnit")].forEach(fitHeaderInputWidth);
     updateTitleBarHeightForHeader();
+    updateFixedHeaderDiagnostic();
   }
  
   function getDateKeyFromTimestamp(timestamp) {

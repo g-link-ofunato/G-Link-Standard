@@ -1820,3 +1820,150 @@ body {
   line-height: 1.55;
   padding: 10px;
 }
+
+/* Build022.5: 指揮本部モード上部ヘッダー可変幅化・タイトル2段中央揃え */
+#titleBar {
+  min-height: 86px !important;
+  height: auto !important;
+  padding: 8px 12px 8px 12px !important;
+  gap: 12px !important;
+  align-items: center !important;
+  overflow: visible !important;
+  flex-wrap: nowrap !important;
+}
+
+.titleMain {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  min-width: 230px !important;
+  max-width: 290px !important;
+  margin-right: 0 !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  font-size: 17px !important;
+  overflow: visible !important;
+}
+
+.titleMain span {
+  display: block !important;
+}
+
+.headerFields {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  flex-wrap: wrap !important;
+}
+
+.headerFields label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.headerFields input {
+  width: auto !important;
+  min-width: 110px !important;
+  max-width: min(520px, 42vw) !important;
+  height: 30px !important;
+  padding: 3px 8px !important;
+  box-sizing: border-box !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#headerDateTime {
+  min-width: 210px !important;
+}
+
+#disasterName {
+  min-width: 160px !important;
+}
+
+#createdUnit {
+  min-width: 140px !important;
+}
+
+#currentInfoPanel {
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 1180px) {
+  #titleBar {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  .titleMain {
+    min-width: min(100%, 290px) !important;
+  }
+  .headerFields {
+    order: 3 !important;
+    flex-basis: 100% !important;
+  }
+  #currentInfoPanel {
+    margin-left: auto !important;
+  }
+}
+
+@media (max-width: 720px) {
+  #titleBar {
+    padding: 8px 8px !important;
+  }
+  .titleMain {
+    font-size: 15px !important;
+  }
+  .headerFields {
+    justify-content: stretch !important;
+    gap: 6px !important;
+  }
+  .headerFields label {
+    width: 100% !important;
+  }
+  .headerFields input {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+}
+
+.fixedDiagPanel {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2100;
+  max-width: min(460px, calc(100vw - 20px));
+  max-height: 38vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fixedDiagPanel summary {
+  cursor: pointer;
+  font-weight: bold;
+}

@@ -118,8 +118,8 @@ body {
   position: absolute;
   top: calc(var(--toolbar-height, 82px) + ((100dvh - var(--toolbar-height, 82px)) / 2));
   left: 50%;
-  width: 500px;
-  height: 350px;
+  width: var(--print-frame-width, 500px);
+  height: var(--print-frame-height, 350px);
   transform: translate(-50%, -50%);
   border: 3px solid red;
   z-index: 999;

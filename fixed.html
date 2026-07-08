@@ -12,7 +12,7 @@
 <body>
  
   <div id="titleBar">
-    <div class="titleMain">G-Link〈災害情報共有システム〉【指揮本部モード】</div>
+    <div class="titleMain"><span>G-Link〈災害情報共有システム〉</span><span>【指揮本部モード】</span></div>
  
     <div class="headerFields">
       <label>年月日<input id="headerDateTime" type="text"></label>
@@ -35,6 +35,10 @@
       </div>
     </div>
   </div>
+  <details id="fixedHeaderDiagnostic" class="fixedDiagPanel">
+    <summary>ヘッダー診断</summary>
+    <div id="fixedHeaderDiagnosticBody">診断情報を取得中です。</div>
+  </details>
  
   <div id="sideToolbar">
     <button class="toolBtn" data-panel="searchPanel"><span>🔍</span><small>検索</small></button>

@@ -236,6 +236,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const frameRect = frame.getBoundingClientRect();
 
     diagnosticBody.innerHTML = [
+      `サイズ選択：${paper ? paper.options[paper.selectedIndex]?.textContent + "（" + paper.value + "）" : "取得不可"}`,
+      `赤枠内部サイズ：${frame ? (frame.dataset.paper || "未設定") + " / " + (frame.dataset.orientation || "未設定") : "取得不可"}`,
       `グリッド選択：${grid ? grid.value : "取得不可"}m`,
       `検索モード：${lastSearchMode}`,
       `検索語：${lastSearchKeyword || "未入力"}`,
@@ -319,8 +321,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const width = Math.round(paperWidth * fitRatio);
     const height = Math.round(paperHeight * fitRatio);
 
+    frame.style.setProperty("--print-frame-width", width + "px");
+    frame.style.setProperty("--print-frame-height", height + "px");
     frame.style.width = width + "px";
     frame.style.height = height + "px";
+    frame.dataset.paper = settings.paper;
+    frame.dataset.orientation = settings.orientation;
 
     updateDiagnostic();
   }
