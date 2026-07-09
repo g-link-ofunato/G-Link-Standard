@@ -95,6 +95,10 @@
   <div id="viewerError" class="viewerError" hidden>
     <h1>共有データを読み込めませんでした</h1>
     <p id="viewerErrorMessage">指揮本部モードの共有パネルから発行されたViewer用URLを開いてください。</p>
+    <details id="viewerDiagnosticBox" class="viewerDiagnosticBox">
+      <summary>Viewer診断情報</summary>
+      <pre id="viewerDiagnosticLog"></pre>
+    </details>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

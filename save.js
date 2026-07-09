@@ -44,7 +44,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "save.html",
-      build: "Build026.1-CLEANUP",
+      build: "Build025.6-DIAG",
       event,
       details
     };
@@ -59,15 +59,14 @@ window.addEventListener("DOMContentLoaded", () => {
     try { console.info("[G-Link Restore]", entry); } catch (error) {}
   }
   function glinkDiagInstallPanel() {
-    // Build026.1: 保存診断パネルは完成版UIから削除。
+    // Build026.1: 保存診断パネルは完成版UIでは表示しない。
     return;
   }
 
   function glinkDiagUpdatePanel(message) {
-    // Build026.1: 診断情報は画面表示しない。
-    return;
+    // Build026.1: 画面表示は行わず、必要な情報は内部ログに残す。
+    try { glinkDiagLog("save diagnostic message hidden", { message }); } catch(e) {}
   }
-
   const menuButtons = document.querySelectorAll(".sideMenuItem[data-mode]");
   const screenTitle = document.getElementById("screenTitle");
   const screenLead = document.getElementById("screenLead");
@@ -137,7 +136,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "G-Link専用保存ファイル（.glink）として、現在のプロジェクトを保存します。",
+      lead: "G-Link専用保存ファイル（.glink）として保存します。通常は指揮本部モードの「プロジェクト保存」を使用してください。",
       previewTitle: "保存内容確認（.glink）",
       settingsTitle: "ファイル保存・読込設定",
       saveLabel: "💾 .glinkを保存",
@@ -1290,7 +1289,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink-viewer",
       version: "1.6",
-      build: "Build026.1-CLEANUP",
+      build: "Build025.6-DIAG",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1429,7 +1428,7 @@ window.addEventListener("DOMContentLoaded", () => {
       format: "glink",
       appName: "G-Link〈災害情報共有システム〉",
       version: "1.6",
-      build: "Build026.1-CLEANUP",
+      build: "Build025.6-DIAG",
       projectFile: true,
       source: "save-center-current-working-data",
       header,
@@ -1439,7 +1438,7 @@ window.addEventListener("DOMContentLoaded", () => {
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString(),
       projectDiagnostics: {
-        build: "Build026.1-CLEANUP",
+        build: "Build025.6-DIAG",
         saveCenterSummaryBeforePayload: glinkDiagSummarizeData(saveCenterData),
         storageBeforePayload: glinkDiagStorageSnapshot()
       }
