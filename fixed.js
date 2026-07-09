@@ -46,7 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "fixed.html",
-      build: "Build025.7-OBJECT-DIAG",
+      build: "Build025.8-DIRECT-GLINK",
       event,
       details
     };
@@ -2132,6 +2132,34 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!tracks.length || confirm("表示中の軌跡をすべて削除しますか？")) clearGpxTracks();
   });
   updateTrackStatus();
+
+  function setupDirectProjectSaveButton() {
+    // Build025.8: 保存センターとは別に、現在の指揮本部モードから直接 .glink を保存する入口を追加。
+    // HTMLは変更せず、既存のファイル構成を維持するため fixed.js 側でボタンを追加する。
+    if (!openSaveCenterBtn || document.getElementById("directGlinkSaveBtn")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "directGlinkSaveBtn";
+    btn.className = openSaveCenterBtn.className || "toolBtn";
+    btn.textContent = "プロジェクト保存";
+    btn.title = "現在のピン・図形・計測・GPXを.glinkファイルとして直接保存します";
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDrawMode();
+      if (typeof setMeasureMode === "function") setMeasureMode(false);
+      saveGlinkFile();
+    });
+
+    // 保存センターの近くに配置する。失敗しても既存UIは壊さない。
+    try {
+      openSaveCenterBtn.insertAdjacentElement("afterend", btn);
+    } catch (error) {
+      try { openSaveCenterBtn.parentNode.appendChild(btn); } catch (appendError) {}
+    }
+  }
+
+  setupDirectProjectSaveButton();
 
   toolButtons.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -5217,7 +5245,7 @@ window.addEventListener("DOMContentLoaded", () => {
       panel.style.whiteSpace = "pre-wrap";
       document.body.appendChild(panel);
     }
-    panel.innerHTML = `<strong>G-Link Object Diagnosis Build025.7</strong>\n` +
+    panel.innerHTML = `<strong>G-Link Object Diagnosis Build025.8</strong>\n` +
       `pins/drawings/measurements/tracks の保持場所を確認します。\n\n` +
       `<button type="button" id="glinkObjectDiagCopyBtn">診断ログをコピー</button> ` +
       `<button type="button" id="glinkObjectDiagCloseBtn">閉じる</button>\n\n` +
@@ -5285,7 +5313,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build025.7-OBJECT-DIAG",
+      build: "Build025.8-DIRECT-GLINK",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5355,12 +5383,30 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveGlinkFile() {
-    const data = buildGlinkData();
-    glinkDiagLog("fixed saveGlinkFile payload", { summary: glinkDiagSummarizeData(data) });
-    const fallback = "G-Link〈災害情報共有システム〉（固定表示モード）";
-    const baseName = safeFileName(data.header.disasterName || fallback);
-    downloadBlob(`${baseName}_${makeProjectTimestamp()}.glink`, "application/json;charset=utf-8", JSON.stringify(data, null, 2));
+    // Build025.8: .glink保存は保存センター・Storageを経由せず、
+    // 指揮本部モード上の現在データ（pins / drawings / measurements / tracks）から直接生成する。
+    // これにより QuotaExceededError や古いgLink_saveCenterDataに左右されない。
+    try {
+      const data = buildGlinkData();
+      const summary = glinkDiagSummarizeData(data);
+      glinkDiagLog("fixed direct saveGlinkFile payload", { summary, objectDiagnosis: getGlinkObjectDiagnosis() });
+      const fallback = "G-Link〈災害情報共有システム〉（固定表示モード）";
+      const baseName = safeFileName(data.header?.disasterName || fallback);
+      downloadBlob(`${baseName}_${makeProjectTimestamp()}.glink`, "application/json;charset=utf-8", JSON.stringify(data, null, 2));
+      window.setTimeout(() => {
+        try {
+          alert(`G-Linkプロジェクトを保存しました。\nピン：${summary.pins}件 / 図形：${summary.drawings}件 / 計測：${summary.measurements}件 / GPX：${summary.tracks}件`);
+        } catch (error) {}
+      }, 50);
+    } catch (error) {
+      console.error("G-Linkプロジェクト保存に失敗しました。", error);
+      glinkDiagLog("fixed direct saveGlinkFile failed", { message: error?.message || String(error), objectDiagnosis: getGlinkObjectDiagnosis() });
+      alert("G-Linkプロジェクト保存に失敗しました。診断ログを確認してください。");
+    }
   }
+
+  // コンソールからも直接実行できる保険。通常は画面上の「プロジェクト保存」ボタンを使う。
+  window.gLinkSaveProjectNow = saveGlinkFile;
  
   function createPinFromData(data) {
     if (!data || typeof data.lat !== "number" || typeof data.lng !== "number") return null;
@@ -5967,7 +6013,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.setTimeout(adjustHeaderFieldsNoWrap, 250);
   window.setTimeout(adjustHeaderFieldsNoWrap, 1000);
 
-  console.log("固定表示モード：G-Link Standard Version1.6 Build018");
+  console.log("固定表示モード：G-Link Standard Version1.6 Build025.8");
   console.log(session);
  
 });
