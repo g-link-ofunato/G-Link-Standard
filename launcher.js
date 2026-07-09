@@ -58,7 +58,7 @@
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "launcher.html",
-      build: "Build025.9-COMPLETE",
+      build: "Build026.0-RESTORE-COMPLETE",
       event,
       details
     };
@@ -133,7 +133,7 @@
       coordinateType: "dms",
       startedAt: new Date().toISOString(),
       version: "1.6",
-      build: "Build025.9-COMPLETE"
+      build: "Build026.0-RESTORE-COMPLETE"
     };
 
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -181,7 +181,7 @@
       glinkDiagLog("launcher restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
       const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      // Build025.9-COMPLETE: .glink復元ではpendingRestoreDataだけを正式入口にする。
+      // Build026.0-RESTORE-COMPLETE: .glink復元ではpendingRestoreDataだけを正式入口にする。
       // workingData/saveCenterDataはfixed側で復元完了後に作成し、古いデータ混入を防止する。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
@@ -212,7 +212,7 @@
     }
 
     if (glinkProjectStatus) glinkProjectStatus.textContent = "読込完了。指揮本部モードを開きます。";
-    window.location.href = "fixed.html?restore=glink";
+    window.location.href = "fixed.html?restore=glink&v=0260";
   }
 
   function readGlinkProjectFile(file) {
