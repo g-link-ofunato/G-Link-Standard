@@ -51,6 +51,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const measurementPreviewRows = document.getElementById("measurementPreviewRows");
   const historyPreviewRows = document.getElementById("historyPreviewRows");
   const pageThumbs = document.querySelectorAll(".pageThumb[data-page]");
+  const glinkLoadBtn = document.getElementById("glinkLoadBtn");
+  const glinkLoadInput = document.getElementById("glinkLoadInput");
  
   const HEADER_STORAGE_KEY = "gLink_header";
  
@@ -65,11 +67,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "WindowsでブロックされにくいZIP形式で保存します。ZIP内の.urlを開くとG-Linkを復元できます。",
-      previewTitle: "保存内容確認（ZIP内.url）",
-      settingsTitle: "ファイル保存設定",
-      saveLabel: "💾 .url入りZIPを保存",
-      extension: "url"
+      lead: "G-Link専用保存ファイル（.glink）として、ピン・図形・計測・GPX軌跡などの編集状態を保存します。",
+      previewTitle: "保存内容確認（.glink）",
+      settingsTitle: "ファイル保存・読込設定",
+      saveLabel: "💾 .glinkを保存",
+      extension: "glink"
     },
     pdf: {
       title: "保存センター - PDF保存プレビュー",
@@ -347,8 +349,8 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function makeDefaultFileName(extension) {
-    if (extension === "url") {
-      return `G-Link〈災害情報共有システム〉（固定表示モード）_${makeTimestampForUrlFile()}.url`;
+    if (extension === "glink") {
+      return `G-Link〈災害情報共有システム〉（固定表示モード）_${makeTimestampForUrlFile()}.glink`;
     }
 
     const header = getHeader();
@@ -858,6 +860,7 @@ window.addEventListener("DOMContentLoaded", () => {
     document.body.classList.toggle("glinkPreviewMode", false);
     document.body.classList.toggle("glinkFileMode", mode === "glink");
     if (glinkNoPreviewPanel) glinkNoPreviewPanel.classList.toggle("hidden", mode !== "glink");
+    if (glinkLoadBtn) glinkLoadBtn.classList.toggle("hidden", mode !== "glink");
     if (previewCanvas) previewCanvas.classList.toggle("hidden", mode === "glink");
     applyPaperPreviewRatio();
     reflectMapPreviewImage();
@@ -1352,8 +1355,8 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       ...saveCenterData,
       format: "glink",
-      version: "1.6.4",
-      build: "Build016",
+      version: "1.6",
+      build: "Build024.3",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
@@ -1367,9 +1370,9 @@ window.addEventListener("DOMContentLoaded", () => {
  
     try {
       if (currentMode === "glink") {
-        const shareUrl = buildViewerShareUrlFromSaveCenterData();
-        const content = createInternetShortcutText(shareUrl);
-        await saveInternetShortcutZip(content, suggestedName);
+        const payload = createGlinkPayload();
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+        await saveBlobWithPicker(blob, suggestedName);
         return;
       }
  
@@ -1455,5 +1458,48 @@ window.addEventListener("DOMContentLoaded", () => {
   applyPaperPreviewRatio();
   adjustMapPrintHeaderNoWrap();
   reflectMapPreviewImage();
+
+  function openGlinkDataInFixed(data) {
+    if (!data || data.format !== "glink") {
+      alert("G-Link保存ファイル（.glink）として認識できませんでした。");
+      return;
+    }
+    try {
+      const json = JSON.stringify(data);
+      sessionStorage.setItem("gLink_workingData", json);
+      sessionStorage.setItem("gLink_returnBackupData", json);
+      sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
+      if (data.session) sessionStorage.setItem("disasterSession", JSON.stringify(data.session));
+    } catch (error) {
+      console.error(".glink読込データの一時保存に失敗しました。", error);
+      alert(".glinkファイルの読込準備に失敗しました。データ量が大きすぎる可能性があります。");
+      return;
+    }
+    window.location.href = "fixed.html";
+  }
+
+  function readGlinkFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result || ""));
+        openGlinkDataInFixed(data);
+      } catch (error) {
+        console.error(".glinkファイルの解析に失敗しました。", error);
+        alert(".glinkファイルの読み込みに失敗しました。ファイル形式を確認してください。");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  if (glinkLoadBtn && glinkLoadInput) {
+    glinkLoadBtn.addEventListener("click", () => glinkLoadInput.click());
+    glinkLoadInput.addEventListener("change", () => {
+      readGlinkFile(glinkLoadInput.files && glinkLoadInput.files[0]);
+      glinkLoadInput.value = "";
+    });
+  }
+
   setMode("glink");
 });

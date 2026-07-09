@@ -19,7 +19,7 @@
  
       <button class="sideMenuItem active" data-mode="glink">
         <span class="menuIcon">💼</span>
-        <span><strong>ファイル保存</strong><small>（.url）</small></span>
+        <span><strong>ファイル保存</strong><small>（.glink）</small></span>
       </button>
  
       <button class="sideMenuItem" data-mode="pdf">
@@ -44,7 +44,7 @@
       <header class="topBar">
         <div>
           <h1 id="screenTitle">保存センター - ファイル保存</h1>
-          <p id="screenLead">Windowsインターネットショートカット（.url）として保存します。</p>
+          <p id="screenLead">G-Link専用保存ファイル（.glink）として保存・読込します。</p>
         </div>
         <div class="topActions">
           <button class="circleBtn" title="ヘルプ">?</button>
@@ -55,7 +55,7 @@
       <section class="workArea">
         <div class="previewColumn">
           <div class="previewToolbar">
-            <strong id="previewTitle">保存内容確認（.url）</strong>
+            <strong id="previewTitle">保存内容確認（.glink）</strong>
             <div class="previewControls">
               <button id="prevPageBtn">‹</button>
               <span class="pageBox" id="pageIndicator">1 / 2</span>
@@ -71,9 +71,9 @@
  
           <div class="glinkNoPreviewPanel hidden" id="glinkNoPreviewPanel">
             <h2>ファイル保存</h2>
-            <p>`.url`ファイルは、ダブルクリックで保存時点のG-Link Viewerを開くためのショートカットです。</p>
+            <p>`.glink`ファイルは、G-Linkの編集状態を後から復元するための専用保存ファイルです。</p>
             <p>PDF保存・PNG保存とは異なり、地図プレビューは表示しません。</p>
-            <p>右側の保存設定を確認し、「.urlを保存」を押してください。</p>
+            <p>右側の保存設定を確認し、「.glinkを保存」を押してください。保存済みファイルは「.glinkを読み込む」から復元できます。</p>
           </div>
  
           <div class="previewCanvas" id="previewCanvas">
@@ -229,7 +229,9 @@
             </select>
           </div>
  
-          <button class="primarySaveBtn" id="primarySaveBtn">💾 .urlを保存</button>
+          <button class="primarySaveBtn" id="primarySaveBtn">💾 .glinkを保存</button>
+          <input id="glinkLoadInput" type="file" accept=".glink,application/json" class="hidden">
+          <button class="cancelBtn" id="glinkLoadBtn" type="button">📂 .glinkを読み込む</button>
           <button class="cancelBtn" id="cancelBtn">保存センターを閉じる</button>
         </aside>
       </section>
