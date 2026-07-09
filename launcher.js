@@ -2,7 +2,7 @@
   "use strict";
 
 
-  /* Build024.7 診断版: .glink保存・復元経路の見える化 */
+  /* Build024.8 診断版: .glink保存・復元経路の見える化 */
   const GLINK_DIAG_BUILD = "Build024.7-DIAG";
   const GLINK_DIAG_KEY = "gLink_restoreDiagnostics";
   function glinkDiagSummarizeData(data) {
