@@ -57,7 +57,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const HEADER_STORAGE_KEY = "gLink_header";
  
   const saveCenterData = loadSaveCenterData();
-  glinkDiagLog("save.js loaded", { href: location.href, saveCenterSummary: glinkDiagSummarizeData(saveCenterData), storage: glinkDiagStorageSnapshot() });
   let currentMode = "glink";
   let currentPage = 1;
   let previewMap = null;
@@ -350,12 +349,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function makeDefaultFileName(extension) {
-    const header = getHeader();
     if (extension === "glink") {
-      const projectName = safeFileName(titleInput.value || header.disasterName || "G-Link〈災害情報共有システム〉（固定表示モード）");
-      return `${projectName}_${makeTimestampForUrlFile()}.glink`;
+      return `G-Link〈災害情報共有システム〉（固定表示モード）_${makeTimestampForUrlFile()}.glink`;
     }
 
+    const header = getHeader();
     const disasterName = safeFileName(titleInput.value || header.disasterName || "G-Link");
     const createdUnit = safeFileName((createdUnitInput ? createdUnitInput.value : header.createdUnit) || "");
     const now = new Date();
@@ -1350,7 +1348,6 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function createGlinkPayload() {
-    glinkDiagLog("save createGlinkPayload start", { saveCenterSummary: glinkDiagSummarizeData(saveCenterData), storage: glinkDiagStorageSnapshot() });
     const header = saveSharedHeader({
       disasterName: titleInput.value,
       createdUnit: createdUnitInput ? createdUnitInput.value : getHeader().createdUnit
@@ -1359,7 +1356,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink",
       version: "1.6",
-      build: "Build024.9",
+      build: "Build024.4",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
@@ -1371,7 +1368,6 @@ window.addEventListener("DOMContentLoaded", () => {
     delete payload.commandCenterPreviewImage;
     delete payload.previewImage;
     delete payload.previewImages;
-    glinkDiagLog("save createGlinkPayload result", { summary: glinkDiagSummarizeData(payload), session: payload.session });
     return payload;
   }
  
@@ -1383,7 +1379,6 @@ window.addEventListener("DOMContentLoaded", () => {
     try {
       if (currentMode === "glink") {
         const payload = createGlinkPayload();
-        glinkDiagLog("save requestSave glink", { suggestedName, summary: glinkDiagSummarizeData(payload) });
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
         await saveBlobWithPicker(blob, suggestedName);
         return;
@@ -1481,58 +1476,27 @@ window.addEventListener("DOMContentLoaded", () => {
     delete payload.commandCenterPreviewImage;
     delete payload.previewImage;
     delete payload.previewImages;
-    glinkDiagLog("save createGlinkPayload result", { summary: glinkDiagSummarizeData(payload), session: payload.session });
     return payload;
   }
 
-  function clearProjectStorageBeforeRestore() {
-    const keys = [
-      "disasterSession",
-      "gLink_workingData",
-      "gLink_returnBackupData",
-      "gLink_returnFromSaveCenter",
-      "gLink_pendingRestoreData",
-      "gLink_saveCenterData",
-      "gLink_header",
-      "gLink_launcherHeader",
-      "glinkViewerLastData"
-    ];
-    const before = glinkDiagStorageSnapshot();
-    keys.forEach(key => {
-      try { sessionStorage.removeItem(key); } catch (e) {}
-      try { localStorage.removeItem(key); } catch (e) {}
-    });
-    glinkDiagLog("save restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
-  }
-
   function openGlinkDataInFixed(data) {
-    glinkDiagLog("save openGlinkDataInFixed called", { summary: glinkDiagSummarizeData(data) });
     if (!data || data.format !== "glink") {
       alert("G-Link保存ファイル（.glink）として認識できませんでした。");
       return;
     }
     const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
-      clearProjectStorageBeforeRestore();
       const json = JSON.stringify(restoreData);
-      glinkDiagLog("save restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
-      sessionStorage.setItem("gLink_pendingRestoreData", json);
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
-      localStorage.setItem("gLink_pendingRestoreData", json);
-      localStorage.setItem("gLink_returnFromSaveCenter", "1");
-      if (restoreData.session) {
-        sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
-        localStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
-      }
+      if (restoreData.session) sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
       alert(".glinkファイルの読込準備に失敗しました。プレビュー画像は除外しましたが、GPX軌跡や図形の点数が非常に多い可能性があります。");
       return;
     }
-    glinkDiagLog("save redirect fixed restore", { storage: glinkDiagStorageSnapshot() });
-    window.location.href = "fixed.html?restore=glink&diag=1";
+    window.location.href = "fixed.html";
   }
 
   function readGlinkFile(file) {
