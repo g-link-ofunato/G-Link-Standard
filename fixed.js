@@ -15,6 +15,29 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Build024.5: 起動ページまたは保存センターから .glink を開いた場合、
+  // disasterSession が未作成でも .glink 内の session を初期表示に使用する。
+  if (!sessionData) {
+    try {
+      const pendingRaw = sessionStorage.getItem("gLink_pendingRestoreData")
+        || sessionStorage.getItem("gLink_workingData")
+        || localStorage.getItem("gLink_pendingRestoreData")
+        || localStorage.getItem("gLink_workingData");
+      if (pendingRaw) {
+        const pending = JSON.parse(pendingRaw);
+        if (pending && pending.format === "glink" && pending.session) {
+          sessionData = JSON.stringify(pending.session);
+          sessionStorage.setItem("disasterSession", sessionData);
+          localStorage.setItem("disasterSession", sessionData);
+          sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
+          sessionStorage.setItem("gLink_workingData", JSON.stringify(pending));
+        }
+      }
+    } catch (error) {
+      console.warn(".glink復元データから初期セッションを作成できませんでした。", error);
+    }
+  }
+
   if (!sessionData) {
     alert("災害情報が見つかりません。起動画面からエリアを確定し直してください。");
     window.location.href = "index.html";
@@ -5046,8 +5069,8 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
-      version: "1.6.4",
-      build: "Build023.9",
+      version: "1.6",
+      build: "Build024.5",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5111,11 +5134,16 @@ window.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
  
+  function makeProjectTimestamp() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+
   function saveGlinkFile() {
     const data = buildGlinkData();
-    const baseName = safeFileName(data.header.disasterName || "G-Link保存データ");
-    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-    downloadBlob(`${stamp}_${baseName}.glink`, "application/json;charset=utf-8", JSON.stringify(data, null, 2));
+    const fallback = "G-Link〈災害情報共有システム〉（固定表示モード）";
+    const baseName = safeFileName(data.header.disasterName || fallback);
+    downloadBlob(`${baseName}_${makeProjectTimestamp()}.glink`, "application/json;charset=utf-8", JSON.stringify(data, null, 2));
   }
  
   function createPinFromData(data) {
@@ -5170,6 +5198,28 @@ window.addEventListener("DOMContentLoaded", () => {
     renumberMeasurements();
   }
  
+
+  function applyGlinkProjectView(data) {
+    const viewCenter = data?.session?.center || data?.center;
+    const viewZoom = Number(data?.session?.zoom ?? data?.zoom);
+    const hasCenter = viewCenter && Number.isFinite(Number(viewCenter.lat)) && Number.isFinite(Number(viewCenter.lng));
+    window.setTimeout(() => {
+      try {
+        map.invalidateSize();
+        if (hasCenter && Number.isFinite(viewZoom)) {
+          map.setView([Number(viewCenter.lat), Number(viewCenter.lng)], viewZoom, { animate: false });
+        } else if (fixedBounds) {
+          map.fitBounds(fixedBounds, { padding: [0, 0], animate: false });
+        }
+        drawGridLines();
+        drawGridOverlay();
+        refreshCoordinateDisplays();
+      } catch (error) {
+        console.warn(".glink保存時の表示位置を復元できませんでした。", error);
+      }
+    }, 180);
+  }
+
   function loadGlinkData(data, options = {}) {
     if (!data || data.format !== "glink") {
       alert("G-Link保存ファイル（.glink）として認識できませんでした。");
@@ -5205,6 +5255,9 @@ window.addEventListener("DOMContentLoaded", () => {
         map.fitBounds(restoredBounds, { padding: [0, 0] });
       }
       if (data.session.center) session.center = plainToLatLng(data.session.center);
+      if (Number.isFinite(Number(data.session.zoom))) session.zoom = Number(data.session.zoom);
+      const restoredMapType = data.session.mapType || data.mapType;
+      if (restoredMapType && mapLayers[restoredMapType]) changeBaseMap(restoredMapType);
     }
  
     if (data.coordinateType || data.session?.coordinateType) {
@@ -5235,6 +5288,7 @@ window.addEventListener("DOMContentLoaded", () => {
     renderActivityHistory();
     updateMeasureSummaryBanner();
     renderMeasureList();
+    applyGlinkProjectView(data);
     if (!options.silent) alert("G-Link保存ファイルを読み込みました。");
   }
  
@@ -5333,12 +5387,9 @@ window.addEventListener("DOMContentLoaded", () => {
         }
         sessionStorage.setItem("disasterSession", JSON.stringify(sessionForReturn));
       }
-      window.setTimeout(() => {
-        map.invalidateSize();
-        if (fixedBounds) map.fitBounds(fixedBounds, { padding: [0, 0], animate: false });
-        drawGridLines();
-        drawGridOverlay();
-      }, 150);
+      applyGlinkProjectView(data);
+      sessionStorage.removeItem("gLink_pendingRestoreData");
+      localStorage.removeItem("gLink_pendingRestoreData");
       return true;
     } catch (error) {
       console.warn("保存センターから戻った作業状態を復元できませんでした。", error);

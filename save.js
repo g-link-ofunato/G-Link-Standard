@@ -349,11 +349,12 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function makeDefaultFileName(extension) {
+    const header = getHeader();
     if (extension === "glink") {
-      return `G-Link〈災害情報共有システム〉（固定表示モード）_${makeTimestampForUrlFile()}.glink`;
+      const projectName = safeFileName(titleInput.value || header.disasterName || "G-Link〈災害情報共有システム〉（固定表示モード）");
+      return `${projectName}_${makeTimestampForUrlFile()}.glink`;
     }
 
-    const header = getHeader();
     const disasterName = safeFileName(titleInput.value || header.disasterName || "G-Link");
     const createdUnit = safeFileName((createdUnitInput ? createdUnitInput.value : header.createdUnit) || "");
     const now = new Date();
@@ -1356,7 +1357,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink",
       version: "1.6",
-      build: "Build024.4",
+      build: "Build024.5",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
@@ -1490,13 +1491,18 @@ window.addEventListener("DOMContentLoaded", () => {
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
-      if (restoreData.session) sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
+      sessionStorage.setItem("gLink_pendingRestoreData", json);
+      localStorage.setItem("gLink_pendingRestoreData", json);
+      if (restoreData.session) {
+        sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
+        localStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
+      }
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
       alert(".glinkファイルの読込準備に失敗しました。プレビュー画像は除外しましたが、GPX軌跡や図形の点数が非常に多い可能性があります。");
       return;
     }
-    window.location.href = "fixed.html";
+    window.location.href = "fixed.html?restore=glink";
   }
 
   function readGlinkFile(file) {

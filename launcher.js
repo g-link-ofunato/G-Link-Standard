@@ -9,6 +9,9 @@
   const form = document.getElementById("launcherForm");
   const disasterInput = document.getElementById("disasterName");
   const unitInput = document.getElementById("createdUnit");
+  const glinkProjectButton = document.getElementById("glinkProjectButton");
+  const glinkProjectInput = document.getElementById("glinkProjectInput");
+  const glinkProjectStatus = document.getElementById("glinkProjectStatus");
 
   function resizeStage() {
     if (!stage) return;
@@ -76,6 +79,76 @@
     }));
   }
 
+
+
+  function sanitizeGlinkPayloadForRestore(data) {
+    if (!data || typeof data !== "object") return data;
+    const payload = { ...data };
+    delete payload.mapPreviewImage;
+    delete payload.commandCenterPreviewImage;
+    delete payload.previewImage;
+    delete payload.previewImages;
+    return payload;
+  }
+
+  function openGlinkProject(data) {
+    if (!data || data.format !== "glink") {
+      alert("G-Link保存ファイル（.glink）として認識できませんでした。");
+      return;
+    }
+    const restoreData = sanitizeGlinkPayloadForRestore(data);
+    try {
+      const json = JSON.stringify(restoreData);
+      sessionStorage.setItem("gLink_workingData", json);
+      sessionStorage.setItem("gLink_returnBackupData", json);
+      sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
+      sessionStorage.setItem("gLink_pendingRestoreData", json);
+      localStorage.setItem("gLink_pendingRestoreData", json);
+      if (restoreData.session) {
+        sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
+        localStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
+      }
+      if (restoreData.header) {
+        const header = {
+          dateTime: restoreData.header.dateTime || getNowText(),
+          disasterName: restoreData.header.disasterName || "",
+          createdUnit: restoreData.header.createdUnit || "",
+          coordinateType: restoreData.coordinateType || restoreData.header.coordinateType || "dms"
+        };
+        sessionStorage.setItem("gLink_header", JSON.stringify(header));
+        localStorage.setItem("gLink_header", JSON.stringify(header));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(header));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(header));
+      }
+    } catch (error) {
+      console.error(".glink読込データの一時保存に失敗しました。", error);
+      alert(".glinkファイルの読込準備に失敗しました。GPX軌跡や図形の点数が非常に多い可能性があります。");
+      return;
+    }
+    if (glinkProjectStatus) glinkProjectStatus.textContent = "読込完了。指揮本部モードを開きます。";
+    window.location.href = "fixed.html?restore=glink";
+  }
+
+  function readGlinkProjectFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    if (glinkProjectStatus) glinkProjectStatus.textContent = "読み込み中です…";
+    reader.onload = () => {
+      try {
+        openGlinkProject(JSON.parse(String(reader.result || "")));
+      } catch (error) {
+        console.error(".glinkファイルの解析に失敗しました。", error);
+        if (glinkProjectStatus) glinkProjectStatus.textContent = "読み込みに失敗しました。";
+        alert(".glinkファイルの読み込みに失敗しました。ファイル形式を確認してください。");
+      }
+    };
+    reader.onerror = () => {
+      if (glinkProjectStatus) glinkProjectStatus.textContent = "読み込みに失敗しました。";
+      alert(".glinkファイルを読み込めませんでした。");
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
 
@@ -106,6 +179,14 @@
     loadPreviousValues();
     disasterInput.focus();
   });
+
+  if (glinkProjectButton && glinkProjectInput) {
+    glinkProjectButton.addEventListener("click", () => glinkProjectInput.click());
+    glinkProjectInput.addEventListener("change", () => {
+      readGlinkProjectFile(glinkProjectInput.files && glinkProjectInput.files[0]);
+      glinkProjectInput.value = "";
+    });
+  }
 
   if (form) {
     form.addEventListener("submit", handleSubmit);
