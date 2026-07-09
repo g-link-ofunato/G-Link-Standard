@@ -65,11 +65,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "G-Link専用ファイルとして、指揮本部モードの編集状態を保存します。",
-      previewTitle: "保存内容確認（.glink）",
+      lead: "Windowsインターネットショートカット（.url）として保存します。ダブルクリックでG-Linkを開けます。",
+      previewTitle: "保存内容確認（.url）",
       settingsTitle: "ファイル保存設定",
-      saveLabel: "💾 .glinkを保存",
-      extension: "glink"
+      saveLabel: "💾 .urlを保存",
+      extension: "url"
     },
     pdf: {
       title: "保存センター - PDF保存プレビュー",
@@ -333,7 +333,24 @@ window.addEventListener("DOMContentLoaded", () => {
       .slice(0, 80) || "G-Link保存データ";
   }
  
+  function makeTimestampForUrlFile() {
+    const now = new Date();
+    return now.getFullYear().toString()
+      + "-"
+      + String(now.getMonth() + 1).padStart(2, "0")
+      + "-"
+      + String(now.getDate()).padStart(2, "0")
+      + "_"
+      + String(now.getHours()).padStart(2, "0")
+      + "-"
+      + String(now.getMinutes()).padStart(2, "0");
+  }
+
   function makeDefaultFileName(extension) {
+    if (extension === "url") {
+      return `G-Link〈災害情報共有システム〉（固定表示モード）_${makeTimestampForUrlFile()}.url`;
+    }
+
     const header = getHeader();
     const disasterName = safeFileName(titleInput.value || header.disasterName || "G-Link");
     const createdUnit = safeFileName((createdUnitInput ? createdUnitInput.value : header.createdUnit) || "");
@@ -347,6 +364,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     const typeLabels = {
       glink: "G-Link",
+      url: "G-Link",
       pdf: "PDF",
       png: "PNG",
       csv: "CSV"
@@ -910,6 +928,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // まず安全なaccept設定で保存を試し、失敗時は必ず通常ダウンロードへ切り替える。
     const ext = String(suggestedName.split(".").pop() || "dat").toLowerCase();
     const acceptMap = {
+      url: { "text/plain": [".url"] },
       glink: { "application/octet-stream": [".glink"] },
       pdf: { "application/pdf": [".pdf"] },
       png: { "image/png": [".png"] },
@@ -1039,6 +1058,192 @@ window.addEventListener("DOMContentLoaded", () => {
     return pdf.output("blob");
   }
  
+
+  function toBase64UrlFromBytes(bytes) {
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function encodeViewerPayload(data) {
+    try {
+      const json = JSON.stringify(data || {});
+      if (typeof TextEncoder === "function") {
+        return toBase64UrlFromBytes(new TextEncoder().encode(json));
+      }
+      const base64 = btoa(unescape(encodeURIComponent(json)));
+      return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    } catch (error) {
+      console.warn("Viewer用URLデータの生成に失敗しました。", error);
+      return "";
+    }
+  }
+
+  function compactPoint(point) {
+    if (!point || typeof point.lat !== "number" || typeof point.lng !== "number") return null;
+    return [Number(point.lat.toFixed(7)), Number(point.lng.toFixed(7))];
+  }
+
+  function compactBounds(bounds) {
+    if (!bounds) return null;
+    const sw = bounds.southWest || bounds._southWest;
+    const ne = bounds.northEast || bounds._northEast;
+    if (!sw || !ne) return null;
+    return [compactPoint(sw), compactPoint(ne)];
+  }
+
+  function compactText(value, max = 160) {
+    const text = String(value ?? "");
+    return text.length > max ? text.slice(0, max) : text;
+  }
+
+  function stripAttachmentForViewer(pin) {
+    const copy = { ...(pin || {}) };
+    delete copy.attachmentDataUrl;
+    delete copy.attachment;
+    delete copy.attachmentPreview;
+    delete copy.attachmentInfo;
+    return copy;
+  }
+
+  function compactPin(pin) {
+    const p = stripAttachmentForViewer(pin || {});
+    return [
+      p.type || "fire",
+      Number(Number(p.lat || 0).toFixed(7)),
+      Number(Number(p.lng || 0).toFixed(7)),
+      p.completed ? 1 : 0,
+      p.number || p.pinNo || "",
+      compactText(p.gridNo, 40),
+      compactText(p.awarenessLabel, 40),
+      compactText(p.completedLabel, 40),
+      compactText(p.incidentNo, 60),
+      compactText(p.summary, 180),
+      compactText(p.units, 120),
+      p.injured ?? 0
+    ];
+  }
+
+  function compactLatLngArray(points) {
+    return (points || []).map(compactPoint).filter(Boolean);
+  }
+
+  function compactDrawing(item) {
+    const meta = item?.meta || {};
+    return {
+      m: {
+        t: meta.type || "polyline",
+        c: meta.color || "#e60000",
+        w: meta.weight || 4,
+        o: meta.opacity ?? 1,
+        s: meta.style || "solid",
+        f: meta.fillMode || "none"
+      },
+      l: Array.isArray(item?.latlngs) ? item.latlngs : null,
+      cc: compactPoint(item?.circleCenter),
+      r: item?.radius || null,
+      as: compactPoint(item?.arrowStart),
+      ae: compactPoint(item?.arrowEnd)
+    };
+  }
+
+  function compactMeasurement(item) {
+    return {
+      n: compactText(item?.name || "名称未設定", 80),
+      t: item?.type || "polygon",
+      s: item?.style || {},
+      p: compactLatLngArray(item?.points),
+      a: Math.round(item?.areaM2 || 0),
+      h: Number(Number(item?.areaHa || 0).toFixed(4)),
+      g: item?.gridRange || null
+    };
+  }
+
+  function compactHistory(item) {
+    return [
+      item?.pinNo || item?.number || "",
+      item?.type || "fire",
+      compactText(item?.gridNo, 40),
+      typeof item?.lat === "number" ? Number(item.lat.toFixed(7)) : null,
+      typeof item?.lng === "number" ? Number(item.lng.toFixed(7)) : null,
+      compactText(item?.awarenessLabel, 40),
+      compactText(item?.completedLabel, 40),
+      compactText(item?.incidentNo, 60),
+      compactText(item?.summary, 180),
+      compactText(item?.units, 120),
+      item?.injured ?? 0
+    ];
+  }
+
+  function compactViewerData(data) {
+    const bounds = data.bounds || data.session?.bounds || null;
+    const center = data.session?.center || null;
+    return {
+      f: "gv2",
+      v: "1.6",
+      b: "Build024.0",
+      t: data.sharedAt || data.savedAt || new Date().toISOString(),
+      n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
+      c: data.coordinateType || data.session?.coordinateType || "dms",
+      h: [data.header?.dateTime || "", data.header?.disasterName || "", data.header?.createdUnit || ""],
+      s: [compactBounds(bounds), compactPoint(center), data.session?.zoom || 13, data.mapType || data.session?.mapType || "pale", data.gridSize || data.session?.gridSize || 0],
+      g: data.gridLineSettings || {},
+      p: (data.pins || []).map(compactPin),
+      d: (data.drawings || []).map(compactDrawing),
+      x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
+      m: (data.measurements || []).map(compactMeasurement),
+      a: (data.activityHistory || []).map(compactHistory)
+    };
+  }
+
+  function getViewerBaseUrl() {
+    try {
+      const url = new URL("viewer.html", window.location.href);
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch (error) {
+      return "viewer.html";
+    }
+  }
+
+  function buildViewerShareUrlFromSaveCenterData() {
+    const payload = {
+      ...saveCenterData,
+      format: "glink-viewer",
+      version: "1.6",
+      build: "Build024.0",
+      viewerMode: true,
+      sharedAt: new Date().toISOString(),
+      notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
+      coordinateType: saveCenterData.coordinateType || saveCenterData.session?.coordinateType || "dms",
+      header: saveSharedHeader({
+        disasterName: titleInput.value,
+        createdUnit: createdUnitInput ? createdUnitInput.value : getHeader().createdUnit
+      })
+    };
+    delete payload.mapPreviewImage;
+    delete payload.commandCenterPreviewImage;
+
+    const compact = compactViewerData(payload);
+    const encoded = encodeViewerPayload(compact);
+    if (!encoded) return getViewerBaseUrl();
+
+    try {
+      localStorage.setItem("glinkViewerLastData", JSON.stringify(compact));
+    } catch (error) {
+      console.warn("Viewer用データの一時保存に失敗しました。", error);
+    }
+    return `${getViewerBaseUrl()}#data=${encoded}`;
+  }
+
+  function createInternetShortcutText(url) {
+    return `[InternetShortcut]\r\nURL=${url}\r\n`;
+  }
+
   function createGlinkPayload() {
     const header = saveSharedHeader({
       disasterName: titleInput.value,
@@ -1062,8 +1267,9 @@ window.addEventListener("DOMContentLoaded", () => {
  
     try {
       if (currentMode === "glink") {
-        const content = JSON.stringify(createGlinkPayload(), null, 2);
-        await saveBlobWithPicker(new Blob([content], { type: "application/json;charset=utf-8" }), suggestedName);
+        const shareUrl = buildViewerShareUrlFromSaveCenterData();
+        const content = createInternetShortcutText(shareUrl);
+        await saveBlobWithPicker(new Blob([content], { type: "text/plain;charset=utf-8" }), suggestedName);
         return;
       }
  
