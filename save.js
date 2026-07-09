@@ -1244,6 +1244,27 @@ window.addEventListener("DOMContentLoaded", () => {
     return `[InternetShortcut]\r\nURL=${url}\r\n`;
   }
 
+  async function saveInternetShortcutFile(content, suggestedName) {
+    // Build024.1
+    // .url はWindowsショートカット扱いのため、File System Access APIやtext/plain保存を使うと
+    // ブラウザ側で .download.txt に変換される場合がある。
+    // そのため .url 保存時だけ通常ダウンロード方式＋application/octet-streamで保存する。
+    const blob = new Blob([content], { type: "application/octet-stream" });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = suggestedName;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    }, 1000);
+    alert(".urlファイルの保存を開始しました。ダウンロード欄を確認してください。");
+  }
+
   function createGlinkPayload() {
     const header = saveSharedHeader({
       disasterName: titleInput.value,
@@ -1269,7 +1290,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (currentMode === "glink") {
         const shareUrl = buildViewerShareUrlFromSaveCenterData();
         const content = createInternetShortcutText(shareUrl);
-        await saveBlobWithPicker(new Blob([content], { type: "text/plain;charset=utf-8" }), suggestedName);
+        await saveInternetShortcutFile(content, suggestedName);
         return;
       }
  
