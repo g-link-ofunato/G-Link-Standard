@@ -65,10 +65,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "Windowsインターネットショートカット（.url）として保存します。ダブルクリックでG-Linkを開けます。",
-      previewTitle: "保存内容確認（.url）",
+      lead: "WindowsでブロックされにくいZIP形式で保存します。ZIP内の.urlを開くとG-Linkを復元できます。",
+      previewTitle: "保存内容確認（ZIP内.url）",
       settingsTitle: "ファイル保存設定",
-      saveLabel: "💾 .urlを保存",
+      saveLabel: "💾 .url入りZIPを保存",
       extension: "url"
     },
     pdf: {
@@ -932,7 +932,8 @@ window.addEventListener("DOMContentLoaded", () => {
       glink: { "application/octet-stream": [".glink"] },
       pdf: { "application/pdf": [".pdf"] },
       png: { "image/png": [".png"] },
-      csv: { "text/csv": [".csv"] }
+      csv: { "text/csv": [".csv"] },
+      zip: { "application/zip": [".zip"] }
     };
  
     if (window.showSaveFilePicker && window.isSecureContext) {
@@ -1244,25 +1245,103 @@ window.addEventListener("DOMContentLoaded", () => {
     return `[InternetShortcut]\r\nURL=${url}\r\n`;
   }
 
-  async function saveInternetShortcutFile(content, suggestedName) {
-    // Build024.1
-    // .url はWindowsショートカット扱いのため、File System Access APIやtext/plain保存を使うと
-    // ブラウザ側で .download.txt に変換される場合がある。
-    // そのため .url 保存時だけ通常ダウンロード方式＋application/octet-streamで保存する。
-    const blob = new Blob([content], { type: "application/octet-stream" });
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = suggestedName;
-    a.rel = "noopener";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-    }, 1000);
-    alert(".urlファイルの保存を開始しました。ダウンロード欄を確認してください。");
+  function makeCrc32Table() {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    return table;
+  }
+
+  const zipCrc32Table = makeCrc32Table();
+
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+      c = zipCrc32Table[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    }
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function writeU16(arr, value) {
+    arr.push(value & 255, (value >>> 8) & 255);
+  }
+
+  function writeU32(arr, value) {
+    arr.push(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, (value >>> 24) & 255);
+  }
+
+  function getDosDateTime(date = new Date()) {
+    const year = Math.max(1980, date.getFullYear());
+    const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+    const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+    return { dosTime, dosDate };
+  }
+
+  function createZipBlobSingleFile(fileName, text) {
+    // Build024.2
+    // ブラウザが .url 直接ダウンロードを危険ファイルとしてブロックするため、
+    // .urlをZIP内に格納して保存する。外部ライブラリなしの無圧縮ZIP。
+    const encoder = new TextEncoder();
+    const nameBytes = encoder.encode(fileName);
+    const dataBytes = encoder.encode(text);
+    const crc = crc32(dataBytes);
+    const { dosTime, dosDate } = getDosDateTime();
+    const local = [];
+    const central = [];
+
+    writeU32(local, 0x04034b50);
+    writeU16(local, 20);
+    writeU16(local, 0x0800); // UTF-8 filename
+    writeU16(local, 0);
+    writeU16(local, dosTime);
+    writeU16(local, dosDate);
+    writeU32(local, crc);
+    writeU32(local, dataBytes.length);
+    writeU32(local, dataBytes.length);
+    writeU16(local, nameBytes.length);
+    writeU16(local, 0);
+    local.push(...nameBytes, ...dataBytes);
+
+    const centralOffset = local.length;
+    writeU32(central, 0x02014b50);
+    writeU16(central, 20);
+    writeU16(central, 20);
+    writeU16(central, 0x0800);
+    writeU16(central, 0);
+    writeU16(central, dosTime);
+    writeU16(central, dosDate);
+    writeU32(central, crc);
+    writeU32(central, dataBytes.length);
+    writeU32(central, dataBytes.length);
+    writeU16(central, nameBytes.length);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU16(central, 0);
+    writeU32(central, 0);
+    writeU32(central, 0);
+    central.push(...nameBytes);
+
+    const end = [];
+    writeU32(end, 0x06054b50);
+    writeU16(end, 0);
+    writeU16(end, 0);
+    writeU16(end, 1);
+    writeU16(end, 1);
+    writeU32(end, central.length);
+    writeU32(end, centralOffset);
+    writeU16(end, 0);
+
+    return new Blob([new Uint8Array(local), new Uint8Array(central), new Uint8Array(end)], { type: "application/zip" });
+  }
+
+  async function saveInternetShortcutZip(content, urlFileName) {
+    const zipName = urlFileName.replace(/\.url$/i, ".zip");
+    const blob = createZipBlobSingleFile(urlFileName, content);
+    await saveBlobWithPicker(blob, zipName);
   }
 
   function createGlinkPayload() {
@@ -1290,7 +1369,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (currentMode === "glink") {
         const shareUrl = buildViewerShareUrlFromSaveCenterData();
         const content = createInternetShortcutText(shareUrl);
-        await saveInternetShortcutFile(content, suggestedName);
+        await saveInternetShortcutZip(content, suggestedName);
         return;
       }
  
