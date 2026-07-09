@@ -1,4 +1,14 @@
 window.addEventListener("DOMContentLoaded", () => {
+  function glinkDiagLog() {}
+  function glinkDiagStorageSnapshot() { return {}; }
+  function glinkDiagSummarizeData(data) {
+    return {
+      pins: Array.isArray(data?.pins) ? data.pins.length : 0,
+      drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0
+    };
+  }
   const menuButtons = document.querySelectorAll(".sideMenuItem[data-mode]");
   const screenTitle = document.getElementById("screenTitle");
   const screenLead = document.getElementById("screenLead");
@@ -1190,7 +1200,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build024.0",
+      b: "Build025.2",
       t: data.sharedAt || data.savedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || data.session?.coordinateType || "dms",
@@ -1221,7 +1231,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink-viewer",
       version: "1.6",
-      build: "Build024.0",
+      build: "Build025.2",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1359,7 +1369,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink",
       version: "1.6",
-      build: "Build024.9",
+      build: "Build025.2",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
@@ -1532,7 +1542,7 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     glinkDiagLog("save redirect fixed restore", { storage: glinkDiagStorageSnapshot() });
-    window.location.href = "fixed.html?restore=glink&diag=1";
+    window.location.href = "fixed.html?restore=glink";
   }
 
   function readGlinkFile(file) {

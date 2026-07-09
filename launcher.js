@@ -1,6 +1,4 @@
 (() => {
-  "use strict";
-
   const DESIGN_WIDTH = 1920;
   const DESIGN_HEIGHT = 1080;
   const STORAGE_KEY = "gLink_launcherHeader";
@@ -9,12 +7,12 @@
   const form = document.getElementById("launcherForm");
   const disasterInput = document.getElementById("disasterName");
   const unitInput = document.getElementById("createdUnit");
-  const glinkProjectButton = document.getElementById("glinkProjectButton");
-  const glinkProjectInput = document.getElementById("glinkProjectInput");
-  const glinkProjectStatus = document.getElementById("glinkProjectStatus");
   const newProjectButton = document.getElementById("newProjectButton");
   const continueProjectButton = document.getElementById("continueProjectButton");
   const continueProjectPanel = document.getElementById("continueProjectPanel");
+  const glinkProjectButton = document.getElementById("glinkProjectButton");
+  const glinkProjectInput = document.getElementById("glinkProjectInput");
+  const glinkProjectStatus = document.getElementById("glinkProjectStatus");
 
   function resizeStage() {
     if (!stage) return;
@@ -26,7 +24,7 @@
 
   function getNowText() {
     const now = new Date();
-    const week = ["日", "月", "火", "水", "木", "土"][now.getDay()] || ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+    const week = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
     const d = now.getDate();
@@ -37,6 +35,25 @@
 
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function clearProjectStorage(keysOnlyForProject = false) {
+    const keys = [
+      "disasterSession",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_pendingRestoreData",
+      "gLink_saveCenterData",
+      "glinkViewerLastData"
+    ];
+    if (!keysOnlyForProject) {
+      keys.push("gLink_header", "gLink_launcherHeader");
+    }
+    keys.forEach(key => {
+      try { sessionStorage.removeItem(key); } catch (e) {}
+      try { localStorage.removeItem(key); } catch (e) {}
+    });
   }
 
   function loadPreviousValues() {
@@ -52,7 +69,7 @@
       coordinateType: "dms",
       startedAt: new Date().toISOString(),
       version: "1.6",
-      build: "Build025.0"
+      build: "Build025.2"
     };
 
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -73,25 +90,7 @@
     if (continueProjectPanel) continueProjectPanel.classList.toggle("hidden", mode !== "continue");
     if (newProjectButton) newProjectButton.classList.toggle("active", mode === "new");
     if (continueProjectButton) continueProjectButton.classList.toggle("active", mode === "continue");
-    if (glinkProjectStatus) glinkProjectStatus.textContent = "";
     if (mode === "new" && disasterInput) window.setTimeout(() => disasterInput.focus(), 50);
-  }
-
-  function clearProjectStorageBeforeRestore() {
-    [
-      "disasterSession",
-      "gLink_workingData",
-      "gLink_returnBackupData",
-      "gLink_returnFromSaveCenter",
-      "gLink_pendingRestoreData",
-      "gLink_saveCenterData",
-      "gLink_header",
-      "gLink_launcherHeader",
-      "glinkViewerLastData"
-    ].forEach(key => {
-      try { sessionStorage.removeItem(key); } catch (e) {}
-      try { localStorage.removeItem(key); } catch (e) {}
-    });
   }
 
   function sanitizeGlinkPayloadForRestore(data) {
@@ -111,9 +110,8 @@
     }
 
     const restoreData = sanitizeGlinkPayloadForRestore(data);
-
     try {
-      clearProjectStorageBeforeRestore();
+      clearProjectStorage(false);
       const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_pendingRestoreData", json);
       sessionStorage.setItem("gLink_workingData", json);
@@ -121,13 +119,11 @@
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
       localStorage.setItem("gLink_returnFromSaveCenter", "1");
-
       if (restoreData.session) {
         const sessionJson = JSON.stringify(restoreData.session);
         sessionStorage.setItem("disasterSession", sessionJson);
         localStorage.setItem("disasterSession", sessionJson);
       }
-
       if (restoreData.header) {
         const header = {
           dateTime: restoreData.header.dateTime || getNowText(),
@@ -135,11 +131,10 @@
           createdUnit: restoreData.header.createdUnit || "",
           coordinateType: restoreData.coordinateType || restoreData.header.coordinateType || "dms"
         };
-        const headerJson = JSON.stringify(header);
-        sessionStorage.setItem("gLink_header", headerJson);
-        localStorage.setItem("gLink_header", headerJson);
-        sessionStorage.setItem(STORAGE_KEY, headerJson);
-        localStorage.setItem(STORAGE_KEY, headerJson);
+        sessionStorage.setItem("gLink_header", JSON.stringify(header));
+        localStorage.setItem("gLink_header", JSON.stringify(header));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(header));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(header));
       }
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
@@ -187,6 +182,7 @@
       return;
     }
 
+    clearProjectStorage(false);
     saveLauncherHeader(disasterName, createdUnit);
     window.location.href = "area.html";
   }
@@ -197,12 +193,10 @@
   document.addEventListener("DOMContentLoaded", () => {
     resizeStage();
     loadPreviousValues();
-    showLauncherPanel(null);
   });
 
   if (newProjectButton) newProjectButton.addEventListener("click", () => showLauncherPanel("new"));
   if (continueProjectButton) continueProjectButton.addEventListener("click", () => showLauncherPanel("continue"));
-
   if (glinkProjectButton && glinkProjectInput) {
     glinkProjectButton.addEventListener("click", () => glinkProjectInput.click());
     glinkProjectInput.addEventListener("change", () => {
@@ -210,6 +204,5 @@
       glinkProjectInput.value = "";
     });
   }
-
   if (form) form.addEventListener("submit", handleSubmit);
 })();

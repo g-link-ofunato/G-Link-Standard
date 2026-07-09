@@ -1,4 +1,14 @@
 window.addEventListener("DOMContentLoaded", () => {
+  function glinkDiagLog() {}
+  function glinkDiagStorageSnapshot() { return {}; }
+  function glinkDiagSummarizeData(data) {
+    return {
+      pins: Array.isArray(data?.pins) ? data.pins.length : 0,
+      drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0
+    };
+  }
  
   glinkDiagLog("fixed.js loaded", { href: location.href, storage: glinkDiagStorageSnapshot() });
   const restoreParams = new URLSearchParams(window.location.search);
@@ -5123,7 +5133,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build024.9",
+      build: "Build025.2",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),

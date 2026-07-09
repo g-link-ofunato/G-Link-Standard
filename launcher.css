@@ -611,7 +611,7 @@ body {
 }
 
 
-/* Build025.0: 起動ページを固定表示へ戻し、新規/継続の2択UIを最優先 */
+/* Build025.2: 起動ページ固定表示復旧・新規/継続2ボタンUI最終調整 */
 html,
 body {
   overflow: hidden !important;
@@ -626,12 +626,61 @@ body {
 }
 
 .launcher-stage {
+  width: 1920px !important;
+  height: 1080px !important;
   overflow: hidden !important;
 }
 
 .launcher-panel {
   top: 58px !important;
+  left: 58px !important;
+  width: 610px !important;
   padding-bottom: 0 !important;
+}
+
+.launcher-brand {
+  margin-bottom: 22px !important;
+}
+
+.brand-logo {
+  font-size: 88px !important;
+}
+
+.brand-title {
+  margin-top: 16px !important;
+  font-size: 42px !important;
+}
+
+.brand-subtitle {
+  margin-top: 9px !important;
+  font-size: 22px !important;
+}
+
+.brand-line {
+  margin-top: 15px !important;
+}
+
+.feature-list {
+  gap: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+.feature-item {
+  grid-template-columns: 64px 1fr !important;
+  min-height: 54px !important;
+}
+
+.feature-icon {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.feature-text h3 {
+  font-size: 22px !important;
+}
+
+.feature-text p {
+  font-size: 14px !important;
 }
 
 .launcher-mode-select {
@@ -639,11 +688,11 @@ body {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   gap: 16px !important;
-  margin: 0 0 16px !important;
+  margin: 0 0 14px !important;
 }
 
 .launcher-mode-button {
-  height: 78px !important;
+  height: 74px !important;
   border: 0 !important;
   border-radius: 10px !important;
   color: #fff !important;
@@ -654,27 +703,90 @@ body {
 }
 
 .launcher-mode-button.new {
-  background: linear-gradient(180deg, #ff161b 0%, #dc0007 52%, #a90005 100%) !important;
+  background: linear-gradient(180deg, #ff1c25, #d90009) !important;
 }
 
 .launcher-mode-button.continue {
-  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 54%, #1e3a8a 100%) !important;
+  background: linear-gradient(180deg, #2d6bff, #1749cc) !important;
 }
 
-.launcher-slide-panel.hidden {
+.launcher-mode-button.active {
+  box-shadow: 0 0 0 3px rgba(255,255,255,.78) inset, 0 0 22px rgba(255,255,255,.24) !important;
+}
+
+.launcher-slide-panel.hidden,
+.hidden {
   display: none !important;
 }
 
 .launcher-slide-panel {
+  width: 565px !important;
   animation: glinkLauncherPanelIn .18s ease-out;
 }
 
-.launcher-mode-button.active {
-  outline: 3px solid rgba(255,255,255,.72);
-  outline-offset: 3px;
+.launch-form {
+  padding: 14px 22px 18px !important;
+  margin-top: 0 !important;
+}
+
+.panel-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0 0 10px;
+  padding-left: 12px;
+  border-left: 5px solid #ff1823;
+}
+
+.form-row {
+  gap: 6px !important;
+  margin-bottom: 12px !important;
+}
+
+.form-row label {
+  font-size: 21px !important;
+}
+
+.form-row input {
+  height: 46px !important;
+  font-size: 18px !important;
+}
+
+.start-button {
+  height: 58px !important;
+  font-size: 32px !important;
+}
+
+.project-open-panel {
+  margin-top: 0 !important;
+  padding: 18px 22px 18px !important;
+}
+
+.project-open-heading {
+  font-size: 23px !important;
+}
+
+.project-open-lead {
+  margin: 8px 0 13px !important;
+  font-size: 15px !important;
+}
+
+.project-open-button {
+  height: 50px !important;
+  font-size: 20px !important;
+}
+
+.project-open-status {
+  min-height: 18px !important;
+  margin-top: 8px !important;
+  font-size: 13px !important;
+}
+
+.launcher-footer {
+  bottom: 24px !important;
 }
 
 @keyframes glinkLauncherPanelIn {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
