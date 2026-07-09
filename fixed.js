@@ -46,7 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "fixed.html",
-      build: "Build025.6-DIAG",
+      build: "Build025.7-OBJECT-DIAG",
       event,
       details
     };
@@ -62,51 +62,6 @@ window.addEventListener("DOMContentLoaded", () => {
       // 診断ログの保存失敗で本体処理を止めない。
     }
     try { console.info("[G-Link Restore]", entry); } catch (error) {}
-  }
-  function glinkDiagLiveCounts() {
-    function countLayer(layerGroup) {
-      try { return layerGroup && typeof layerGroup.getLayers === "function" ? layerGroup.getLayers().length : null; } catch (e) { return null; }
-    }
-    return {
-      pinsArray: Array.isArray(pins) ? pins.length : null,
-      pinLayer: countLayer(typeof pinLayer !== "undefined" ? pinLayer : null),
-      drawingsArray: Array.isArray(drawings) ? drawings.length : null,
-      drawingLayer: countLayer(typeof drawingLayer !== "undefined" ? drawingLayer : null),
-      measurementsArray: Array.isArray(measurements) ? measurements.length : null,
-      measureLayer: countLayer(typeof measureLayer !== "undefined" ? measureLayer : null),
-      tracksArray: Array.isArray(tracks) ? tracks.length : null,
-      trackLayer: countLayer(typeof trackLayer !== "undefined" ? trackLayer : null),
-      activityHistory: Array.isArray(activityHistory) ? activityHistory.length : null
-    };
-  }
-
-  function glinkDiagInstallPanel() {
-    if (document.getElementById("gLinkRestoreDiagPanel")) return;
-    const panel = document.createElement("div");
-    panel.id = "gLinkRestoreDiagPanel";
-    panel.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:999999;background:rgba(17,24,39,.92);color:#fff;border:2px solid #facc15;border-radius:10px;padding:10px 12px;font:12px/1.45 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:360px;";
-    panel.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">G-Link 復元診断 Build025.6</div><div id="gLinkRestoreDiagSummary" style="margin-bottom:8px;color:#fde68a;">診断ログを記録中</div><button id="gLinkRestoreDiagCopy" type="button" style="background:#facc15;color:#111827;border:0;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer;">診断ログをコピー</button><button id="gLinkRestoreDiagHide" type="button" style="margin-left:6px;background:#374151;color:#fff;border:0;border-radius:6px;padding:6px 10px;cursor:pointer;">隠す</button>';
-    document.body.appendChild(panel);
-    const copyBtn = document.getElementById("gLinkRestoreDiagCopy");
-    const hideBtn = document.getElementById("gLinkRestoreDiagHide");
-    if (copyBtn) copyBtn.addEventListener("click", async () => {
-      const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
-      const text = raw;
-      try { await navigator.clipboard.writeText(text); } catch (e) {
-        const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-      }
-      const summary = document.getElementById("gLinkRestoreDiagSummary");
-      if (summary) summary.textContent = "コピーしました。この内容を貼り付けてください。";
-    });
-    if (hideBtn) hideBtn.addEventListener("click", () => panel.remove());
-  }
-
-  function glinkDiagUpdatePanel(message) {
-    try {
-      glinkDiagInstallPanel();
-      const summary = document.getElementById("gLinkRestoreDiagSummary");
-      if (summary) summary.textContent = message;
-    } catch (e) {}
   }
  
   glinkDiagLog("fixed.js loaded", { href: location.href, storage: glinkDiagStorageSnapshot() });
@@ -5191,6 +5146,96 @@ window.addEventListener("DOMContentLoaded", () => {
     return pins.map(marker => ({ ...marker.data }));
   }
  
+
+  function countLayerGroupItems(layerGroup) {
+    try {
+      if (!layerGroup || typeof layerGroup.eachLayer !== "function") return null;
+      let count = 0;
+      layerGroup.eachLayer(() => { count += 1; });
+      return count;
+    } catch (error) {
+      return "ERR:" + (error?.message || error);
+    }
+  }
+
+  function getGlinkObjectDiagnosis() {
+    const serializedPins = (() => { try { return serializePins(); } catch (e) { return { error: e?.message || String(e) }; } })();
+    const serializedDrawings = (() => { try { return serializeDrawings(); } catch (e) { return { error: e?.message || String(e) }; } })();
+    const serializedMeasurements = (() => { try { return serializeMeasurements(); } catch (e) { return { error: e?.message || String(e) }; } })();
+    const serializedTracks = (() => { try { return serializeTracks(); } catch (e) { return { error: e?.message || String(e) }; } })();
+
+    return {
+      purpose: "どの配列・レイヤーにピン／図形／計測／GPXが保持されているかを確認する診断です。",
+      arrays: {
+        pins: Array.isArray(pins) ? pins.length : "not-array",
+        drawings: Array.isArray(drawings) ? drawings.length : "not-array",
+        measurements: Array.isArray(measurements) ? measurements.length : "not-array",
+        tracks: Array.isArray(tracks) ? tracks.length : "not-array",
+        activityHistory: Array.isArray(activityHistory) ? activityHistory.length : "not-array"
+      },
+      layers: {
+        pinLayer: countLayerGroupItems(pinLayer),
+        drawingLayer: countLayerGroupItems(drawingLayer),
+        measureLayer: countLayerGroupItems(measureLayer),
+        trackLayer: countLayerGroupItems(trackLayer)
+      },
+      serialized: {
+        pins: Array.isArray(serializedPins) ? serializedPins.length : serializedPins,
+        drawings: Array.isArray(serializedDrawings) ? serializedDrawings.length : serializedDrawings,
+        measurements: Array.isArray(serializedMeasurements) ? serializedMeasurements.length : serializedMeasurements,
+        tracks: Array.isArray(serializedTracks) ? serializedTracks.length : serializedTracks
+      },
+      sample: {
+        pin: Array.isArray(serializedPins) ? (serializedPins[0] || null) : null,
+        drawing: Array.isArray(serializedDrawings) ? (serializedDrawings[0] || null) : null,
+        measurement: Array.isArray(serializedMeasurements) ? (serializedMeasurements[0] || null) : null,
+        track: Array.isArray(serializedTracks) ? (serializedTracks[0] || null) : null
+      }
+    };
+  }
+
+  function showGlinkObjectDiagnosisPanel() {
+    const diagnosis = getGlinkObjectDiagnosis();
+    glinkDiagLog("fixed object diagnosis manual", diagnosis);
+    let panel = document.getElementById("glinkObjectDiagnosisPanel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "glinkObjectDiagnosisPanel";
+      panel.style.position = "fixed";
+      panel.style.right = "12px";
+      panel.style.bottom = "12px";
+      panel.style.zIndex = "99999";
+      panel.style.maxWidth = "520px";
+      panel.style.maxHeight = "50vh";
+      panel.style.overflow = "auto";
+      panel.style.background = "#fff7cc";
+      panel.style.border = "2px solid #f59e0b";
+      panel.style.borderRadius = "10px";
+      panel.style.padding = "10px";
+      panel.style.boxShadow = "0 8px 24px rgba(0,0,0,.22)";
+      panel.style.fontSize = "12px";
+      panel.style.whiteSpace = "pre-wrap";
+      document.body.appendChild(panel);
+    }
+    panel.innerHTML = `<strong>G-Link Object Diagnosis Build025.7</strong>\n` +
+      `pins/drawings/measurements/tracks の保持場所を確認します。\n\n` +
+      `<button type="button" id="glinkObjectDiagCopyBtn">診断ログをコピー</button> ` +
+      `<button type="button" id="glinkObjectDiagCloseBtn">閉じる</button>\n\n` +
+      escapeHtml(JSON.stringify(diagnosis, null, 2));
+    const copyBtn = document.getElementById("glinkObjectDiagCopyBtn");
+    if (copyBtn) {
+      copyBtn.onclick = async () => {
+        const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
+        try { await navigator.clipboard.writeText(raw); copyBtn.textContent = "コピーしました"; } catch (e) { copyBtn.textContent = "コピー失敗"; }
+      };
+    }
+    const closeBtn = document.getElementById("glinkObjectDiagCloseBtn");
+    if (closeBtn) closeBtn.onclick = () => panel.remove();
+  }
+
+  window.gLinkShowObjectDiagnosis = showGlinkObjectDiagnosisPanel;
+  window.gLinkGetObjectDiagnosis = getGlinkObjectDiagnosis;
+ 
   function plainBoundsFromAnyBounds(boundsLike) {
     if (!boundsLike) return null;
  
@@ -5228,6 +5273,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function buildGlinkData() {
     glinkDiagLog("fixed buildGlinkData start", { session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, fixedMapType: fixedMapType ? fixedMapType.value : null });
+    glinkDiagLog("fixed object diagnosis before buildGlinkData", getGlinkObjectDiagnosis());
     const savedBounds = plainBoundsFromAnyBounds(fixedBounds) || plainBoundsFromAnyBounds(session.bounds);
     const currentMapType = fixedMapType ? fixedMapType.value : (session.mapType || "pale");
     const currentGridSize = Number(session.gridSize || 0);
@@ -5239,7 +5285,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build025.6-DIAG",
+      build: "Build025.7-OBJECT-DIAG",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5444,37 +5490,24 @@ window.addEventListener("DOMContentLoaded", () => {
       drawGridOverlay();
     }
  
-    glinkDiagLog("fixed restore before applying objects", { incoming: glinkDiagSummarizeData(data), liveBefore: glinkDiagLiveCounts() });
-
     pinLayer.clearLayers();
     pins = [];
-    const inputPins = Array.isArray(data.pins) ? data.pins : [];
-    let createdPins = 0;
-    inputPins.forEach(item => { if (createPinFromData(item)) createdPins += 1; });
-    glinkDiagLog("fixed restore pins applied", { inputPins: inputPins.length, createdPins, liveAfterPins: glinkDiagLiveCounts() });
+    (data.pins || []).forEach(createPinFromData);
  
     drawingLayer.clearLayers();
     drawings = [];
-    const inputDrawings = Array.isArray(data.drawings) ? data.drawings : [];
-    let createdDrawings = 0;
-    inputDrawings.forEach(item => { const before = drawings.length; createShapeFromData(item); if (drawings.length > before) createdDrawings += 1; });
-    glinkDiagLog("fixed restore drawings applied", { inputDrawings: inputDrawings.length, createdDrawings, liveAfterDrawings: glinkDiagLiveCounts() });
+    (data.drawings || []).forEach(item => createShapeFromData(item));
 
-    const inputTracks = Array.isArray(data.tracks) ? data.tracks : [];
-    restoreTracks(inputTracks);
-    glinkDiagLog("fixed restore tracks applied", { inputTracks: inputTracks.length, liveAfterTracks: glinkDiagLiveCounts() });
+    restoreTracks(data.tracks || []);
  
-    const inputMeasurements = Array.isArray(data.measurements) ? data.measurements : [];
-    restoreMeasurements(inputMeasurements);
-    glinkDiagLog("fixed restore measurements applied", { inputMeasurements: inputMeasurements.length, liveAfterMeasurements: glinkDiagLiveCounts() });
+    restoreMeasurements(data.measurements || []);
  
     activityHistory = Array.isArray(data.activityHistory) ? data.activityHistory.map(item => ({ ...item })) : [];
     renderActivityHistory();
     updateMeasureSummaryBanner();
     renderMeasureList();
     applyGlinkProjectView(data);
-    glinkDiagLog("fixed loadGlinkData completed", { afterSession: session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, counts: glinkDiagSummarizeData(data), liveCounts: glinkDiagLiveCounts() });
-    glinkDiagUpdatePanel(`復元完了: pin ${glinkDiagLiveCounts().pinsArray}/${(data.pins||[]).length}, 図形 ${glinkDiagLiveCounts().drawingsArray}/${(data.drawings||[]).length}, 計測 ${glinkDiagLiveCounts().measurementsArray}/${(data.measurements||[]).length}`);
+    glinkDiagLog("fixed loadGlinkData completed", { afterSession: session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, counts: glinkDiagSummarizeData(data) });
     if (!options.silent) alert("G-Link保存ファイルを読み込みました。");
   }
  
@@ -5577,8 +5610,7 @@ window.addEventListener("DOMContentLoaded", () => {
         sessionStorage.setItem("disasterSession", JSON.stringify(sessionForReturn));
       }
       applyGlinkProjectView(data);
-    glinkDiagLog("fixed loadGlinkData completed", { afterSession: session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, counts: glinkDiagSummarizeData(data), liveCounts: glinkDiagLiveCounts() });
-    glinkDiagUpdatePanel(`復元完了: pin ${glinkDiagLiveCounts().pinsArray}/${(data.pins||[]).length}, 図形 ${glinkDiagLiveCounts().drawingsArray}/${(data.drawings||[]).length}, 計測 ${glinkDiagLiveCounts().measurementsArray}/${(data.measurements||[]).length}`);
+    glinkDiagLog("fixed loadGlinkData completed", { afterSession: session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, counts: glinkDiagSummarizeData(data) });
       sessionStorage.removeItem("gLink_pendingRestoreData");
       localStorage.removeItem("gLink_pendingRestoreData");
       if (isGlinkRestoreMode) {
