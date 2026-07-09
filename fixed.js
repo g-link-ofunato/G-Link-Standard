@@ -1009,11 +1009,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function buildViewerShareData() {
     const savedBounds = plainBoundsFromAnyBounds(fixedBounds) || plainBoundsFromAnyBounds(session.bounds);
+    const currentMapType = fixedMapType ? fixedMapType.value : (session.mapType || "pale");
+    const currentGridSize = Number(session.gridSize || 0);
     const mapReady = !!(map && map._loaded);
     const currentCenter = mapReady ? map.getCenter() : session.center;
     const currentZoom = mapReady ? map.getZoom() : session.zoom;
     const savedCenter = plainCenterFromAnyCenter(currentCenter) || plainCenterFromAnyCenter(session.center);
-    const currentMapType = session.mapType || (fixedMapType ? fixedMapType.value : "pale");
 
     // Build017 QR読取安定化：
     // Viewer用URLへ保存するデータを閲覧に必要な最小構成へ圧縮する。
@@ -1033,11 +1034,11 @@ window.addEventListener("DOMContentLoaded", () => {
         center: savedCenter,
         zoom: currentZoom,
         mapType: currentMapType,
-        gridSize: session.gridSize || 0,
+        gridSize: currentGridSize,
         coordinateType
       },
       mapType: currentMapType,
-      gridSize: session.gridSize || 0,
+      gridSize: currentGridSize,
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
       pins: serializePins().map(stripAttachmentForViewer),
@@ -2000,6 +2001,17 @@ window.addEventListener("DOMContentLoaded", () => {
       const stored = tryStoreSaveCenterData(saveCenterData);
       if (!stored.ok) {
         throw stored.error || new Error("保存センター用データをブラウザへ保存できませんでした。");
+      }
+
+      // Build024.9: 保存センターは別タブで開くため、元タブの sessionStorage は共有されない。
+      // そのため保存センター側の sessionStorage へ、クリック時点のデータを直接書き込む。
+      // これにより古い localStorage が残っていても、保存センターが最新の指揮本部モードを保存できる。
+      try {
+        saveCenterWindow.sessionStorage.setItem("gLink_saveCenterData", stored.json);
+        saveCenterWindow.sessionStorage.setItem("gLink_workingData", stored.json);
+        saveCenterWindow.sessionStorage.setItem("gLink_returnBackupData", stored.json);
+      } catch (targetSessionError) {
+        console.warn("保存センター側sessionStorageへの直接書き込みを省略しました。", targetSessionError);
       }
 
       if (saveCenterData.session) {
@@ -5101,6 +5113,8 @@ window.addEventListener("DOMContentLoaded", () => {
   function buildGlinkData() {
     glinkDiagLog("fixed buildGlinkData start", { session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, fixedMapType: fixedMapType ? fixedMapType.value : null });
     const savedBounds = plainBoundsFromAnyBounds(fixedBounds) || plainBoundsFromAnyBounds(session.bounds);
+    const currentMapType = fixedMapType ? fixedMapType.value : (session.mapType || "pale");
+    const currentGridSize = Number(session.gridSize || 0);
     const mapReady = !!(map && map._loaded);
     const currentCenter = mapReady ? map.getCenter() : session.center;
     const currentZoom = mapReady ? map.getZoom() : session.zoom;
@@ -5109,7 +5123,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build024.6",
+      build: "Build024.9",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5118,12 +5132,12 @@ window.addEventListener("DOMContentLoaded", () => {
         bounds: savedBounds,
         center: savedCenter,
         zoom: currentZoom,
-        mapType: session.mapType || (fixedMapType ? fixedMapType.value : "pale"),
-        gridSize: session.gridSize || 0,
+        mapType: currentMapType,
+        gridSize: currentGridSize,
         coordinateType
       },
-      mapType: session.mapType || (fixedMapType ? fixedMapType.value : "pale"),
-      gridSize: session.gridSize || 0,
+      mapType: currentMapType,
+      gridSize: currentGridSize,
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
       pinLegend: [
@@ -5402,16 +5416,18 @@ window.addEventListener("DOMContentLoaded", () => {
  
  
   function restoreWorkingDataAfterSaveCenter() {
-    const shouldRestore = sessionStorage.getItem("gLink_returnFromSaveCenter") === "1" || localStorage.getItem("gLink_returnFromSaveCenter") === "1";
+    const shouldRestore = isGlinkRestoreMode || sessionStorage.getItem("gLink_returnFromSaveCenter") === "1" || localStorage.getItem("gLink_returnFromSaveCenter") === "1";
     if (!shouldRestore) return false;
     sessionStorage.removeItem("gLink_returnFromSaveCenter");
     localStorage.removeItem("gLink_returnFromSaveCenter");
     try {
-      const raw = sessionStorage.getItem("gLink_workingData")
+      const raw = sessionStorage.getItem("gLink_pendingRestoreData")
+        || localStorage.getItem("gLink_pendingRestoreData")
+        || sessionStorage.getItem("gLink_workingData")
         || sessionStorage.getItem("gLink_returnBackupData")
+        || sessionStorage.getItem("gLink_saveCenterData")
         || localStorage.getItem("gLink_workingData")
         || localStorage.getItem("gLink_returnBackupData")
-        || sessionStorage.getItem("gLink_saveCenterData")
         || localStorage.getItem("gLink_saveCenterData");
       if (!raw) return false;
       const data = JSON.parse(raw);

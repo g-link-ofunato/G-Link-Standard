@@ -536,3 +536,76 @@ body {
     top: 28px;
   }
 }
+
+/* Build024.9: 起動ページを「新規」「継続」の2ボタン方式へ変更 */
+.launcher-mode-select {
+  width: 565px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.launcher-mode-button {
+  height: 86px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.22) inset;
+  transition: transform .14s ease, filter .14s ease, box-shadow .14s ease;
+}
+
+.launcher-mode-button:hover,
+.launcher-mode-button:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.launcher-mode-button.new {
+  background: linear-gradient(180deg, #ff161b 0%, #dc0007 52%, #a90005 100%);
+}
+
+.launcher-mode-button.continue {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 54%, #1e3a8a 100%);
+}
+
+.launcher-slide-panel.hidden {
+  display: none !important;
+}
+
+.launcher-slide-panel {
+  animation: glinkLauncherPanelIn .18s ease-out;
+}
+
+.panel-title {
+  margin: 0 0 14px;
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: .4px;
+  text-shadow: 0 2px 10px rgba(0,0,0,.82);
+}
+
+.panel-title::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 27px;
+  margin-right: 10px;
+  border-radius: 6px;
+  vertical-align: -6px;
+  background: #ff101c;
+  box-shadow: 0 0 8px rgba(255,16,28,.45);
+}
+
+@keyframes glinkLauncherPanelIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-height: 820px) {
+  .launcher-mode-button { height: 70px; font-size: 32px; }
+}

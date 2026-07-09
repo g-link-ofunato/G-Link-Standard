@@ -1359,7 +1359,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink",
       version: "1.6",
-      build: "Build024.5",
+      build: "Build024.9",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
@@ -1485,6 +1485,26 @@ window.addEventListener("DOMContentLoaded", () => {
     return payload;
   }
 
+  function clearProjectStorageBeforeRestore() {
+    const keys = [
+      "disasterSession",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_pendingRestoreData",
+      "gLink_saveCenterData",
+      "gLink_header",
+      "gLink_launcherHeader",
+      "glinkViewerLastData"
+    ];
+    const before = glinkDiagStorageSnapshot();
+    keys.forEach(key => {
+      try { sessionStorage.removeItem(key); } catch (e) {}
+      try { localStorage.removeItem(key); } catch (e) {}
+    });
+    glinkDiagLog("save restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
+  }
+
   function openGlinkDataInFixed(data) {
     glinkDiagLog("save openGlinkDataInFixed called", { summary: glinkDiagSummarizeData(data) });
     if (!data || data.format !== "glink") {
@@ -1493,13 +1513,15 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
+      clearProjectStorageBeforeRestore();
       const json = JSON.stringify(restoreData);
       glinkDiagLog("save restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
+      sessionStorage.setItem("gLink_pendingRestoreData", json);
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
-      sessionStorage.setItem("gLink_pendingRestoreData", json);
       localStorage.setItem("gLink_pendingRestoreData", json);
+      localStorage.setItem("gLink_returnFromSaveCenter", "1");
       if (restoreData.session) {
         sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
         localStorage.setItem("disasterSession", JSON.stringify(restoreData.session));

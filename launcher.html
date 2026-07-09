@@ -79,9 +79,13 @@
         </article>
       </section>
 
-      <div style="width:565px;margin:0 0 12px;padding:10px 12px;border:3px solid #facc15;border-radius:10px;background:rgba(250,204,21,.18);color:#fff;font-weight:800;">Build024.8 診断版 起動確認：この表示が出れば launcher.html が更新されています。</div>
+      <div class="launcher-mode-select" aria-label="起動方法の選択">
+        <button id="newProjectButton" class="launcher-mode-button new" type="button">新規</button>
+        <button id="continueProjectButton" class="launcher-mode-button continue" type="button">継続</button>
+      </div>
 
-      <form id="launcherForm" class="launch-form" autocomplete="off">
+      <form id="launcherForm" class="launch-form launcher-slide-panel hidden" autocomplete="off">
+        <div class="panel-title new-title">新しく作成</div>
         <div class="form-row">
           <label for="disasterName">災害名</label>
           <input
@@ -112,19 +116,19 @@
         </button>
       </form>
 
-      <section class="project-open-panel" aria-label="保存済みプロジェクト">
+      <section id="continueProjectPanel" class="project-open-panel launcher-slide-panel hidden" aria-label="保存済みプロジェクト">
         <div class="project-open-heading">保存済みプロジェクト</div>
         <p class="project-open-lead">保存した .glink ファイルから、指揮本部モードを再開します。</p>
         <input id="glinkProjectInput" type="file" accept=".glink,application/json" hidden />
         <button id="glinkProjectButton" class="project-open-button" type="button">
-          <span>📂 .glinkを読み込む</span>
+          <span>📂 ファイルを選択</span>
         </button>
         <p id="glinkProjectStatus" class="project-open-status" aria-live="polite"></p>
       </section>
     </section>
 
     <footer class="launcher-footer">
-      <span>G-Link Standard Version 1.6 Build024.8 診断版</span>
+      <span>G-Link Standard Version 1.6 Build024.9</span>
       <span class="footer-separator">|</span>
       <span>© G-Link Disaster Information Sharing System</span>
     </footer>

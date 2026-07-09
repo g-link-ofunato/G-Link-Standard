@@ -3,7 +3,7 @@
 
 
   /* Build024.8 診断版: .glink保存・復元経路の見える化 */
-  const GLINK_DIAG_BUILD = "Build024.7-DIAG";
+  const GLINK_DIAG_BUILD = "Build024.9-RESTORE";
   const GLINK_DIAG_KEY = "gLink_restoreDiagnostics";
   function glinkDiagSummarizeData(data) {
     if (!data || typeof data !== "object") return { exists: false };
@@ -90,6 +90,9 @@
   const glinkProjectButton = document.getElementById("glinkProjectButton");
   const glinkProjectInput = document.getElementById("glinkProjectInput");
   const glinkProjectStatus = document.getElementById("glinkProjectStatus");
+  const newProjectButton = document.getElementById("newProjectButton");
+  const continueProjectButton = document.getElementById("continueProjectButton");
+  const continueProjectPanel = document.getElementById("continueProjectPanel");
   glinkDiagLog("launcher.js loaded", { href: location.href, storage: glinkDiagStorageSnapshot(), hasProjectButton: !!glinkProjectButton, hasProjectInput: !!glinkProjectInput, hasProjectStatus: !!glinkProjectStatus });
 
   function resizeStage() {
@@ -160,6 +163,34 @@
 
 
 
+  function showLauncherPanel(mode) {
+    if (form) form.classList.toggle("hidden", mode !== "new");
+    if (continueProjectPanel) continueProjectPanel.classList.toggle("hidden", mode !== "continue");
+    if (newProjectButton) newProjectButton.classList.toggle("active", mode === "new");
+    if (continueProjectButton) continueProjectButton.classList.toggle("active", mode === "continue");
+    if (mode === "new" && disasterInput) window.setTimeout(() => disasterInput.focus(), 50);
+  }
+
+  function clearProjectStorageBeforeRestore() {
+    const keys = [
+      "disasterSession",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_pendingRestoreData",
+      "gLink_saveCenterData",
+      "gLink_header",
+      "gLink_launcherHeader",
+      "glinkViewerLastData"
+    ];
+    const before = glinkDiagStorageSnapshot();
+    keys.forEach(key => {
+      try { sessionStorage.removeItem(key); } catch (e) {}
+      try { localStorage.removeItem(key); } catch (e) {}
+    });
+    glinkDiagLog("launcher restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
+  }
+
   function sanitizeGlinkPayloadForRestore(data) {
     if (!data || typeof data !== "object") return data;
     const payload = { ...data };
@@ -178,13 +209,15 @@
     }
     const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
+      clearProjectStorageBeforeRestore();
       const json = JSON.stringify(restoreData);
       glinkDiagLog("launcher restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
+      sessionStorage.setItem("gLink_pendingRestoreData", json);
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
-      sessionStorage.setItem("gLink_pendingRestoreData", json);
       localStorage.setItem("gLink_pendingRestoreData", json);
+      localStorage.setItem("gLink_returnFromSaveCenter", "1");
       glinkDiagLog("launcher before storage write", { storage: glinkDiagStorageSnapshot() });
       if (restoreData.session) {
         sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
@@ -261,9 +294,15 @@
   document.addEventListener("DOMContentLoaded", () => {
     resizeStage();
     loadPreviousValues();
-    glinkDiagLog("launcher DOMContentLoaded", { activePage: "launcher.html", hasProjectPanel: !!document.querySelector(".project-open-panel"), panelText: document.querySelector(".project-open-panel")?.textContent?.trim() || "", storage: glinkDiagStorageSnapshot() });
-    disasterInput.focus();
+    glinkDiagLog("launcher DOMContentLoaded", { activePage: "launcher.html", hasProjectPanel: !!document.querySelector(".project-open-panel"), hasModeButtons: !!newProjectButton && !!continueProjectButton, panelText: document.querySelector(".project-open-panel")?.textContent?.trim() || "", storage: glinkDiagStorageSnapshot() });
   });
+
+  if (newProjectButton) {
+    newProjectButton.addEventListener("click", () => showLauncherPanel("new"));
+  }
+  if (continueProjectButton) {
+    continueProjectButton.addEventListener("click", () => showLauncherPanel("continue"));
+  }
 
   if (glinkProjectButton && glinkProjectInput) {
     glinkProjectButton.addEventListener("click", () => glinkProjectInput.click());
