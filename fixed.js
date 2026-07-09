@@ -1,6 +1,42 @@
 window.addEventListener("DOMContentLoaded", () => {
  
-  let sessionData = sessionStorage.getItem("disasterSession");
+  const restoreParams = new URLSearchParams(window.location.search);
+  const isGlinkRestoreMode = restoreParams.get("restore") === "glink";
+
+  function readPendingGlinkRestoreStartup() {
+    try {
+      const pendingRaw = sessionStorage.getItem("gLink_pendingRestoreData")
+        || localStorage.getItem("gLink_pendingRestoreData")
+        || sessionStorage.getItem("gLink_workingData")
+        || localStorage.getItem("gLink_workingData");
+      if (!pendingRaw) return null;
+      const pending = JSON.parse(pendingRaw);
+      return pending && pending.format === "glink" ? pending : null;
+    } catch (error) {
+      console.warn(".glink復元データの読込準備に失敗しました。", error);
+      return null;
+    }
+  }
+
+  const startupGlinkRestoreData = isGlinkRestoreMode ? readPendingGlinkRestoreStartup() : null;
+  let sessionData = null;
+
+  // Build024.6: .glink復元時は既存のdisasterSessionを優先しない。
+  // 古い初期セッションがlocalStorageに残っていると保存時と違う初期ページが開くため、
+  // pendingRestoreData内のsessionを最優先で初期化する。
+  if (startupGlinkRestoreData && startupGlinkRestoreData.session) {
+    sessionData = JSON.stringify(startupGlinkRestoreData.session);
+    try {
+      sessionStorage.setItem("disasterSession", sessionData);
+      localStorage.setItem("disasterSession", sessionData);
+      sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
+      sessionStorage.setItem("gLink_workingData", JSON.stringify(startupGlinkRestoreData));
+    } catch (error) {
+      console.warn(".glink復元セッションの一時保存に失敗しました。", error);
+    }
+  } else {
+    sessionData = sessionStorage.getItem("disasterSession");
+  }
 
   // Build021 Web公開対応：
   // Cloudflare Pages等で fixed.html を新しいタブで開いた場合、
@@ -15,7 +51,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Build024.5: 起動ページまたは保存センターから .glink を開いた場合、
+  // Build024.6: 起動ページまたは保存センターから .glink を開いた場合、
   // disasterSession が未作成でも .glink 内の session を初期表示に使用する。
   if (!sessionData) {
     try {
@@ -5070,7 +5106,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build024.5",
+      build: "Build024.6",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),

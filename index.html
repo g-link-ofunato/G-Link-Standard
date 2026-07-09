@@ -109,10 +109,20 @@
           <span class="start-arrow" aria-hidden="true">›</span>
         </button>
       </form>
+
+      <section class="project-open-panel" aria-label="保存済みプロジェクト">
+        <div class="project-open-heading">保存済みプロジェクト</div>
+        <p class="project-open-lead">保存した .glink ファイルから、指揮本部モードを再開します。</p>
+        <input id="glinkProjectInput" type="file" accept=".glink,application/json" hidden />
+        <button id="glinkProjectButton" class="project-open-button" type="button">
+          <span>📂 .glinkを読み込む</span>
+        </button>
+        <p id="glinkProjectStatus" class="project-open-status" aria-live="polite"></p>
+      </section>
     </section>
 
     <footer class="launcher-footer">
-      <span>G-Link Standard Version 1.6 Build020</span>
+      <span>G-Link Standard Version 1.6 Build024.6</span>
       <span class="footer-separator">|</span>
       <span>© G-Link Disaster Information Sharing System</span>
     </footer>
