@@ -44,7 +44,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "save.html",
-      build: "Build025.4",
+      build: "Build025.3",
       event,
       details
     };
@@ -255,50 +255,24 @@ window.addEventListener("DOMContentLoaded", () => {
     return next;
   }
  
-  function mergeHeaderIntoProjectData(parsed) {
-    const data = parsed && typeof parsed === "object" ? { ...parsed } : {};
-    const sharedHeader = loadSharedHeader();
-    const existingHeader = data.header || {};
-    data.header = {
-      ...sharedHeader,
-      ...existingHeader,
-      dateTime: existingHeader.dateTime || sharedHeader.dateTime,
-      disasterName: existingHeader.disasterName || sharedHeader.disasterName,
-      createdUnit: existingHeader.createdUnit || sharedHeader.createdUnit,
-      coordinateType: existingHeader.coordinateType || sharedHeader.coordinateType
-    };
-    return data;
-  }
-
-  function getLiveProjectDataFromOpener() {
-    try {
-      if (!window.opener || window.opener.closed) return null;
-      const getter = window.opener.gLinkBuildProjectData || window.opener.gLinkGetCurrentProjectData;
-      if (typeof getter !== "function") return null;
-      const live = getter();
-      if (!live || live.format !== "glink") return null;
-      glinkDiagLog("save live project data read from opener", { summary: glinkDiagSummarizeData(live) });
-      return mergeHeaderIntoProjectData(live);
-    } catch (error) {
-      glinkDiagLog("save live project data from opener failed", { message: error?.message || String(error) });
-      return null;
-    }
-  }
-
   function loadSaveCenterData() {
     try {
-      // Build025.4:
-      // .glink保存は「保存センターが開いた時点の古いStorage」ではなく、
-      // 指揮本部モード本体の現在状態を最優先で取得する。
-      // これにより、ピン・図形・計測・GPXが空の初期データとして保存される問題を防止する。
-      const liveData = getLiveProjectDataFromOpener();
-      if (liveData) return liveData;
-
       const raw = sessionStorage.getItem("gLink_saveCenterData") || localStorage.getItem("gLink_saveCenterData");
       if (raw) {
-        return mergeHeaderIntoProjectData(JSON.parse(raw) || {});
+        const parsed = JSON.parse(raw) || {};
+        const sharedHeader = loadSharedHeader();
+        const existingHeader = parsed.header || {};
+        parsed.header = {
+          ...sharedHeader,
+          ...existingHeader,
+          dateTime: existingHeader.dateTime || sharedHeader.dateTime,
+          disasterName: existingHeader.disasterName || sharedHeader.disasterName,
+          createdUnit: existingHeader.createdUnit || sharedHeader.createdUnit,
+          coordinateType: existingHeader.coordinateType || sharedHeader.coordinateType
+        };
+        return parsed;
       }
-
+ 
       // 保存センターを直接開いた場合の最低限のフォールバック。
       const sessionRaw = sessionStorage.getItem("disasterSession");
       if (sessionRaw) {
@@ -316,19 +290,18 @@ window.addEventListener("DOMContentLoaded", () => {
           gridSize: session.gridSize || 0,
           pins: [],
           drawings: [],
-          tracks: [],
           measurements: [],
           activityHistory: []
         };
       }
-
+ 
       return {};
     } catch (error) {
       console.warn("保存センター用データを読み込めませんでした。", error);
       return {};
     }
   }
-
+ 
   function normalizePointObject(point) {
     if (!point) return null;
     if (typeof point.lat === "number" && typeof point.lng === "number") return { lat: point.lat, lng: point.lng };
@@ -1307,7 +1280,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink-viewer",
       version: "1.6",
-      build: "Build025.4",
+      build: "Build025.3",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1435,15 +1408,26 @@ window.addEventListener("DOMContentLoaded", () => {
     await saveBlobWithPicker(blob, zipName);
   }
 
+
+  function getLiveProjectDataFromOpener() {
+    try {
+      if (!window.opener || window.opener.closed) return null;
+      const exporter = window.opener.gLinkExportProject;
+      if (typeof exporter !== "function") return null;
+      const live = exporter();
+      if (!live || live.format !== "glink") return null;
+      glinkDiagLog("save live opener project export success", { summary: glinkDiagSummarizeData(live) });
+      return live;
+    } catch (error) {
+      glinkDiagLog("save live opener project export failed", { message: error?.message || String(error) });
+      return null;
+    }
+  }
+
   function createGlinkPayload() {
-    const liveData = getLiveProjectDataFromOpener();
-    const sourceData = liveData || saveCenterData;
-    glinkDiagLog("save createGlinkPayload start", {
-      source: liveData ? "opener-live-project-data" : "saveCenterData",
-      saveCenterSummary: glinkDiagSummarizeData(saveCenterData),
-      sourceSummary: glinkDiagSummarizeData(sourceData),
-      storage: glinkDiagStorageSnapshot()
-    });
+    glinkDiagLog("save createGlinkPayload start", { saveCenterSummary: glinkDiagSummarizeData(saveCenterData), storage: glinkDiagStorageSnapshot() });
+    const liveProjectData = getLiveProjectDataFromOpener();
+    const sourceData = liveProjectData || saveCenterData;
     const header = saveSharedHeader({
       disasterName: titleInput.value,
       createdUnit: createdUnitInput ? createdUnitInput.value : getHeader().createdUnit
@@ -1453,9 +1437,9 @@ window.addEventListener("DOMContentLoaded", () => {
       format: "glink",
       appName: "G-Link〈災害情報共有システム〉",
       version: "1.6",
-      build: "Build025.4",
+      build: "Build025.3",
       projectFile: true,
-      source: liveData ? "opener-live-project-data" : "save-center-current-working-data",
+      source: liveProjectData ? "live-command-center-opener" : "save-center-storage-fallback",
       header,
       coordinateType: sourceData.coordinateType || sourceData.session?.coordinateType || header.coordinateType || "dms",
       mapType: sourceData.session?.mapType || sourceData.mapType || "pale",
