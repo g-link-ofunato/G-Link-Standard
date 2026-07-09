@@ -46,6 +46,7 @@
     <button class="toolBtn" data-panel="searchPanel"><span>🔍</span><small>検索</small></button>
     <button class="toolBtn" data-panel="editToolPanel"><span>✏</span><small>編集</small></button>
     <button class="toolBtn" data-panel="measurePanel"><span>📐</span><small>計測</small></button>
+    <button class="toolBtn" data-panel="trackPanel"><span>🛰</span><small>軌跡</small></button>
     <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動履歴</small></button>
     <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
     <button class="toolBtn" data-panel="settingPanel"><span>⚙</span><small>設定</small></button>
@@ -250,6 +251,46 @@
         </div>
       </div>
  
+
+      <div class="panelContent" id="trackPanel">
+        <h3>軌跡</h3>
+        <div class="trackNotice">
+          ドローン等のGPXデータを貼り付けて「確定」を押すと、飛行軌跡を地図上に表示します。
+        </div>
+        <div class="trackBlock">
+          <label for="gpxTextInput">GPXデータ貼り付け</label>
+          <textarea id="gpxTextInput" rows="9" placeholder="&lt;gpx&gt;...&lt;trkpt lat=&quot;39.0&quot; lon=&quot;141.0&quot;&gt;...&lt;/trkpt&gt;...&lt;/gpx&gt;"></textarea>
+        </div>
+        <div class="trackBlock">
+          <label>軌跡線色</label>
+          <div class="colorPresetRow trackColorPresetRow">
+            <button class="trackColorPreset active" data-color="#facc15" style="background:#facc15;"></button>
+            <button class="trackColorPreset" data-color="#e60000" style="background:#e60000;"></button>
+            <button class="trackColorPreset" data-color="#0066ff" style="background:#0066ff;"></button>
+            <button class="trackColorPreset" data-color="#16a34a" style="background:#16a34a;"></button>
+            <button class="trackColorPreset" data-color="#f97316" style="background:#f97316;"></button>
+            <button class="trackColorPreset" data-color="#111111" style="background:#111111;"></button>
+            <button class="trackColorPreset whitePreset" data-color="#ffffff" style="background:#ffffff;"></button>
+          </div>
+          <div class="customColorRow">
+            <span>任意色</span>
+            <input id="trackColor" type="color" value="#facc15">
+          </div>
+        </div>
+        <div class="trackBlock">
+          <label>線の太さ：<span id="trackWeightValue">5</span></label>
+          <input id="trackWeight" type="range" min="1" max="12" value="5">
+        </div>
+        <div class="trackButtonRow">
+          <button id="applyGpxTrackBtn" type="button">確定</button>
+          <button id="clearGpxTrackBtn" type="button" class="dangerButton">軌跡を削除</button>
+        </div>
+        <div class="trackStatus">
+          現在の軌跡：<br>
+          <span id="trackStatusText">未読込</span>
+        </div>
+      </div>
+
       <div class="panelContent" id="historyPanel">
         <h3>活動履歴</h3>
         <div class="historyNote">

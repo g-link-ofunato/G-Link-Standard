@@ -100,6 +100,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const openViewerBtn = document.getElementById("openViewerBtn");
   const shareQrCode = document.getElementById("shareQrCode");
   const shareCopyStatus = document.getElementById("shareCopyStatus");
+  const gpxTextInput = document.getElementById("gpxTextInput");
+  const trackColor = document.getElementById("trackColor");
+  const trackWeight = document.getElementById("trackWeight");
+  const trackWeightValue = document.getElementById("trackWeightValue");
+  const applyGpxTrackBtn = document.getElementById("applyGpxTrackBtn");
+  const clearGpxTrackBtn = document.getElementById("clearGpxTrackBtn");
+  const trackStatusText = document.getElementById("trackStatusText");
+  const trackColorPresets = document.querySelectorAll(".trackColorPreset");
  
   const drawType = document.getElementById("drawType");
   const drawColor = document.getElementById("drawColor");
@@ -260,6 +268,8 @@ window.addEventListener("DOMContentLoaded", () => {
   let coordinateType = loadCoordinateType();
  
   let drawings = [];
+  let tracks = [];
+  let trackSerial = 1;
   let selectedShape = null;
   let copiedShapeData = null;
   let pasteMode = false;
@@ -287,6 +297,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }).addTo(map);
  
   const gridLayer = L.layerGroup().addTo(map);
+  const trackLayer = L.layerGroup().addTo(map);
   const drawingLayer = L.layerGroup().addTo(map);
   const measureLayer = L.layerGroup().addTo(map);
   const pinLayer = L.layerGroup().addTo(map);
@@ -678,6 +689,7 @@ window.addEventListener("DOMContentLoaded", () => {
     searchPanel: "検索",
     editToolPanel: "編集",
     measurePanel: "計測",
+    trackPanel: "軌跡",
     historyPanel: "活動履歴",
     settingPanel: "設定",
     sharePanel: "共有"
@@ -799,7 +811,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function encodeViewerPayloadPortable(data) {
-    // Build022.2 Viewer共有エンジン刷新：
+    // Build023.6 Viewer共有エンジン刷新：
     // Cloudflare Pages公開環境では CompressionStream / DecompressionStream の対応差により、
     // #z=... の復号に失敗する端末がある。
     // 無料版Viewerでは端末互換性を最優先し、UTF-8 JSONをBase64URL化した #data=... 方式へ統一する。
@@ -896,7 +908,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build022.2",
+      b: "Build023.6",
       t: data.sharedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || "dms",
@@ -905,6 +917,7 @@ window.addEventListener("DOMContentLoaded", () => {
       g: data.gridLineSettings || {},
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
+      x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
       a: (data.activityHistory || []).map(compactHistory)
     };
@@ -948,7 +961,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build022.2",
+      build: "Build023.6",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -968,6 +981,7 @@ window.addEventListener("DOMContentLoaded", () => {
       gridLineSettings: { ...gridLineSettings },
       pins: serializePins().map(stripAttachmentForViewer),
       drawings: serializeDrawings(),
+      tracks: serializeTracks(),
       measurements: serializeMeasurements(),
       activityHistory: activityHistory.map(item => ({ ...item }))
     };
@@ -1845,6 +1859,27 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
  
+
+  if (trackWeight) trackWeight.addEventListener("input", updateTrackStatus);
+  if (trackColor) trackColor.addEventListener("input", () => {
+    trackColorPresets.forEach(btn => btn.classList.toggle("active", btn.dataset.color === trackColor.value));
+    updateTrackStatus();
+  });
+  trackColorPresets.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const color = btn.dataset.color || "#facc15";
+      if (trackColor) trackColor.value = color;
+      trackColorPresets.forEach(item => item.classList.remove("active"));
+      btn.classList.add("active");
+      updateTrackStatus();
+    });
+  });
+  if (applyGpxTrackBtn) applyGpxTrackBtn.addEventListener("click", applyGpxTrack);
+  if (clearGpxTrackBtn) clearGpxTrackBtn.addEventListener("click", () => {
+    if (!tracks.length || confirm("表示中の軌跡をすべて削除しますか？")) clearGpxTracks();
+  });
+  updateTrackStatus();
+
   toolButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       if (btn.id === "openSaveCenterBtn") {
@@ -4692,6 +4727,129 @@ window.addEventListener("DOMContentLoaded", () => {
     return L.latLng(point.lat, point.lng);
   }
  
+
+  function getTrackStyle() {
+    return {
+      color: (trackColor && trackColor.value) || "#facc15",
+      weight: trackWeight ? Number(trackWeight.value || 5) : 5,
+      opacity: 1
+    };
+  }
+
+  function updateTrackStatus() {
+    if (trackWeightValue && trackWeight) trackWeightValue.textContent = String(trackWeight.value || 5);
+    if (!trackStatusText) return;
+    if (!tracks.length) {
+      trackStatusText.textContent = "未読込";
+      return;
+    }
+    const totalPoints = tracks.reduce((sum, item) => sum + (Array.isArray(item.points) ? item.points.length : 0), 0);
+    trackStatusText.textContent = `${tracks.length}件・${totalPoints}点・色 ${(trackColor && trackColor.value) || "#facc15"}・太さ ${trackWeight ? trackWeight.value : 5}`;
+  }
+
+  function parseGpxText(text) {
+    const source = String(text || "").trim();
+    if (!source) throw new Error("GPXデータが入力されていません。");
+    const doc = new DOMParser().parseFromString(source, "application/xml");
+    if (doc.querySelector("parsererror")) throw new Error("GPXデータの形式を確認してください。");
+    const segments = [];
+    const trksegs = Array.from(doc.getElementsByTagName("trkseg"));
+    if (trksegs.length) {
+      trksegs.forEach(seg => {
+        const pts = Array.from(seg.getElementsByTagName("trkpt")).map(node => ({
+          lat: Number(node.getAttribute("lat")),
+          lng: Number(node.getAttribute("lon"))
+        })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        if (pts.length >= 2) segments.push(pts);
+      });
+    }
+    if (!segments.length) {
+      const pts = Array.from(doc.getElementsByTagName("rtept")).map(node => ({
+        lat: Number(node.getAttribute("lat")),
+        lng: Number(node.getAttribute("lon"))
+      })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+      if (pts.length >= 2) segments.push(pts);
+    }
+    if (!segments.length) throw new Error("trkpt または rtept が2点以上あるGPXデータを貼り付けてください。");
+    return segments;
+  }
+
+  function renderTrackItem(item) {
+    if (!item || !Array.isArray(item.points) || item.points.length < 2) return null;
+    const layer = L.polyline(item.points.map(p => [p.lat, p.lng]), {
+      color: item.color || "#facc15",
+      weight: Number(item.weight || 5),
+      opacity: Number(item.opacity ?? 1),
+      interactive: true
+    }).addTo(trackLayer);
+    layer.bindTooltip(item.name || "GPX軌跡");
+    item.layer = layer;
+    return layer;
+  }
+
+  function applyGpxTrack() {
+    try {
+      const segments = parseGpxText(gpxTextInput ? gpxTextInput.value : "");
+      const style = getTrackStyle();
+      const created = [];
+      segments.forEach(points => {
+        const item = {
+          id: `track_${Date.now()}_${trackSerial++}`,
+          name: `GPX軌跡${trackSerial - 1}`,
+          color: style.color,
+          weight: style.weight,
+          opacity: style.opacity,
+          points
+        };
+        tracks.push(item);
+        renderTrackItem(item);
+        created.push(item);
+      });
+      updateTrackStatus();
+      const bounds = L.latLngBounds(created.flatMap(item => item.points.map(p => [p.lat, p.lng])));
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
+    } catch (error) {
+      alert(error.message || "GPX軌跡の読み込みに失敗しました。");
+    }
+  }
+
+  function clearGpxTracks() {
+    trackLayer.clearLayers();
+    tracks = [];
+    updateTrackStatus();
+  }
+
+  function serializeTracks() {
+    return tracks.map(item => ({
+      id: item.id,
+      name: item.name || "GPX軌跡",
+      color: item.color || "#facc15",
+      weight: Number(item.weight || 5),
+      opacity: Number(item.opacity ?? 1),
+      points: (item.points || []).map(latLngToPlain)
+    })).filter(item => item.points.length >= 2);
+  }
+
+  function restoreTracks(list) {
+    trackLayer.clearLayers();
+    tracks = [];
+    (Array.isArray(list) ? list : []).forEach(item => {
+      const points = (item.points || []).map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+      if (points.length < 2) return;
+      const restored = {
+        id: item.id || `track_${Date.now()}_${trackSerial++}`,
+        name: item.name || "GPX軌跡",
+        color: item.color || "#facc15",
+        weight: Number(item.weight || 5),
+        opacity: Number(item.opacity ?? 1),
+        points
+      };
+      tracks.push(restored);
+      renderTrackItem(restored);
+    });
+    updateTrackStatus();
+  }
+
   function serializeMeasurements() {
     return measurements.map(item => ({
       id: item.id,
@@ -4759,7 +4917,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build022.2",
+      build: "Build023.6",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -4798,6 +4956,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ],
       pins: serializePins(),
       drawings: serializeDrawings(),
+      tracks: serializeTracks(),
       measurements: serializeMeasurements(),
       activityHistory: activityHistory.map(item => ({ ...item }))
     };
@@ -4937,6 +5096,8 @@ window.addEventListener("DOMContentLoaded", () => {
     drawingLayer.clearLayers();
     drawings = [];
     (data.drawings || []).forEach(item => createShapeFromData(item));
+
+    restoreTracks(data.tracks || []);
  
     restoreMeasurements(data.measurements || []);
  
@@ -5263,9 +5424,7 @@ window.addEventListener("DOMContentLoaded", () => {
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`,
       `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
       `座標欄：ラベル余白最小・数値右揃え`,
-      `座標数値幅：112px`,
-      `グリッド番号欄：118px`,
-      `ヘッダー配置：G-Linkタイトルから左寄せ`,
+      `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
     ].join("<br>");
   }
@@ -5351,7 +5510,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const dataRawWidth = headerDataWrap ? Math.round(headerDataWrap.scrollWidth) : 0;
     const dataScaledWidth = Math.round(dataRawWidth * scale);
     body.innerHTML = [
-      `Build：023.5 指揮本部ヘッダー左寄せ・座標余白・グリッド番号枠最終調整`,
+      `Build：023.4 指揮本部ヘッダー左寄せ・座標表示最終調整`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー表示幅：${barWidth}px`,
       `タイトル幅：${titleWidth}px`,
@@ -5365,9 +5524,7 @@ window.addEventListener("DOMContentLoaded", () => {
       line("座標・グリッド", headerDataWrap),
       `座標形式：${coordinateType === "dms" ? "60進法" : "10進法"}`,
       `座標欄：ラベル余白最小・数値右揃え`,
-      `座標数値幅：112px`,
-      `グリッド番号欄：118px`,
-      `ヘッダー配置：G-Linkタイトルから左寄せ`,
+      `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
     ].join("<br>");
   }

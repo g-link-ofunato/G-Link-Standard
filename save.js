@@ -590,6 +590,16 @@ window.addEventListener("DOMContentLoaded", () => {
       completed: "#000000"
     };
  
+    (Array.isArray(saveCenterData.tracks) ? saveCenterData.tracks : []).forEach(item => {
+      const pts = normalizeLatLngArray(item.points);
+      if (pts.length < 2) return;
+      L.polyline(pts, {
+        color: item.color || "#facc15",
+        weight: Number(item.weight || 5),
+        opacity: Number(item.opacity ?? 1)
+      }).addTo(previewFeatureLayer);
+    });
+
     (Array.isArray(saveCenterData.measurements) ? saveCenterData.measurements : []).forEach(item => {
       const pts = normalizeLatLngArray(item.points);
       if (pts.length < 3) return;

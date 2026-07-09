@@ -333,6 +333,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function expandTrack(value) {
+    if (!Array.isArray(value)) return null;
+    const points = (value[4] || []).map(expandPoint).filter(Boolean);
+    if (points.length < 2) return null;
+    return { name: value[0] || "GPX軌跡", color: value[1] || "#facc15", weight: Number(value[2] || 5), opacity: Number(value[3] ?? 1), points };
+  }
+
   function expandCompactViewerData(data) {
     if (!data || data.f !== "gv2") return data;
     const bounds = expandBounds(data.s?.[0]);
@@ -365,6 +372,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       gridLineSettings: data.g || {},
       pins: (data.p || []).map(expandPin).filter(Boolean),
       drawings: (data.d || []).map(expandDrawing).filter(Boolean),
+      tracks: (data.x || []).map(expandTrack).filter(Boolean),
       measurements: (data.m || []).map(expandMeasurement).filter(Boolean),
       activityHistory: (data.a || []).map(expandHistory).filter(Boolean)
     };
@@ -497,6 +505,22 @@ window.addEventListener("DOMContentLoaded", async () => {
       map.layerPointToLatLng(right)
     ], { color, weight: 1, fillColor: color, fillOpacity: 1 });
     layerGroup.addLayer(head);
+  }
+
+
+  function renderTracks(map, data) {
+    const group = L.layerGroup().addTo(map);
+    (data.tracks || []).forEach(item => {
+      const points = (item.points || []).map(latLngFromPlain).filter(Boolean);
+      if (points.length < 2) return;
+      const layer = L.polyline(points, {
+        color: item.color || "#facc15",
+        weight: Number(item.weight || 5),
+        opacity: Number(item.opacity ?? 1)
+      });
+      layer.bindPopup(`軌跡：${escapeHtml(item.name || "GPX軌跡")}`);
+      group.addLayer(layer);
+    });
   }
 
   function renderDrawings(map, data) {
@@ -891,6 +915,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   showSuccessDiagnostic();
 
+  renderTracks(map, data);
   renderDrawings(map, data);
   renderMeasurements(map, data);
   setupViewerInteraction(map, data, bounds);
