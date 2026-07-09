@@ -811,7 +811,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function encodeViewerPayloadPortable(data) {
-    // Build023.6 Viewer共有エンジン刷新：
+    // Build023.7 Viewer共有エンジン刷新：
     // Cloudflare Pages公開環境では CompressionStream / DecompressionStream の対応差により、
     // #z=... の復号に失敗する端末がある。
     // 無料版Viewerでは端末互換性を最優先し、UTF-8 JSONをBase64URL化した #data=... 方式へ統一する。
@@ -908,7 +908,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build023.6",
+      b: "Build023.7",
       t: data.sharedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || "dms",
@@ -961,7 +961,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build023.6",
+      build: "Build023.7",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1342,7 +1342,7 @@ window.addEventListener("DOMContentLoaded", () => {
       // Build016 保存センター最終修正
       // 編集図形・計測図形はSVGのDOM取得に任せると、保存センターのプレビューで
       // 欠落・ズレが出る場合があるため、ベース取得時は非表示にしてCanvasへ手描きする。
-      [drawingLayer, measureLayer].forEach(layerGroup => {
+      [drawingLayer, measureLayer, trackLayer].forEach(layerGroup => {
         if (!layerGroup || typeof layerGroup.eachLayer !== "function") return;
         layerGroup.eachLayer(layer => {
           if (!layer) return;
@@ -1678,6 +1678,26 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
  
+    function drawManualTracks(ctx, crop) {
+      const trackList = typeof serializeTracks === "function" ? serializeTracks() : [];
+      if (!Array.isArray(trackList) || !trackList.length) return;
+
+      trackList.forEach(item => {
+        const points = getCanvasPoints(item.points || [], crop);
+        if (points.length < 2) return;
+
+        ctx.save();
+        ctx.strokeStyle = item.color || "#facc15";
+        ctx.lineWidth = Math.max(1, Number(item.weight || 5));
+        ctx.globalAlpha = Number.isFinite(Number(item.opacity)) ? Number(item.opacity) : 1;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.setLineDash([]);
+        strokeCanvasPath(ctx, points, false);
+        ctx.restore();
+      });
+    }
+ 
     function drawManualMeasurements(ctx, crop) {
       if (!Array.isArray(measurements) || !measurements.length) return;
       measurements.forEach((item, index) => {
@@ -1753,6 +1773,7 @@ window.addEventListener("DOMContentLoaded", () => {
       // Build016: 編集図形・計測図形も、指揮本部モードの座標からCanvasへ直接焼き込む。
       drawManualDrawings(ctx, crop);
       drawManualMeasurements(ctx, crop);
+      drawManualTracks(ctx, crop);
  
       // グリッド線と赤ラベルは、保存センター側で再描画しない前提で、ここで完成画像として焼き込む。
       drawManualGridLines(ctx, crop);
@@ -4938,7 +4959,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build023.6",
+      build: "Build023.7",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
