@@ -1944,30 +1944,6 @@ body {
   }
 }
 
-.fixedDiagPanel {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 2100;
-  max-width: min(460px, calc(100vw - 20px));
-  max-height: 38vh;
-  overflow: auto;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #111827;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.fixedDiagPanel summary {
-  cursor: pointer;
-  font-weight: bold;
-}
-
 /* Build022.7: 指揮本部ヘッダーをユーザー指定レイアウトへ再修正
    ・通常時：タイトル2段＋年月日／災害名／作成部隊を横一列
    ・狭い画面：年月日／災害名を上段、作成部隊を下段

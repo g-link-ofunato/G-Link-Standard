@@ -520,7 +520,7 @@ body {
   bottom: 16px;
 }
 
-/* 診断版の起動確認表示も高さを抑える */
+/* 起動ページの補助表示も高さを抑える */
 .launcher-panel > div[style*="Build024.7"] {
   margin-bottom: 9px !important;
   padding: 7px 10px !important;

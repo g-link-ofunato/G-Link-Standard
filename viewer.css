@@ -494,58 +494,6 @@ body {
   }
 }
 
-.viewerDiagnosticBox {
-  margin-top: 14px;
-  width: min(760px, 90vw);
-  color: #cbd5e1;
-  text-align: left;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: rgba(15, 23, 42, 0.7);
-}
-
-.viewerDiagnosticBox summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-#viewerDiagnosticLog {
-  margin: 10px 0 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-
-.viewerDiagnosticSuccess {
-  position: fixed;
-  right: 10px;
-  bottom: 10px;
-  z-index: 1200;
-  max-width: 360px;
-  background: rgba(17, 24, 39, 0.88);
-  color: #e5e7eb;
-  border: 1px solid rgba(148, 163, 184, 0.65);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 11px;
-  line-height: 1.45;
-  text-align: left;
-}
-
-.viewerDiagnosticSuccess summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.viewerDiagnosticSuccess[hidden] {
-  display: none !important;
-}
-
 /* Build023.0 Viewer UI改善：検索・情報パネルを必要時のみ表示 */
 .viewerModeBtn {
   border: 1px solid rgba(255,255,255,0.7);

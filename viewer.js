@@ -46,7 +46,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const messageEl = document.getElementById("viewerErrorMessage");
     if (messageEl) messageEl.textContent = message;
     const logEl = document.getElementById("viewerDiagnosticLog");
-    if (logEl) logEl.textContent = viewerDiag.steps.join("\n") || "診断情報はありません。";
+    // Build026.1: Viewer診断情報は画面表示しない。
     if (mapEl) mapEl.style.display = "none";
   }
 
@@ -56,17 +56,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function showSuccessDiagnostic() {
-    let box = document.getElementById("viewerSuccessDiagnostic");
-    if (!box) {
-      box = document.createElement("details");
-      box.id = "viewerSuccessDiagnostic";
-      box.className = "viewerDiagnosticSuccess";
-      box.innerHTML = `<summary>Viewer読込成功</summary><pre id="viewerSuccessDiagnosticLog"></pre>`;
-      document.body.appendChild(box);
-    }
-    const log = document.getElementById("viewerSuccessDiagnosticLog");
-    if (log) log.textContent = viewerDiag.steps.join("\n");
+    // Build026.1: Viewer成功診断表示は完成版UIから削除。
+    return;
   }
+
 
 
 

@@ -44,7 +44,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "save.html",
-      build: "Build025.6-DIAG",
+      build: "Build026.1-CLEANUP",
       event,
       details
     };
@@ -59,28 +59,15 @@ window.addEventListener("DOMContentLoaded", () => {
     try { console.info("[G-Link Restore]", entry); } catch (error) {}
   }
   function glinkDiagInstallPanel() {
-    if (document.getElementById("gLinkRestoreDiagPanel")) return;
-    const panel = document.createElement("div");
-    panel.id = "gLinkRestoreDiagPanel";
-    panel.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:999999;background:rgba(17,24,39,.92);color:#fff;border:2px solid #facc15;border-radius:10px;padding:10px 12px;font:12px/1.45 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:360px;";
-    panel.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">G-Link 保存診断 Build025.6</div><div id="gLinkRestoreDiagSummary" style="margin-bottom:8px;color:#fde68a;">診断ログを記録中</div><button id="gLinkRestoreDiagCopy" type="button" style="background:#facc15;color:#111827;border:0;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer;">診断ログをコピー</button><button id="gLinkRestoreDiagHide" type="button" style="margin-left:6px;background:#374151;color:#fff;border:0;border-radius:6px;padding:6px 10px;cursor:pointer;">隠す</button>';
-    document.body.appendChild(panel);
-    const copyBtn = document.getElementById("gLinkRestoreDiagCopy");
-    const hideBtn = document.getElementById("gLinkRestoreDiagHide");
-    if (copyBtn) copyBtn.addEventListener("click", async () => {
-      const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
-      try { await navigator.clipboard.writeText(raw); } catch (e) {
-        const ta = document.createElement("textarea"); ta.value = raw; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-      }
-      const summary = document.getElementById("gLinkRestoreDiagSummary");
-      if (summary) summary.textContent = "コピーしました。この内容を貼り付けてください。";
-    });
-    if (hideBtn) hideBtn.addEventListener("click", () => panel.remove());
+    // Build026.1: 保存診断パネルは完成版UIから削除。
+    return;
   }
 
   function glinkDiagUpdatePanel(message) {
-    try { glinkDiagInstallPanel(); const s = document.getElementById("gLinkRestoreDiagSummary"); if (s) s.textContent = message; } catch(e) {}
+    // Build026.1: 診断情報は画面表示しない。
+    return;
   }
+
   const menuButtons = document.querySelectorAll(".sideMenuItem[data-mode]");
   const screenTitle = document.getElementById("screenTitle");
   const screenLead = document.getElementById("screenLead");
@@ -150,7 +137,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "G-Link専用保存ファイル（.glink）として保存します。通常は指揮本部モードの「プロジェクト保存」を使用してください。",
+      lead: "G-Link専用保存ファイル（.glink）として、現在のプロジェクトを保存します。",
       previewTitle: "保存内容確認（.glink）",
       settingsTitle: "ファイル保存・読込設定",
       saveLabel: "💾 .glinkを保存",
@@ -1303,7 +1290,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink-viewer",
       version: "1.6",
-      build: "Build025.6-DIAG",
+      build: "Build026.1-CLEANUP",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1442,7 +1429,7 @@ window.addEventListener("DOMContentLoaded", () => {
       format: "glink",
       appName: "G-Link〈災害情報共有システム〉",
       version: "1.6",
-      build: "Build025.6-DIAG",
+      build: "Build026.1-CLEANUP",
       projectFile: true,
       source: "save-center-current-working-data",
       header,
@@ -1452,7 +1439,7 @@ window.addEventListener("DOMContentLoaded", () => {
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString(),
       projectDiagnostics: {
-        build: "Build025.6-DIAG",
+        build: "Build026.1-CLEANUP",
         saveCenterSummaryBeforePayload: glinkDiagSummarizeData(saveCenterData),
         storageBeforePayload: glinkDiagStorageSnapshot()
       }
