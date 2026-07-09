@@ -609,3 +609,72 @@ body {
 @media (max-height: 820px) {
   .launcher-mode-button { height: 70px; font-size: 32px; }
 }
+
+
+/* Build025.0: 起動ページを固定表示へ戻し、新規/継続の2択UIを最優先 */
+html,
+body {
+  overflow: hidden !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+body {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.launcher-stage {
+  overflow: hidden !important;
+}
+
+.launcher-panel {
+  top: 58px !important;
+  padding-bottom: 0 !important;
+}
+
+.launcher-mode-select {
+  width: 565px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 16px !important;
+  margin: 0 0 16px !important;
+}
+
+.launcher-mode-button {
+  height: 78px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  font-size: 34px !important;
+  font-weight: 900 !important;
+  letter-spacing: 8px !important;
+  cursor: pointer !important;
+}
+
+.launcher-mode-button.new {
+  background: linear-gradient(180deg, #ff161b 0%, #dc0007 52%, #a90005 100%) !important;
+}
+
+.launcher-mode-button.continue {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 54%, #1e3a8a 100%) !important;
+}
+
+.launcher-slide-panel.hidden {
+  display: none !important;
+}
+
+.launcher-slide-panel {
+  animation: glinkLauncherPanelIn .18s ease-out;
+}
+
+.launcher-mode-button.active {
+  outline: 3px solid rgba(255,255,255,.72);
+  outline-offset: 3px;
+}
+
+@keyframes glinkLauncherPanelIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
