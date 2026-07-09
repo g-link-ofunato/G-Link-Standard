@@ -1120,6 +1120,12 @@ window.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  // Build025.4:
+  // 保存センター別タブから、指揮本部モードの「現在の実データ」を直接取得できるよう公開する。
+  // sessionStorage / localStorage に古いデータが残っていても、.glink保存時はこの関数を最優先にする。
+  window.gLinkBuildProjectData = buildGlinkData;
+  window.gLinkGetCurrentProjectData = buildGlinkData;
+
   async function getCurrentShareUrl() {
     const compact = compactViewerData(buildViewerShareData());
     const encoded = encodeViewerPayloadPortable(compact);
