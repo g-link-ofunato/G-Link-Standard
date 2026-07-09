@@ -3020,17 +3020,20 @@ body {
   font-weight: bold;
   margin-bottom: 5px;
 }
-#gpxTextInput {
+.gpxFileInput {
   width: 100%;
   box-sizing: border-box;
-  resize: vertical;
-  min-height: 150px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 8px;
-  font-family: Consolas, 'Courier New', monospace;
+  background: #ffffff;
   font-size: 12px;
+}
+.trackHint {
+  margin-top: 6px;
+  font-size: 11px;
   line-height: 1.5;
+  color: #6b7280;
 }
 .trackButtonRow {
   display: grid;

@@ -255,11 +255,12 @@
       <div class="panelContent" id="trackPanel">
         <h3>軌跡</h3>
         <div class="trackNotice">
-          ドローン等のGPXデータを貼り付けて「確定」を押すと、飛行軌跡を地図上に表示します。
+          ドローン等のGPXファイルを選択して「確定」を押すと、飛行軌跡を地図上に表示します。
         </div>
         <div class="trackBlock">
-          <label for="gpxTextInput">GPXデータ貼り付け</label>
-          <textarea id="gpxTextInput" rows="9" placeholder="&lt;gpx&gt;...&lt;trkpt lat=&quot;39.0&quot; lon=&quot;141.0&quot;&gt;...&lt;/trkpt&gt;...&lt;/gpx&gt;"></textarea>
+          <label for="gpxFileInput">GPXファイル選択</label>
+          <input id="gpxFileInput" class="gpxFileInput" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+          <div class="trackHint">対応形式：.gpx（trkpt または rtept を含むファイル）</div>
         </div>
         <div class="trackBlock">
           <label>軌跡線色</label>

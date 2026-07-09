@@ -100,7 +100,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const openViewerBtn = document.getElementById("openViewerBtn");
   const shareQrCode = document.getElementById("shareQrCode");
   const shareCopyStatus = document.getElementById("shareCopyStatus");
-  const gpxTextInput = document.getElementById("gpxTextInput");
+  const gpxFileInput = document.getElementById("gpxFileInput");
   const trackColor = document.getElementById("trackColor");
   const trackWeight = document.getElementById("trackWeight");
   const trackWeightValue = document.getElementById("trackWeightValue");
@@ -4749,9 +4749,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function parseGpxText(text) {
     const source = String(text || "").trim();
-    if (!source) throw new Error("GPXデータが入力されていません。");
+    if (!source) throw new Error("GPXファイルの中身が空です。");
     const doc = new DOMParser().parseFromString(source, "application/xml");
-    if (doc.querySelector("parsererror")) throw new Error("GPXデータの形式を確認してください。");
+    if (doc.querySelector("parsererror")) throw new Error("GPXファイルの形式を確認してください。");
     const segments = [];
     const trksegs = Array.from(doc.getElementsByTagName("trkseg"));
     if (trksegs.length) {
@@ -4770,8 +4770,27 @@ window.addEventListener("DOMContentLoaded", () => {
       })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       if (pts.length >= 2) segments.push(pts);
     }
-    if (!segments.length) throw new Error("trkpt または rtept が2点以上あるGPXデータを貼り付けてください。");
+    if (!segments.length) throw new Error("trkpt または rtept が2点以上あるGPXファイルを選択してください。");
     return segments;
+  }
+
+  function readSelectedGpxFile() {
+    return new Promise((resolve, reject) => {
+      const file = gpxFileInput && gpxFileInput.files ? gpxFileInput.files[0] : null;
+      if (!file) {
+        reject(new Error("GPXファイルを選択してください。"));
+        return;
+      }
+      const fileName = String(file.name || "");
+      if (fileName && !fileName.toLowerCase().endsWith(".gpx")) {
+        reject(new Error(".gpx ファイルを選択してください。"));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve({ text: String(reader.result || ""), name: fileName || "GPX軌跡" });
+      reader.onerror = () => reject(new Error("GPXファイルの読み込みに失敗しました。"));
+      reader.readAsText(file, "UTF-8");
+    });
   }
 
   function renderTrackItem(item) {
@@ -4787,15 +4806,17 @@ window.addEventListener("DOMContentLoaded", () => {
     return layer;
   }
 
-  function applyGpxTrack() {
+  async function applyGpxTrack() {
     try {
-      const segments = parseGpxText(gpxTextInput ? gpxTextInput.value : "");
+      const fileData = await readSelectedGpxFile();
+      const segments = parseGpxText(fileData.text);
       const style = getTrackStyle();
       const created = [];
-      segments.forEach(points => {
+      const baseName = String(fileData.name || "GPX軌跡").replace(/\.gpx$/i, "");
+      segments.forEach((points, index) => {
         const item = {
           id: `track_${Date.now()}_${trackSerial++}`,
-          name: `GPX軌跡${trackSerial - 1}`,
+          name: segments.length > 1 ? `${baseName}_${index + 1}` : baseName,
           color: style.color,
           weight: style.weight,
           opacity: style.opacity,
