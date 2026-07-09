@@ -1352,15 +1352,23 @@ window.addEventListener("DOMContentLoaded", () => {
       disasterName: titleInput.value,
       createdUnit: createdUnitInput ? createdUnitInput.value : getHeader().createdUnit
     });
-    return {
+    const payload = {
       ...saveCenterData,
       format: "glink",
       version: "1.6",
-      build: "Build024.3",
+      build: "Build024.4",
       header,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
     };
+    // .glink は「編集状態の復元用」ファイルであり、画像プレビューは不要。
+    // 写真地図・GPX・計測図形がある状態でプレビュー画像まで含めると、
+    // 読込時に sessionStorage の容量制限へ到達し、指揮本部モードへ戻れなくなる。
+    delete payload.mapPreviewImage;
+    delete payload.commandCenterPreviewImage;
+    delete payload.previewImage;
+    delete payload.previewImages;
+    return payload;
   }
  
   async function requestSave() {
@@ -1459,20 +1467,33 @@ window.addEventListener("DOMContentLoaded", () => {
   adjustMapPrintHeaderNoWrap();
   reflectMapPreviewImage();
 
+  function sanitizeGlinkPayloadForRestore(data) {
+    if (!data || typeof data !== "object") return data;
+    const payload = { ...data };
+    // Build024.3以前で保存した .glink に大容量プレビュー画像が含まれる場合があるため、
+    // 読込時にも必ず除外してから指揮本部モードへ渡す。
+    delete payload.mapPreviewImage;
+    delete payload.commandCenterPreviewImage;
+    delete payload.previewImage;
+    delete payload.previewImages;
+    return payload;
+  }
+
   function openGlinkDataInFixed(data) {
     if (!data || data.format !== "glink") {
       alert("G-Link保存ファイル（.glink）として認識できませんでした。");
       return;
     }
+    const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
-      const json = JSON.stringify(data);
+      const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
-      if (data.session) sessionStorage.setItem("disasterSession", JSON.stringify(data.session));
+      if (restoreData.session) sessionStorage.setItem("disasterSession", JSON.stringify(restoreData.session));
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
-      alert(".glinkファイルの読込準備に失敗しました。データ量が大きすぎる可能性があります。");
+      alert(".glinkファイルの読込準備に失敗しました。プレビュー画像は除外しましたが、GPX軌跡や図形の点数が非常に多い可能性があります。");
       return;
     }
     window.location.href = "fixed.html";
