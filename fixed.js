@@ -1,13 +1,67 @@
 window.addEventListener("DOMContentLoaded", () => {
-  function glinkDiagLog() {}
-  function glinkDiagStorageSnapshot() { return {}; }
+  const GLINK_RESTORE_DIAG_KEY = "gLink_restoreDiagnostics";
+
+  function glinkDiagStorageSnapshot() {
+    const keys = [
+      "disasterSession",
+      "gLink_pendingRestoreData",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_saveCenterData",
+      "gLink_header",
+      "gLink_launcherHeader"
+    ];
+    const snapshot = {};
+    keys.forEach(key => {
+      let sessionBytes = 0;
+      let localBytes = 0;
+      try { sessionBytes = (sessionStorage.getItem(key) || "").length; } catch (e) {}
+      try { localBytes = (localStorage.getItem(key) || "").length; } catch (e) {}
+      snapshot[key] = { sessionBytes, localBytes };
+    });
+    return snapshot;
+  }
+
   function glinkDiagSummarizeData(data) {
     return {
+      format: data?.format || "",
+      build: data?.build || "",
+      savedAt: data?.savedAt || "",
+      hasSession: !!data?.session,
+      mapType: data?.session?.mapType || data?.mapType || "",
+      gridSize: data?.session?.gridSize ?? data?.gridSize ?? "",
+      center: data?.session?.center || null,
+      zoom: data?.session?.zoom ?? null,
+      bounds: !!(data?.session?.bounds || data?.bounds),
       pins: Array.isArray(data?.pins) ? data.pins.length : 0,
       drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
       tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
-      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
+      activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
     };
+  }
+
+  function glinkDiagLog(event, details = {}) {
+    const entry = {
+      time: new Date().toLocaleString("ja-JP", { hour12: false }),
+      page: "fixed.html",
+      build: "Build025.3",
+      event,
+      details
+    };
+    try {
+      const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
+      const list = JSON.parse(raw);
+      list.push(entry);
+      const trimmed = list.slice(-80);
+      const json = JSON.stringify(trimmed);
+      sessionStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+      localStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+    } catch (error) {
+      // 診断ログの保存失敗で本体処理を止めない。
+    }
+    try { console.info("[G-Link Restore]", entry); } catch (error) {}
   }
  
   glinkDiagLog("fixed.js loaded", { href: location.href, storage: glinkDiagStorageSnapshot() });
@@ -16,15 +70,21 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function readPendingGlinkRestoreStartup() {
     try {
+      // Build025.3: .glink復元モードでは、古いworkingData/saveCenterDataを絶対に参照しない。
+      // ここで参照するのは、起動ページまたは保存センターが直前にセットした pendingRestoreData のみ。
       const pendingRaw = sessionStorage.getItem("gLink_pendingRestoreData")
-        || localStorage.getItem("gLink_pendingRestoreData")
-        || sessionStorage.getItem("gLink_workingData")
-        || localStorage.getItem("gLink_workingData");
-      if (!pendingRaw) return null;
+        || localStorage.getItem("gLink_pendingRestoreData");
+      if (!pendingRaw) {
+        glinkDiagLog("fixed pending restore missing", { storage: glinkDiagStorageSnapshot() });
+        return null;
+      }
       const pending = JSON.parse(pendingRaw);
-      return pending && pending.format === "glink" ? pending : null;
+      const valid = pending && pending.format === "glink" ? pending : null;
+      glinkDiagLog("fixed pending restore read", { summary: glinkDiagSummarizeData(valid), bytes: pendingRaw.length });
+      return valid;
     } catch (error) {
       console.warn(".glink復元データの読込準備に失敗しました。", error);
+      glinkDiagLog("fixed pending restore parse failed", { message: error?.message || String(error), storage: glinkDiagStorageSnapshot() });
       return null;
     }
   }
@@ -67,22 +127,23 @@ window.addEventListener("DOMContentLoaded", () => {
   // disasterSession が未作成でも .glink 内の session を初期表示に使用する。
   if (!sessionData) {
     try {
-      const pendingRaw = sessionStorage.getItem("gLink_pendingRestoreData")
-        || sessionStorage.getItem("gLink_workingData")
-        || localStorage.getItem("gLink_pendingRestoreData")
-        || localStorage.getItem("gLink_workingData");
+      const pendingRaw = isGlinkRestoreMode
+        ? (sessionStorage.getItem("gLink_pendingRestoreData") || localStorage.getItem("gLink_pendingRestoreData"))
+        : (sessionStorage.getItem("gLink_workingData") || localStorage.getItem("gLink_workingData"));
       if (pendingRaw) {
         const pending = JSON.parse(pendingRaw);
         if (pending && pending.format === "glink" && pending.session) {
           sessionData = JSON.stringify(pending.session);
           sessionStorage.setItem("disasterSession", sessionData);
-          localStorage.setItem("disasterSession", sessionData);
+          if (!isGlinkRestoreMode) localStorage.setItem("disasterSession", sessionData);
           sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
           sessionStorage.setItem("gLink_workingData", JSON.stringify(pending));
+          glinkDiagLog("fixed session created from glink data", { restoreMode: isGlinkRestoreMode, summary: glinkDiagSummarizeData(pending) });
         }
       }
     } catch (error) {
       console.warn(".glink復元データから初期セッションを作成できませんでした。", error);
+      glinkDiagLog("fixed session create from glink failed", { message: error?.message || String(error) });
     }
   }
 
@@ -5133,7 +5194,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build025.2",
+      build: "Build025.3",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5431,14 +5492,14 @@ window.addEventListener("DOMContentLoaded", () => {
     sessionStorage.removeItem("gLink_returnFromSaveCenter");
     localStorage.removeItem("gLink_returnFromSaveCenter");
     try {
-      const raw = sessionStorage.getItem("gLink_pendingRestoreData")
-        || localStorage.getItem("gLink_pendingRestoreData")
-        || sessionStorage.getItem("gLink_workingData")
-        || sessionStorage.getItem("gLink_returnBackupData")
-        || sessionStorage.getItem("gLink_saveCenterData")
-        || localStorage.getItem("gLink_workingData")
-        || localStorage.getItem("gLink_returnBackupData")
-        || localStorage.getItem("gLink_saveCenterData");
+      const raw = isGlinkRestoreMode
+        ? (sessionStorage.getItem("gLink_pendingRestoreData") || localStorage.getItem("gLink_pendingRestoreData"))
+        : (sessionStorage.getItem("gLink_workingData")
+          || sessionStorage.getItem("gLink_returnBackupData")
+          || sessionStorage.getItem("gLink_saveCenterData")
+          || localStorage.getItem("gLink_workingData")
+          || localStorage.getItem("gLink_returnBackupData")
+          || localStorage.getItem("gLink_saveCenterData"));
       if (!raw) return false;
       const data = JSON.parse(raw);
       glinkDiagLog("fixed restoreWorkingData parsed", { summary: glinkDiagSummarizeData(data), shouldRestore, storage: glinkDiagStorageSnapshot() });
@@ -5461,6 +5522,18 @@ window.addEventListener("DOMContentLoaded", () => {
     glinkDiagLog("fixed loadGlinkData completed", { afterSession: session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, counts: glinkDiagSummarizeData(data) });
       sessionStorage.removeItem("gLink_pendingRestoreData");
       localStorage.removeItem("gLink_pendingRestoreData");
+      if (isGlinkRestoreMode) {
+        // .glink復元完了後も古いlocalStorageが次回起動で優先されないよう、
+        // 復元済みの同一データだけをworkingDataとして残し、saveCenterData等は消す。
+        const restoredJson = JSON.stringify(data);
+        sessionStorage.setItem("gLink_workingData", restoredJson);
+        localStorage.setItem("gLink_workingData", restoredJson);
+        sessionStorage.removeItem("gLink_saveCenterData");
+        localStorage.removeItem("gLink_saveCenterData");
+        sessionStorage.removeItem("gLink_returnBackupData");
+        localStorage.removeItem("gLink_returnBackupData");
+      }
+      glinkDiagLog("fixed restore completed", { restoreMode: isGlinkRestoreMode, storage: glinkDiagStorageSnapshot() });
       return true;
     } catch (error) {
       console.warn("保存センターから戻った作業状態を復元できませんでした。", error);

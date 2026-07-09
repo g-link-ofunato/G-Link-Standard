@@ -13,6 +13,70 @@
   const glinkProjectButton = document.getElementById("glinkProjectButton");
   const glinkProjectInput = document.getElementById("glinkProjectInput");
   const glinkProjectStatus = document.getElementById("glinkProjectStatus");
+  const GLINK_RESTORE_DIAG_KEY = "gLink_restoreDiagnostics";
+
+  function glinkDiagStorageSnapshot() {
+    const keys = [
+      "disasterSession",
+      "gLink_pendingRestoreData",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_saveCenterData",
+      "gLink_header",
+      "gLink_launcherHeader"
+    ];
+    const snapshot = {};
+    keys.forEach(key => {
+      let sessionBytes = 0;
+      let localBytes = 0;
+      try { sessionBytes = (sessionStorage.getItem(key) || "").length; } catch (e) {}
+      try { localBytes = (localStorage.getItem(key) || "").length; } catch (e) {}
+      snapshot[key] = { sessionBytes, localBytes };
+    });
+    return snapshot;
+  }
+
+  function glinkDiagSummarizeData(data) {
+    return {
+      format: data?.format || "",
+      build: data?.build || "",
+      savedAt: data?.savedAt || "",
+      hasSession: !!data?.session,
+      mapType: data?.session?.mapType || data?.mapType || "",
+      center: data?.session?.center || null,
+      zoom: data?.session?.zoom ?? null,
+      pins: Array.isArray(data?.pins) ? data.pins.length : 0,
+      drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
+      activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
+    };
+  }
+
+  function glinkDiagLog(event, details = {}) {
+    const entry = {
+      time: new Date().toLocaleString("ja-JP", { hour12: false }),
+      page: "launcher.html",
+      build: "Build025.3",
+      event,
+      details
+    };
+    try {
+      const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
+      const list = JSON.parse(raw);
+      list.push(entry);
+      const json = JSON.stringify(list.slice(-80));
+      sessionStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+      localStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+    } catch (error) {}
+    try { console.info("[G-Link Restore]", entry); } catch (error) {}
+  }
+
+  function resetRestoreDiagnostics() {
+    try { sessionStorage.removeItem(GLINK_RESTORE_DIAG_KEY); } catch (e) {}
+    try { localStorage.removeItem(GLINK_RESTORE_DIAG_KEY); } catch (e) {}
+  }
 
   function resizeStage() {
     if (!stage) return;
@@ -69,7 +133,7 @@
       coordinateType: "dms",
       startedAt: new Date().toISOString(),
       version: "1.6",
-      build: "Build025.2"
+      build: "Build025.3"
     };
 
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -109,13 +173,16 @@
       return;
     }
 
+    resetRestoreDiagnostics();
     const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
+      const before = glinkDiagStorageSnapshot();
       clearProjectStorage(false);
+      glinkDiagLog("launcher restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
       const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      sessionStorage.setItem("gLink_workingData", json);
-      sessionStorage.setItem("gLink_returnBackupData", json);
+      // Build025.3: .glink復元ではpendingRestoreDataだけを正式入口にする。
+      // workingData/saveCenterDataはfixed側で復元完了後に作成し、古いデータ混入を防止する。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
       localStorage.setItem("gLink_returnFromSaveCenter", "1");
@@ -136,6 +203,7 @@
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(header));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(header));
       }
+      glinkDiagLog("launcher restore data staged", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length, storage: glinkDiagStorageSnapshot() });
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
       alert(".glinkファイルの読込準備に失敗しました。GPX軌跡や図形の点数が非常に多い可能性があります。");
@@ -193,6 +261,12 @@
   document.addEventListener("DOMContentLoaded", () => {
     resizeStage();
     loadPreviousValues();
+    glinkDiagLog("launcher DOMContentLoaded", {
+      hasNewButton: !!newProjectButton,
+      hasContinueButton: !!continueProjectButton,
+      hasProjectInput: !!glinkProjectInput,
+      storage: glinkDiagStorageSnapshot()
+    });
   });
 
   if (newProjectButton) newProjectButton.addEventListener("click", () => showLauncherPanel("new"));

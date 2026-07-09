@@ -1,13 +1,62 @@
 window.addEventListener("DOMContentLoaded", () => {
-  function glinkDiagLog() {}
-  function glinkDiagStorageSnapshot() { return {}; }
+  const GLINK_RESTORE_DIAG_KEY = "gLink_restoreDiagnostics";
+
+  function glinkDiagStorageSnapshot() {
+    const keys = [
+      "disasterSession",
+      "gLink_pendingRestoreData",
+      "gLink_workingData",
+      "gLink_returnBackupData",
+      "gLink_returnFromSaveCenter",
+      "gLink_saveCenterData",
+      "gLink_header",
+      "gLink_launcherHeader"
+    ];
+    const snapshot = {};
+    keys.forEach(key => {
+      let sessionBytes = 0;
+      let localBytes = 0;
+      try { sessionBytes = (sessionStorage.getItem(key) || "").length; } catch (e) {}
+      try { localBytes = (localStorage.getItem(key) || "").length; } catch (e) {}
+      snapshot[key] = { sessionBytes, localBytes };
+    });
+    return snapshot;
+  }
+
   function glinkDiagSummarizeData(data) {
     return {
+      format: data?.format || "",
+      build: data?.build || "",
+      savedAt: data?.savedAt || "",
+      hasSession: !!data?.session,
+      mapType: data?.session?.mapType || data?.mapType || "",
+      center: data?.session?.center || null,
+      zoom: data?.session?.zoom ?? null,
       pins: Array.isArray(data?.pins) ? data.pins.length : 0,
       drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
       tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
-      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
+      activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
     };
+  }
+
+  function glinkDiagLog(event, details = {}) {
+    const entry = {
+      time: new Date().toLocaleString("ja-JP", { hour12: false }),
+      page: "save.html",
+      build: "Build025.3",
+      event,
+      details
+    };
+    try {
+      const raw = sessionStorage.getItem(GLINK_RESTORE_DIAG_KEY) || localStorage.getItem(GLINK_RESTORE_DIAG_KEY) || "[]";
+      const list = JSON.parse(raw);
+      list.push(entry);
+      const json = JSON.stringify(list.slice(-80));
+      sessionStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+      localStorage.setItem(GLINK_RESTORE_DIAG_KEY, json);
+    } catch (error) {}
+    try { console.info("[G-Link Restore]", entry); } catch (error) {}
   }
   const menuButtons = document.querySelectorAll(".sideMenuItem[data-mode]");
   const screenTitle = document.getElementById("screenTitle");
@@ -1200,7 +1249,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       f: "gv2",
       v: "1.6",
-      b: "Build025.2",
+      b: "Build025.3",
       t: data.sharedAt || data.savedAt || new Date().toISOString(),
       n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
       c: data.coordinateType || data.session?.coordinateType || "dms",
@@ -1231,7 +1280,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ...saveCenterData,
       format: "glink-viewer",
       version: "1.6",
-      build: "Build025.2",
+      build: "Build025.3",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1368,9 +1417,15 @@ window.addEventListener("DOMContentLoaded", () => {
     const payload = {
       ...saveCenterData,
       format: "glink",
+      appName: "G-Link〈災害情報共有システム〉",
       version: "1.6",
-      build: "Build025.2",
+      build: "Build025.3",
+      projectFile: true,
+      source: "save-center-current-working-data",
       header,
+      coordinateType: saveCenterData.coordinateType || saveCenterData.session?.coordinateType || header.coordinateType || "dms",
+      mapType: saveCenterData.session?.mapType || saveCenterData.mapType || "pale",
+      gridSize: saveCenterData.session?.gridSize ?? saveCenterData.gridSize ?? 0,
       saveSettings: getSaveOptions(),
       savedAt: new Date().toISOString()
     };
@@ -1527,8 +1582,8 @@ window.addEventListener("DOMContentLoaded", () => {
       const json = JSON.stringify(restoreData);
       glinkDiagLog("save restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      sessionStorage.setItem("gLink_workingData", json);
-      sessionStorage.setItem("gLink_returnBackupData", json);
+      // Build025.3: .glink読込時はpendingRestoreDataを唯一の復元入口にする。
+      // workingData等を同時に置くと、古い保存センターデータと混在して初期画面へ戻る原因になる。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
       localStorage.setItem("gLink_returnFromSaveCenter", "1");
