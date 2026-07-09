@@ -58,7 +58,7 @@
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "launcher.html",
-      build: "Build025.3",
+      build: "Build025.6-DIAG",
       event,
       details
     };
@@ -133,7 +133,7 @@
       coordinateType: "dms",
       startedAt: new Date().toISOString(),
       version: "1.6",
-      build: "Build025.3"
+      build: "Build025.6-DIAG"
     };
 
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -181,7 +181,7 @@
       glinkDiagLog("launcher restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
       const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      // Build025.3: .glink復元ではpendingRestoreDataだけを正式入口にする。
+      // Build025.6-DIAG: .glink復元ではpendingRestoreDataだけを正式入口にする。
       // workingData/saveCenterDataはfixed側で復元完了後に作成し、古いデータ混入を防止する。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
@@ -204,6 +204,7 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(header));
       }
       glinkDiagLog("launcher restore data staged", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length, storage: glinkDiagStorageSnapshot() });
+      if (glinkProjectStatus) glinkProjectStatus.textContent = `読込完了。pin ${(restoreData.pins||[]).length}件、図形 ${(restoreData.drawings||[]).length}件、計測 ${(restoreData.measurements||[]).length}件を復元準備しました。`;
     } catch (error) {
       console.error(".glink読込データの一時保存に失敗しました。", error);
       alert(".glinkファイルの読込準備に失敗しました。GPX軌跡や図形の点数が非常に多い可能性があります。");
