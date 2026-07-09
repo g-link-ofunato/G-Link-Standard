@@ -57,6 +57,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const HEADER_STORAGE_KEY = "gLink_header";
  
   const saveCenterData = loadSaveCenterData();
+  glinkDiagLog("save.js loaded", { href: location.href, saveCenterSummary: glinkDiagSummarizeData(saveCenterData), storage: glinkDiagStorageSnapshot() });
   let currentMode = "glink";
   let currentPage = 1;
   let previewMap = null;
@@ -1349,6 +1350,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function createGlinkPayload() {
+    glinkDiagLog("save createGlinkPayload start", { saveCenterSummary: glinkDiagSummarizeData(saveCenterData), storage: glinkDiagStorageSnapshot() });
     const header = saveSharedHeader({
       disasterName: titleInput.value,
       createdUnit: createdUnitInput ? createdUnitInput.value : getHeader().createdUnit
@@ -1369,6 +1371,7 @@ window.addEventListener("DOMContentLoaded", () => {
     delete payload.commandCenterPreviewImage;
     delete payload.previewImage;
     delete payload.previewImages;
+    glinkDiagLog("save createGlinkPayload result", { summary: glinkDiagSummarizeData(payload), session: payload.session });
     return payload;
   }
  
@@ -1380,6 +1383,7 @@ window.addEventListener("DOMContentLoaded", () => {
     try {
       if (currentMode === "glink") {
         const payload = createGlinkPayload();
+        glinkDiagLog("save requestSave glink", { suggestedName, summary: glinkDiagSummarizeData(payload) });
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
         await saveBlobWithPicker(blob, suggestedName);
         return;
@@ -1477,10 +1481,12 @@ window.addEventListener("DOMContentLoaded", () => {
     delete payload.commandCenterPreviewImage;
     delete payload.previewImage;
     delete payload.previewImages;
+    glinkDiagLog("save createGlinkPayload result", { summary: glinkDiagSummarizeData(payload), session: payload.session });
     return payload;
   }
 
   function openGlinkDataInFixed(data) {
+    glinkDiagLog("save openGlinkDataInFixed called", { summary: glinkDiagSummarizeData(data) });
     if (!data || data.format !== "glink") {
       alert("G-Link保存ファイル（.glink）として認識できませんでした。");
       return;
@@ -1488,6 +1494,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const restoreData = sanitizeGlinkPayloadForRestore(data);
     try {
       const json = JSON.stringify(restoreData);
+      glinkDiagLog("save restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
       sessionStorage.setItem("gLink_workingData", json);
       sessionStorage.setItem("gLink_returnBackupData", json);
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
@@ -1502,7 +1509,8 @@ window.addEventListener("DOMContentLoaded", () => {
       alert(".glinkファイルの読込準備に失敗しました。プレビュー画像は除外しましたが、GPX軌跡や図形の点数が非常に多い可能性があります。");
       return;
     }
-    window.location.href = "fixed.html?restore=glink";
+    glinkDiagLog("save redirect fixed restore", { storage: glinkDiagStorageSnapshot() });
+    window.location.href = "fixed.html?restore=glink&diag=1";
   }
 
   function readGlinkFile(file) {
