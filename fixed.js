@@ -46,7 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "fixed.html",
-      build: "Build025.8-DIRECT-GLINK",
+      build: "Build025.9-COMPLETE",
       event,
       details
     };
@@ -5313,7 +5313,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6",
-      build: "Build025.8-DIRECT-GLINK",
+      build: "Build025.9-COMPLETE",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
@@ -5383,7 +5383,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveGlinkFile() {
-    // Build025.8: .glink保存は保存センター・Storageを経由せず、
+    // Build025.9: .glink保存は保存センター・Storageを経由せず、
     // 指揮本部モード上の現在データ（pins / drawings / measurements / tracks）から直接生成する。
     // これにより QuotaExceededError や古いgLink_saveCenterDataに左右されない。
     try {
@@ -5557,6 +5557,112 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!options.silent) alert("G-Link保存ファイルを読み込みました。");
   }
  
+  function getGlinkProjectCountSummary(data) {
+    return {
+      pins: Array.isArray(data?.pins) ? data.pins.length : 0,
+      drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
+      tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
+      activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
+    };
+  }
+
+  function getCurrentRestoredCountSummary() {
+    return {
+      pins: Array.isArray(pins) ? pins.length : 0,
+      drawings: Array.isArray(drawings) ? drawings.length : 0,
+      measurements: Array.isArray(measurements) ? measurements.length : 0,
+      tracks: Array.isArray(tracks) ? tracks.length : 0,
+      activityHistory: Array.isArray(activityHistory) ? activityHistory.length : 0
+    };
+  }
+
+  function showGlinkRestoreVerificationPanel(saved, restored, reason) {
+    let panel = document.getElementById("gLinkRestoreVerificationPanel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "gLinkRestoreVerificationPanel";
+      panel.style.position = "fixed";
+      panel.style.right = "14px";
+      panel.style.bottom = "14px";
+      panel.style.zIndex = "99999";
+      panel.style.maxWidth = "360px";
+      panel.style.background = "rgba(17,24,39,0.94)";
+      panel.style.color = "#fff";
+      panel.style.borderRadius = "12px";
+      panel.style.padding = "12px 14px";
+      panel.style.fontSize = "12px";
+      panel.style.lineHeight = "1.55";
+      panel.style.boxShadow = "0 10px 24px rgba(0,0,0,0.35)";
+      document.body.appendChild(panel);
+    }
+    const ok = ["pins", "drawings", "measurements", "tracks", "activityHistory"].every(key => Number(saved[key] || 0) === Number(restored[key] || 0));
+    panel.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px;">G-Link復元確認 Build025.9</div>
+      <div>結果：<b style="color:${ok ? "#86efac" : "#fca5a5"};">${ok ? "成功" : "要確認"}</b> / ${reason || "restore"}</div>
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.25);margin:7px 0;">
+      <div>保存：ピン ${saved.pins} / 図形 ${saved.drawings} / 計測 ${saved.measurements} / GPX ${saved.tracks} / 履歴 ${saved.activityHistory}</div>
+      <div>復元：ピン ${restored.pins} / 図形 ${restored.drawings} / 計測 ${restored.measurements} / GPX ${restored.tracks} / 履歴 ${restored.activityHistory}</div>
+      <button type="button" id="gLinkRestoreVerificationClose" style="margin-top:8px;padding:4px 8px;border:0;border-radius:6px;cursor:pointer;">閉じる</button>
+    `;
+    const close = document.getElementById("gLinkRestoreVerificationClose");
+    if (close) close.onclick = () => panel.remove();
+  }
+
+  let glinkStartupRestoreCompleteApplied = false;
+  function readGlinkRestoreDataForComplete() {
+    if (startupGlinkRestoreData && startupGlinkRestoreData.format === "glink") return startupGlinkRestoreData;
+    try {
+      const raw = sessionStorage.getItem("gLink_pendingRestoreData") || localStorage.getItem("gLink_pendingRestoreData");
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      return data && data.format === "glink" ? data : null;
+    } catch (error) {
+      glinkDiagLog("fixed complete restore read failed", { message: error?.message || String(error) });
+      return null;
+    }
+  }
+
+  function applyGlinkStartupRestoreComplete(reason = "manual") {
+    if (!isGlinkRestoreMode || glinkStartupRestoreCompleteApplied) return false;
+    const data = readGlinkRestoreDataForComplete();
+    if (!data) {
+      glinkDiagLog("fixed complete restore skipped - no data", { reason, storage: glinkDiagStorageSnapshot() });
+      return false;
+    }
+    glinkStartupRestoreCompleteApplied = true;
+    const savedCounts = getGlinkProjectCountSummary(data);
+    glinkDiagLog("fixed complete restore start", { reason, savedCounts, summary: glinkDiagSummarizeData(data) });
+    try {
+      loadGlinkData(data, { silent: true, completeRestore: true, reason });
+      const restoredCounts = getCurrentRestoredCountSummary();
+      glinkDiagLog("fixed complete restore finished", { reason, savedCounts, restoredCounts, storage: glinkDiagStorageSnapshot() });
+      showGlinkRestoreVerificationPanel(savedCounts, restoredCounts, reason);
+      try {
+        const restoredJson = JSON.stringify(data);
+        sessionStorage.setItem("gLink_workingData", restoredJson);
+        localStorage.setItem("gLink_workingData", restoredJson);
+        sessionStorage.removeItem("gLink_pendingRestoreData");
+        localStorage.removeItem("gLink_pendingRestoreData");
+        sessionStorage.removeItem("gLink_saveCenterData");
+        localStorage.removeItem("gLink_saveCenterData");
+        sessionStorage.removeItem("gLink_returnBackupData");
+        localStorage.removeItem("gLink_returnBackupData");
+        sessionStorage.removeItem("gLink_returnFromSaveCenter");
+        localStorage.removeItem("gLink_returnFromSaveCenter");
+      } catch (storageError) {
+        glinkDiagLog("fixed complete restore storage cleanup warning", { message: storageError?.message || String(storageError) });
+      }
+      return true;
+    } catch (error) {
+      glinkStartupRestoreCompleteApplied = false;
+      console.error(".glink完全復元に失敗しました。", error);
+      glinkDiagLog("fixed complete restore failed", { reason, message: error?.message || String(error), savedCounts });
+      alert(".glinkの完全復元に失敗しました。診断ログを確認してください。");
+      return false;
+    }
+  }
+
   function openGlinkFile(file) {
     if (!file) return;
     const reader = new FileReader();
@@ -5679,7 +5785,14 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   glinkDiagLog("fixed before restoreWorkingDataAfterSaveCenter", { storage: glinkDiagStorageSnapshot() });
-  if (!restoreWorkingDataAfterSaveCenter()) {
+  if (isGlinkRestoreMode) {
+    // Build025.9: .glink起動時は保存センター復帰処理ではなく、
+    // 専用の完全復元処理を地図初期化後に必ず実行する。
+    renderActivityHistory();
+    window.setTimeout(() => applyGlinkStartupRestoreComplete("post-init-250ms"), 250);
+    window.setTimeout(() => applyGlinkStartupRestoreComplete("post-init-800ms"), 800);
+    try { map.whenReady(() => window.setTimeout(() => applyGlinkStartupRestoreComplete("map-ready"), 120)); } catch (error) {}
+  } else if (!restoreWorkingDataAfterSaveCenter()) {
     glinkDiagLog("fixed restoreWorkingDataAfterSaveCenter returned false - normal startup continues", { storage: glinkDiagStorageSnapshot(), session });
     renderActivityHistory();
   }
@@ -6013,7 +6126,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.setTimeout(adjustHeaderFieldsNoWrap, 250);
   window.setTimeout(adjustHeaderFieldsNoWrap, 1000);
 
-  console.log("固定表示モード：G-Link Standard Version1.6 Build025.8");
+  console.log("固定表示モード：G-Link Standard Version1.6 Build025.9-COMPLETE");
   console.log(session);
  
 });

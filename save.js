@@ -150,7 +150,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const modes = {
     glink: {
       title: "保存センター - ファイル保存",
-      lead: "G-Link専用保存ファイル（.glink）として、ピン・図形・計測・GPX軌跡などの編集状態を保存します。",
+      lead: "G-Link専用保存ファイル（.glink）として保存します。通常は指揮本部モードの「プロジェクト保存」を使用してください。",
       previewTitle: "保存内容確認（.glink）",
       settingsTitle: "ファイル保存・読込設定",
       saveLabel: "💾 .glinkを保存",
@@ -1615,7 +1615,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const json = JSON.stringify(restoreData);
       glinkDiagLog("save restoreData sanitized", { summary: glinkDiagSummarizeData(restoreData), jsonLength: json.length });
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      // Build025.3: .glink読込時はpendingRestoreDataを唯一の復元入口にする。
+      // Build025.9: .glink読込時はpendingRestoreDataを唯一の復元入口にする。
       // workingData等を同時に置くと、古い保存センターデータと混在して初期画面へ戻る原因になる。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);

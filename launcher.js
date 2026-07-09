@@ -58,7 +58,7 @@
     const entry = {
       time: new Date().toLocaleString("ja-JP", { hour12: false }),
       page: "launcher.html",
-      build: "Build025.6-DIAG",
+      build: "Build025.9-COMPLETE",
       event,
       details
     };
@@ -133,7 +133,7 @@
       coordinateType: "dms",
       startedAt: new Date().toISOString(),
       version: "1.6",
-      build: "Build025.6-DIAG"
+      build: "Build025.9-COMPLETE"
     };
 
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -181,7 +181,7 @@
       glinkDiagLog("launcher restore storage cleared", { before, after: glinkDiagStorageSnapshot() });
       const json = JSON.stringify(restoreData);
       sessionStorage.setItem("gLink_pendingRestoreData", json);
-      // Build025.6-DIAG: .glink復元ではpendingRestoreDataだけを正式入口にする。
+      // Build025.9-COMPLETE: .glink復元ではpendingRestoreDataだけを正式入口にする。
       // workingData/saveCenterDataはfixed側で復元完了後に作成し、古いデータ混入を防止する。
       sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
       localStorage.setItem("gLink_pendingRestoreData", json);
