@@ -961,7 +961,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link Standard",
       format: "glink-viewer",
       version: "1.6",
-      build: "Build023.7",
+      build: "Build023.9",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
       notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
@@ -1823,6 +1823,78 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
  
+  function stripSaveCenterHeavyFields(data, options = {}) {
+    const next = JSON.parse(JSON.stringify(data || {}));
+
+    if (options.removeImages) {
+      delete next.mapPreviewImage;
+      delete next.commandCenterPreviewImage;
+    }
+    if (options.removeCommandCenterPreview) {
+      delete next.commandCenterPreviewImage;
+    }
+    if (options.simplifyTracks && Array.isArray(next.tracks)) {
+      // 保存センターを開くことを最優先にするため、極端に点数が多い軌跡は間引く。
+      next.tracks = next.tracks.map(track => {
+        const points = Array.isArray(track.points) ? track.points : [];
+        if (points.length <= 1200) return track;
+        const step = Math.ceil(points.length / 1200);
+        const simplified = points.filter((_, index) => index % step === 0);
+        const last = points[points.length - 1];
+        if (last && simplified[simplified.length - 1] !== last) simplified.push(last);
+        return { ...track, points: simplified, originalPointCount: points.length, simplifiedForSaveCenter: true };
+      });
+    }
+    if (options.simplifyMeasurements && Array.isArray(next.measurements)) {
+      next.measurements = next.measurements.map(item => {
+        const points = Array.isArray(item.points) ? item.points : [];
+        if (points.length <= 800) return item;
+        const step = Math.ceil(points.length / 800);
+        const simplified = points.filter((_, index) => index % step === 0);
+        const last = points[points.length - 1];
+        if (last && simplified[simplified.length - 1] !== last) simplified.push(last);
+        return { ...item, points: simplified, originalPointCount: points.length, simplifiedForSaveCenter: true };
+      });
+    }
+
+    return next;
+  }
+
+  function tryStoreSaveCenterData(data) {
+    const attempts = [
+      { label: "full", data },
+      { label: "withoutCommandPreview", data: stripSaveCenterHeavyFields(data, { removeCommandCenterPreview: true }) },
+      { label: "withoutImages", data: stripSaveCenterHeavyFields(data, { removeImages: true }) },
+      { label: "withoutImagesSimplified", data: stripSaveCenterHeavyFields(data, { removeImages: true, simplifyTracks: true, simplifyMeasurements: true }) }
+    ];
+
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        const json = JSON.stringify({
+          ...attempt.data,
+          saveCenterStorageMode: attempt.label
+        });
+
+        // localStorageの容量に当たる端末でも開けるよう、sessionStorageを優先する。
+        sessionStorage.setItem("gLink_saveCenterData", json);
+        try {
+          localStorage.setItem("gLink_saveCenterData", json);
+        } catch (localError) {
+          console.warn("localStorageへの保存センター用データ保存を省略しました。", localError);
+        }
+
+        return { ok: true, json, mode: attempt.label, data: attempt.data };
+      } catch (error) {
+        lastError = error;
+        console.warn(`保存センター用データ保存に失敗しました（${attempt.label}）。`, error);
+        try { sessionStorage.removeItem("gLink_saveCenterData"); } catch (removeError) {}
+      }
+    }
+
+    return { ok: false, error: lastError };
+  }
+
   async function openSaveCenter() {
     cancelDrawMode();
     if (typeof setMeasureMode === "function") {
@@ -1845,18 +1917,29 @@ window.addEventListener("DOMContentLoaded", () => {
       // 別タブの初期表示に失敗しても保存センター表示自体には影響しない。
     }
 
-    // 保存センターでプレビューやファイル名へ反映できるよう、
-    // 指揮本部モードの現在状態を保存センター専用データとして一時保存する。
-    // 作業復元用データには使わないため、容量の大きい画像を含めても指揮本部モード本体は壊れない。
     try {
       const saveCenterData = buildGlinkData();
-      const previewImage = await captureMapPreviewImage();
-      if (previewImage) saveCenterData.mapPreviewImage = previewImage;
-      const commandCenterPreviewImage = await captureCommandCenterPreviewImage();
-      if (commandCenterPreviewImage) saveCenterData.commandCenterPreviewImage = commandCenterPreviewImage;
-      const saveCenterJson = JSON.stringify(saveCenterData);
-      localStorage.setItem("gLink_saveCenterData", saveCenterJson);
-      sessionStorage.setItem("gLink_saveCenterData", saveCenterJson);
+
+      // 写真系タイル・GPX・計測図形がある場合、プレビュー画像や全体プレビューで容量超過しやすいため、
+      // 画像作成に失敗しても保存センター自体は必ず開けるようにする。
+      try {
+        const previewImage = await captureMapPreviewImage();
+        if (previewImage) saveCenterData.mapPreviewImage = previewImage;
+      } catch (previewError) {
+        console.warn("保存センター用の地図プレビュー作成を省略しました。", previewError);
+      }
+
+      try {
+        const commandCenterPreviewImage = await captureCommandCenterPreviewImage();
+        if (commandCenterPreviewImage) saveCenterData.commandCenterPreviewImage = commandCenterPreviewImage;
+      } catch (commandPreviewError) {
+        console.warn("保存センター用の全体プレビュー作成を省略しました。", commandPreviewError);
+      }
+
+      const stored = tryStoreSaveCenterData(saveCenterData);
+      if (!stored.ok) {
+        throw stored.error || new Error("保存センター用データをブラウザへ保存できませんでした。");
+      }
 
       if (saveCenterData.session) {
         const sessionForSaveCenter = { ...saveCenterData.session };
@@ -1869,16 +1952,21 @@ window.addEventListener("DOMContentLoaded", () => {
             northEast: { ...normalizedBounds.northEast }
           };
         }
-        sessionStorage.setItem("disasterSession", JSON.stringify(sessionForSaveCenter));
+        try {
+          sessionStorage.setItem("disasterSession", JSON.stringify(sessionForSaveCenter));
+        } catch (sessionError) {
+          console.warn("保存センター用セッション情報の保存を省略しました。", sessionError);
+        }
       }
 
       saveCenterWindow.location.href = "save.html";
     } catch (error) {
       console.warn("保存センター用データの作成に失敗しました。", error);
       try { saveCenterWindow.close(); } catch (closeError) {}
-      alert("保存センター用データの作成に失敗しました。もう一度お試しください。");
+      alert("保存センター用データの作成に失敗しました。画像・GPX・計測図形のデータ量が大きい可能性があります。");
     }
   }
+
  
 
   if (trackWeight) trackWeight.addEventListener("input", updateTrackStatus);
@@ -4959,7 +5047,7 @@ window.addEventListener("DOMContentLoaded", () => {
       appName: "G-Link〈災害情報共有システム〉",
       format: "glink",
       version: "1.6.4",
-      build: "Build023.7",
+      build: "Build023.9",
       savedAt: new Date().toISOString(),
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
