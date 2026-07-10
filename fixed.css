@@ -3065,7 +3065,7 @@ body {
 }
 .trackItemCard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(90px, 120px) auto;
   align-items: center;
   gap: 8px;
   padding: 8px;
@@ -3101,3 +3101,30 @@ body {
   cursor: pointer;
 }
 .trackItemDelete:hover { background: #b91c1c; }
+
+
+/* Build026.3 GPX軌跡ごとの線幅調整 */
+.trackItemWeightWrap {
+  display: grid;
+  gap: 3px;
+  min-width: 90px;
+  font-size: 10px;
+  color: #475569;
+}
+.trackItemWeightLabel {
+  text-align: center;
+  white-space: nowrap;
+}
+.trackItemWeight {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+@media (max-width: 900px) {
+  .trackItemCard {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .trackItemWeightWrap {
+    grid-column: 1 / -1;
+  }
+}

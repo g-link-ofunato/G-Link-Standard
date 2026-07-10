@@ -403,6 +403,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let selectedPin = null;
   let contextTargetPin = null;
   let selectedHistoryItem = null;
+  let editingHistoryItem = null;
   let pendingAttachment = null;
   let activityHistory = [];
   let lastCursorLatLng = null;
@@ -4625,12 +4626,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function sortActivityHistoryChronological(list) {
     return (Array.isArray(list) ? list : []).slice().sort((a, b) => {
+      // Build026.3: 活動履歴はピン№の若い順を最優先にする。
+      const aNo = Number(getHistoryPinNo(a));
+      const bNo = Number(getHistoryPinNo(b));
+      const aValid = Number.isFinite(aNo) && aNo > 0;
+      const bValid = Number.isFinite(bNo) && bNo > 0;
+      if (aValid && bValid && aNo !== bNo) return aNo - bNo;
+      if (aValid !== bValid) return aValid ? -1 : 1;
+
       const timeDiff = getHistorySortTimestamp(a) - getHistorySortTimestamp(b);
       if (timeDiff !== 0) return timeDiff;
-
-      const pinNoDiff = Number(getHistoryPinNo(a)) - Number(getHistoryPinNo(b));
-      if (Number.isFinite(pinNoDiff) && pinNoDiff !== 0) return pinNoDiff;
-
       return String(a && a.id || "").localeCompare(String(b && b.id || ""));
     });
   }
@@ -4747,6 +4752,7 @@ window.addEventListener("DOMContentLoaded", () => {
     function openHistoryEditPanel(item) {
     if (!item) return;
  
+    editingHistoryItem = item;
     selectedHistoryItem = item;
  
     historyEditType.value = item.type || "fire";
@@ -4762,35 +4768,39 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function saveHistoryEditFunc() {
-    if (!selectedHistoryItem) return;
+    const target = editingHistoryItem || selectedHistoryItem;
+    if (!target) {
+      alert("編集対象の活動履歴を確認できませんでした。もう一度、活動履歴から編集を開いてください。");
+      return;
+    }
  
-    const pin = findPinById(selectedHistoryItem.id);
+    const pin = findPinById(target.id);
  
-    selectedHistoryItem.type = historyEditType.value;
-    selectedHistoryItem.type = normalizePinType(historyEditType.value);
-    selectedHistoryItem.typeLabel = pinLabels[selectedHistoryItem.type] || "火災";
-    selectedHistoryItem.awarenessLabel = historyEditAwareness.value;
-    selectedHistoryItem.completedLabel = historyEditCompleted.value;
-    selectedHistoryItem.gridNo = historyEditGridNo.value;
-    selectedHistoryItem.incidentNo = historyEditIncidentNo.value;
-    selectedHistoryItem.summary = historyEditSummary.value;
-    selectedHistoryItem.units = historyEditUnits.value;
-    selectedHistoryItem.injured = parseInt(historyEditInjured.value, 10) || 0;
+    target.type = normalizePinType(historyEditType.value);
+    target.typeLabel = pinLabels[target.type] || "火災";
+    target.awarenessLabel = historyEditAwareness.value;
+    target.completedLabel = historyEditCompleted.value;
+    target.gridNo = historyEditGridNo.value;
+    target.incidentNo = historyEditIncidentNo.value;
+    target.summary = historyEditSummary.value;
+    target.units = historyEditUnits.value;
+    target.injured = parseInt(historyEditInjured.value, 10) || 0;
  
     if (pin) {
-      pin.data.type = selectedHistoryItem.type;
-      pin.data.awarenessLabel = selectedHistoryItem.awarenessLabel;
-      pin.data.completedLabel = selectedHistoryItem.completedLabel;
-      pin.data.gridNo = selectedHistoryItem.gridNo;
-      pin.data.incidentNo = selectedHistoryItem.incidentNo;
-      pin.data.summary = selectedHistoryItem.summary;
-      pin.data.units = selectedHistoryItem.units;
-      pin.data.injured = selectedHistoryItem.injured;
+      pin.data.type = target.type;
+      pin.data.awarenessLabel = target.awarenessLabel;
+      pin.data.completedLabel = target.completedLabel;
+      pin.data.gridNo = target.gridNo;
+      pin.data.incidentNo = target.incidentNo;
+      pin.data.summary = target.summary;
+      pin.data.units = target.units;
+      pin.data.injured = target.injured;
       refreshPin(pin);
     }
  
     renderActivityHistory();
     historyEditPanel.style.display = "none";
+    editingHistoryItem = null;
     hideHistoryContextMenu();
   }
  
@@ -4842,6 +4852,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   closeHistoryEdit.addEventListener("click", () => {
     historyEditPanel.style.display = "none";
+    editingHistoryItem = null;
   });
   
   document.addEventListener("click", e => {
@@ -5052,6 +5063,32 @@ window.addEventListener("DOMContentLoaded", () => {
         }
       });
 
+      const weightWrap = document.createElement("label");
+      weightWrap.className = "trackItemWeightWrap";
+      weightWrap.title = "この軌跡の線の太さを変更";
+
+      const weightLabel = document.createElement("span");
+      weightLabel.className = "trackItemWeightLabel";
+      weightLabel.textContent = `太さ ${Number(item.weight || 5)}`;
+
+      const weightInput = document.createElement("input");
+      weightInput.type = "range";
+      weightInput.min = "1";
+      weightInput.max = "12";
+      weightInput.step = "1";
+      weightInput.value = String(Number(item.weight || 5));
+      weightInput.className = "trackItemWeight";
+      weightInput.addEventListener("input", () => {
+        item.weight = Number(weightInput.value || 5);
+        weightLabel.textContent = `太さ ${item.weight}`;
+        if (item.layer && typeof item.layer.setStyle === "function") {
+          item.layer.setStyle({ weight: item.weight });
+        }
+      });
+
+      weightWrap.appendChild(weightLabel);
+      weightWrap.appendChild(weightInput);
+
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "trackItemDelete";
@@ -5065,6 +5102,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       card.appendChild(name);
       card.appendChild(colorInput);
+      card.appendChild(weightWrap);
       card.appendChild(deleteBtn);
       trackItemList.appendChild(card);
     });

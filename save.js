@@ -520,12 +520,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function sortActivityHistoryChronological(list) {
     return (Array.isArray(list) ? list : []).slice().sort((a, b) => {
+      // Build026.2: 保存センターも指揮本部モードと同じく、ピン№の若い順を最優先にする。
+      const aNo = Number(a && a.pinNo);
+      const bNo = Number(b && b.pinNo);
+      const aValid = Number.isFinite(aNo) && aNo > 0;
+      const bValid = Number.isFinite(bNo) && bNo > 0;
+      if (aValid && bValid && aNo !== bNo) return aNo - bNo;
+      if (aValid !== bValid) return aValid ? -1 : 1;
+
       const timeDiff = getHistorySortTimestamp(a) - getHistorySortTimestamp(b);
       if (timeDiff !== 0) return timeDiff;
-
-      const pinNoDiff = Number(a && a.pinNo) - Number(b && b.pinNo);
-      if (Number.isFinite(pinNoDiff) && pinNoDiff !== 0) return pinNoDiff;
-
       return String(a && a.id || "").localeCompare(String(b && b.id || ""));
     });
   }
