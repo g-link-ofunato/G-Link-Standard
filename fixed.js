@@ -251,6 +251,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const applyGpxTrackBtn = document.getElementById("applyGpxTrackBtn");
   const clearGpxTrackBtn = document.getElementById("clearGpxTrackBtn");
   const trackStatusText = document.getElementById("trackStatusText");
+  const trackItemList = document.getElementById("trackItemList");
   const trackColorPresets = document.querySelectorAll(".trackColorPreset");
  
   const drawType = document.getElementById("drawType");
@@ -4816,12 +4817,12 @@ window.addEventListener("DOMContentLoaded", () => {
  
   editHistoryBtn.addEventListener("click", (e) => {
     if (e) e.stopPropagation();
- 
-    if (selectedHistoryItem) {
-      openHistoryEditPanel(selectedHistoryItem);
-    }
- 
+
+    // Build026.2: コンテキストメニューを閉じると selectedHistoryItem が解除されるため、
+    // 編集対象を一度退避してから編集画面を開く。
+    const itemToEdit = selectedHistoryItem;
     hideHistoryContextMenu();
+    if (itemToEdit) openHistoryEditPanel(itemToEdit);
   });
  
   cancelHistoryCaseBtn.addEventListener("click", (e) => {
@@ -5011,13 +5012,62 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function updateTrackStatus() {
     if (trackWeightValue && trackWeight) trackWeightValue.textContent = String(trackWeight.value || 5);
-    if (!trackStatusText) return;
+    if (trackStatusText) {
+      if (!tracks.length) {
+        trackStatusText.textContent = "未読込";
+      } else {
+        const totalPoints = tracks.reduce((sum, item) => sum + (Array.isArray(item.points) ? item.points.length : 0), 0);
+        trackStatusText.textContent = `${tracks.length}件・${totalPoints}点`;
+      }
+    }
+    renderTrackItemList();
+  }
+
+  function renderTrackItemList() {
+    if (!trackItemList) return;
+    trackItemList.innerHTML = "";
     if (!tracks.length) {
-      trackStatusText.textContent = "未読込";
+      trackItemList.innerHTML = '<p class="emptyTrackItem">軌跡はありません。</p>';
       return;
     }
-    const totalPoints = tracks.reduce((sum, item) => sum + (Array.isArray(item.points) ? item.points.length : 0), 0);
-    trackStatusText.textContent = `${tracks.length}件・${totalPoints}点・色 ${(trackColor && trackColor.value) || "#facc15"}・太さ ${trackWeight ? trackWeight.value : 5}`;
+
+    tracks.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "trackItemCard";
+
+      const name = document.createElement("div");
+      name.className = "trackItemName";
+      name.textContent = item.name || "GPX軌跡";
+      name.title = item.name || "GPX軌跡";
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.className = "trackItemColor";
+      colorInput.value = item.color || "#facc15";
+      colorInput.title = "この軌跡の色を変更";
+      colorInput.addEventListener("input", () => {
+        item.color = colorInput.value;
+        if (item.layer && typeof item.layer.setStyle === "function") {
+          item.layer.setStyle({ color: item.color });
+        }
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "trackItemDelete";
+      deleteBtn.textContent = "削除";
+      deleteBtn.addEventListener("click", () => {
+        if (!confirm(`「${item.name || "GPX軌跡"}」を削除しますか？`)) return;
+        if (item.layer) trackLayer.removeLayer(item.layer);
+        tracks = tracks.filter(track => track.id !== item.id);
+        updateTrackStatus();
+      });
+
+      card.appendChild(name);
+      card.appendChild(colorInput);
+      card.appendChild(deleteBtn);
+      trackItemList.appendChild(card);
+    });
   }
 
   function parseGpxText(text) {
@@ -5140,12 +5190,10 @@ window.addEventListener("DOMContentLoaded", () => {
       };
       tracks.push(restored);
       try {
-        const line = L.polyline(points, { color: restored.color, weight: restored.weight, opacity: restored.opacity }).addTo(trackLayer);
-        line._gLinkTrackId = restored.id;
+        renderTrackItem(restored);
       } catch (error) {
         console.warn("GPX軌跡の地図復元に失敗しました。", error);
       }
-      renderTrackItem(restored);
     });
     updateTrackStatus();
   }
