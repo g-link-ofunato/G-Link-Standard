@@ -815,3 +815,67 @@ body {
 #glinkNoticeCenter .important-overlay article {
   pointer-events: auto;
 }
+
+
+/* Build026.3.5: right-side icon-only launcher status rail */
+.glink-status-rail{
+  position:absolute;
+  top:24px;
+  right:24px;
+  z-index:12;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+}
+.glink-status-icon,
+.notice-bell,
+.license-badge{
+  position:relative !important;
+  inset:auto !important;
+  width:58px !important;
+  height:58px !important;
+  min-width:58px;
+  padding:0 !important;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.55) !important;
+  border-radius:14px !important;
+  background:rgba(2,12,27,.84) !important;
+  color:#fff !important;
+  font-size:27px !important;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:0 8px 28px rgba(0,0,0,.45) !important;
+}
+.glink-status-icon:hover,
+.glink-status-icon:focus-visible{
+  background:rgba(10,65,105,.96) !important;
+  transform:translateY(-1px);
+  outline:2px solid rgba(93,190,255,.72);
+  outline-offset:2px;
+}
+.glink-status-org{cursor:help;}
+.glink-status-org.offline{border-color:#ffb14a !important;background:rgba(113,60,0,.9) !important;}
+.license-badge.normal span{color:#35df83;}
+.license-badge.warning span{color:#ffd15c;}
+.license-badge.danger span{color:#ff4b57;}
+.notice-bell b{
+  position:absolute;
+  right:-7px;
+  top:-8px;
+  min-width:25px;
+  height:25px;
+  padding:2px 6px;
+  border-radius:20px;
+  background:#e61624;
+  color:#fff;
+  font-size:13px;
+  line-height:21px;
+}
+.notice-panel{right:94px !important;top:24px !important;}
+.glink-auth-status{display:none !important;}
+@media (max-width:900px){
+  .glink-status-rail{top:14px;right:14px;gap:7px;transform:scale(.88);transform-origin:top right;}
+  .notice-panel{right:76px !important;top:14px !important;width:min(520px,calc(100vw - 100px)) !important;}
+}

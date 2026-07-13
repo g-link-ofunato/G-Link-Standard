@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const BUILD='Build026.3.1';
+  const BUILD='Build026.3.5';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
@@ -21,7 +21,35 @@
   function createGate(){if(gate)return gate;const onboarded=isOnboarded();gate=document.createElement('section');gate.id='glinkAuthGate';gate.innerHTML=`<div class="glink-auth-card"><div class="glink-auth-logo">G</div><p class="glink-auth-kicker">G-LINK STANDARD</p><h1 id="glinkAuthTitle" class="glink-auth-title">${onboarded?'利用機関ログイン':'ライセンス認証'}</h1><p id="glinkAuthLead" class="glink-auth-lead">${onboarded?'ライセンスIDと各機関専用パスワードを入力してください。':'管理者から発行されたライセンスIDと初期パスワードを入力してください。'}</p><form id="glinkAuthForm"><div class="glink-auth-field"><label for="glinkLicenseId">ライセンスID</label><input id="glinkLicenseId" autocomplete="username" placeholder="GL-000001" required></div><div class="glink-auth-field"><label for="glinkLicensePassword">パスワード</label><input id="glinkLicensePassword" type="password" autocomplete="current-password" required></div><label class="glink-auth-remember"><input id="glinkRemember" type="checkbox"><span>この端末でログイン状態を保持する<br><small>共用端末ではチェックを外してください。</small></span></label><button id="glinkAuthSubmit" class="glink-auth-button" type="submit">${onboarded?'ログインして起動':'認証して次へ'}</button><p id="glinkAuthMessage" class="glink-auth-message" aria-live="polite"></p></form><p class="glink-auth-note">通信障害時は、最後の正常認証から72時間以内に限りオフライン起動できます。Command機能はオフライン中は利用できません。</p></div>`;document.documentElement.appendChild(gate);gate.querySelector('#glinkAuthForm').addEventListener('submit',login);return gate;}
   function message(text,success=false){createGate();const el=gate.querySelector('#glinkAuthMessage');el.textContent=text||'';el.classList.toggle('success',success);}
   function showLogin(text=''){hideApp();createGate().hidden=false;message(text);setTimeout(()=>gate.querySelector('#glinkLicenseId')?.focus(),0);}
-  function showStatus(state,offline=false){if(statusBar)statusBar.remove();statusBar=document.createElement('div');statusBar.className=`glink-auth-status${offline?' offline':''}`;const org=state.organization||{};statusBar.innerHTML=`<span>${offline?'オフライン認証':'認証済み'}：${escapeHtml(org.name||'利用機関')}（${escapeHtml(org.licenseId||'')}）${offline?'・残り'+offlineRemaining(state):''}</span><button type="button">ログアウト</button>`;statusBar.querySelector('button').addEventListener('click',logout);document.documentElement.appendChild(statusBar);}
+  function showStatus(state,offline=false){
+    if(statusBar){statusBar.remove();statusBar=null;}
+    const stage=document.getElementById('launcherStage');
+    if(!stage)return;
+    let rail=stage.querySelector('#glinkStatusRail');
+    if(!rail){rail=document.createElement('div');rail.id='glinkStatusRail';rail.className='glink-status-rail';stage.appendChild(rail);}
+    rail.querySelector('#glinkOrgStatusIcon')?.remove();
+    rail.querySelector('#glinkLogoutIcon')?.remove();
+    const org=state.organization||{};
+    const orgIcon=document.createElement('button');
+    orgIcon.type='button';
+    orgIcon.id='glinkOrgStatusIcon';
+    orgIcon.className=`glink-status-icon glink-status-org${offline?' offline':''}`;
+    orgIcon.style.order='1';
+    orgIcon.textContent='🏢';
+    orgIcon.setAttribute('aria-label',`${offline?'オフライン認証':'認証済み'}：${org.name||'利用機関'} ${org.licenseId||''}`.trim());
+    orgIcon.title=`${offline?'オフライン認証':'認証済み'}：${org.name||'利用機関'}（${org.licenseId||''}）${offline?'・残り'+offlineRemaining(state):''}`;
+    const logoutIcon=document.createElement('button');
+    logoutIcon.type='button';
+    logoutIcon.id='glinkLogoutIcon';
+    logoutIcon.className='glink-status-icon glink-status-logout';
+    logoutIcon.style.order='4';
+    logoutIcon.textContent='🚪';
+    logoutIcon.setAttribute('aria-label','ログアウト');
+    logoutIcon.title='ログアウト';
+    logoutIcon.addEventListener('click',logout);
+    rail.append(orgIcon,logoutIcon);
+    statusBar=rail;
+  }
   function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
   function canOffline(state){const t=Date.parse(state?.lastValidatedAt||'');return Boolean(state?.token&&Number.isFinite(t)&&Date.now()-t<=OFFLINE_GRACE_MS&&state?.organization?.standard);}
