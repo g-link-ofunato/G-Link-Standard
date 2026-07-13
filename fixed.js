@@ -4626,7 +4626,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function sortActivityHistoryChronological(list) {
     return (Array.isArray(list) ? list : []).slice().sort((a, b) => {
-      // Build026.3: 活動履歴はピン№の若い順を最優先にする。
+      // Build026.3.1: 活動履歴はピン№の若い順を最優先にする。
       const aNo = Number(getHistoryPinNo(a));
       const bNo = Number(getHistoryPinNo(b));
       const aValid = Number.isFinite(aNo) && aNo > 0;
