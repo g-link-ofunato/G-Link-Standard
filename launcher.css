@@ -817,7 +817,7 @@ body {
 }
 
 
-/* Build026.3.5: right-side icon-only launcher status rail */
+/* Build026.3.6: launcher-only notification and logout icon rail */
 .glink-status-rail{
   position:absolute;
   top:24px;
@@ -829,8 +829,7 @@ body {
   gap:10px;
 }
 .glink-status-icon,
-.notice-bell,
-.license-badge{
+.notice-bell{
   position:relative !important;
   inset:auto !important;
   width:58px !important;
@@ -855,11 +854,6 @@ body {
   outline:2px solid rgba(93,190,255,.72);
   outline-offset:2px;
 }
-.glink-status-org{cursor:help;}
-.glink-status-org.offline{border-color:#ffb14a !important;background:rgba(113,60,0,.9) !important;}
-.license-badge.normal span{color:#35df83;}
-.license-badge.warning span{color:#ffd15c;}
-.license-badge.danger span{color:#ff4b57;}
 .notice-bell b{
   position:absolute;
   right:-7px;

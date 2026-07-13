@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const BUILD='Build026.3.5';
+  const BUILD='Build026.3.6';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
@@ -22,33 +22,28 @@
   function message(text,success=false){createGate();const el=gate.querySelector('#glinkAuthMessage');el.textContent=text||'';el.classList.toggle('success',success);}
   function showLogin(text=''){hideApp();createGate().hidden=false;message(text);setTimeout(()=>gate.querySelector('#glinkLicenseId')?.focus(),0);}
   function showStatus(state,offline=false){
-    if(statusBar){statusBar.remove();statusBar=null;}
+    if(statusBar){statusBar=null;}
     const stage=document.getElementById('launcherStage');
     if(!stage)return;
     let rail=stage.querySelector('#glinkStatusRail');
     if(!rail){rail=document.createElement('div');rail.id='glinkStatusRail';rail.className='glink-status-rail';stage.appendChild(rail);}
     rail.querySelector('#glinkOrgStatusIcon')?.remove();
+    rail.querySelector('#glinkLicenseBadge')?.remove();
     rail.querySelector('#glinkLogoutIcon')?.remove();
-    const org=state.organization||{};
-    const orgIcon=document.createElement('button');
-    orgIcon.type='button';
-    orgIcon.id='glinkOrgStatusIcon';
-    orgIcon.className=`glink-status-icon glink-status-org${offline?' offline':''}`;
-    orgIcon.style.order='1';
-    orgIcon.textContent='🏢';
-    orgIcon.setAttribute('aria-label',`${offline?'オフライン認証':'認証済み'}：${org.name||'利用機関'} ${org.licenseId||''}`.trim());
-    orgIcon.title=`${offline?'オフライン認証':'認証済み'}：${org.name||'利用機関'}（${org.licenseId||''}）${offline?'・残り'+offlineRemaining(state):''}`;
     const logoutIcon=document.createElement('button');
     logoutIcon.type='button';
     logoutIcon.id='glinkLogoutIcon';
     logoutIcon.className='glink-status-icon glink-status-logout';
-    logoutIcon.style.order='4';
+    logoutIcon.style.order='2';
     logoutIcon.textContent='🚪';
     logoutIcon.setAttribute('aria-label','ログアウト');
     logoutIcon.title='ログアウト';
-    logoutIcon.addEventListener('click',logout);
-    rail.append(orgIcon,logoutIcon);
+    logoutIcon.addEventListener('click',()=>{
+      if(window.confirm('G-Linkからログアウトしますか？')) logout();
+    });
+    rail.appendChild(logoutIcon);
     statusBar=rail;
+    diag('S026360-STATUS-ICONS',{offline,icons:['notification','logout']});
   }
   function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
