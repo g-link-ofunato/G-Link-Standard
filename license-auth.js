@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const BUILD='Build026.2.2';
+  const BUILD='Build026.3';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
