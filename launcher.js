@@ -282,13 +282,13 @@
   if (form) form.addEventListener("submit", handleSubmit);
 })();
 
-/* Build026.3.2: notification center integrated directly to prevent missing-file deployment */
+/* Build026.3.3: notification center integrated directly to prevent missing-file deployment */
 (()=>{
 'use strict';
 if(window.__GLINK_STANDARD_NOTIFICATIONS_LOADED__) return;
 window.__GLINK_STANDARD_NOTIFICATIONS_LOADED__=true;
-console.info('[G-Link Notify]',{time:new Date().toISOString(),build:'Build026.3.2',event:'S026320-SCRIPT-LOADED'});
-const BUILD='Build026.3.2',PORTAL_BASE='https://g-link-portal.pages.dev',LOCAL_KEY='gLink_standardAuthRemembered',SESSION_KEY='gLink_standardAuthSession';
+console.info('[G-Link Notify]',{time:new Date().toISOString(),build:'Build026.3.3',event:'S026330-SCRIPT-LOADED'});
+const BUILD='Build026.3.3',PORTAL_BASE='https://g-link-portal.pages.dev',LOCAL_KEY='gLink_standardAuthRemembered',SESSION_KEY='gLink_standardAuthSession';
 let state={items:[],unreadCount:0,license:null},root=null;
 function diag(event,details={}){console.info('[G-Link Notify]',{time:new Date().toISOString(),build:BUILD,event,details});}
 function authState(){for(const [store,key] of [[sessionStorage,SESSION_KEY],[localStorage,LOCAL_KEY]]){try{const v=store.getItem(key);if(v)return JSON.parse(v);}catch(e){}}return null;}
