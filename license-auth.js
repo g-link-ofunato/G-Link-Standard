@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const BUILD='Build0835';
+  const BUILD='Build0900';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
@@ -10,7 +10,6 @@
   const LOCATION_PREF_KEY='gLink_standardRecordLocation';
   let gate=null,statusBar=null,currentState=null;
 
-  function diag(event,details={}){const entry={time:new Date().toISOString(),build:BUILD,event,details};try{console.info('[G-Link Auth]',entry);sessionStorage.setItem('gLink_authDiagnostics',JSON.stringify(entry));}catch(e){}}
   function readState(){for(const store of [sessionStorage,localStorage]){try{const raw=store.getItem(store===localStorage?LOCAL_KEY:SESSION_KEY);if(raw)return {...JSON.parse(raw),storage:store===localStorage?'local':'session'};}catch(e){}}return null;}
   function saveState(state,remember){clearState();const payload=JSON.stringify({...state,remember:Boolean(remember)});(remember?localStorage:sessionStorage).setItem(remember?LOCAL_KEY:SESSION_KEY,payload);currentState={...state,remember:Boolean(remember),storage:remember?'local':'session'};}
   function clearState(){try{localStorage.removeItem(LOCAL_KEY);}catch(e){}try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}currentState=null;}
@@ -20,10 +19,9 @@
     const timer=setTimeout(()=>controller.abort(),timeoutMs);
     const requestOptions={...options,signal:controller.signal,headers:{'Content-Type':'application/json',...(options.headers||{})},cache:'no-store'};
     delete requestOptions.timeoutMs;
-    diag('network:start',{path,method:requestOptions.method||'GET',timeoutMs});
     return fetch(`${PORTAL_BASE}${path}`,requestOptions)
-      .then(response=>{diag('network:response',{path,status:response.status,ok:response.ok});return response;})
-      .catch(error=>{diag('network:error',{path,name:error.name,message:error.message});if(error.name==='AbortError')throw new Error(`Portal認証APIが${Math.round(timeoutMs/1000)}秒以内に応答しませんでした。`);throw error;})
+      .then(response=>response)
+      .catch(error=>{if(error.name==='AbortError')throw new Error(`Portal認証APIが${Math.round(timeoutMs/1000)}秒以内に応答しませんでした。`);throw error;})
       .finally(()=>clearTimeout(timer));
   }
   function noLocationData(){return {latitude:null,longitude:null,accuracy:null,permission:'not_requested'};}
@@ -50,7 +48,6 @@
   function isOnboarded(){try{return localStorage.getItem(ONBOARDED_KEY)==='1';}catch(e){return false;}}
   function createGate(){if(gate)return gate;const onboarded=isOnboarded();gate=document.createElement('section');gate.id='glinkAuthGate';gate.innerHTML=`<div class="glink-auth-card"><div class="glink-auth-logo">G</div><p class="glink-auth-kicker">G-LINK STANDARD</p><h1 id="glinkAuthTitle" class="glink-auth-title">${onboarded?'利用機関ログイン':'ライセンス認証'}</h1><p id="glinkAuthLead" class="glink-auth-lead">${onboarded?'ライセンスIDと各機関専用パスワードを入力してください。':'管理者から発行されたライセンスIDと初期パスワードを入力してください。'}</p><form id="glinkAuthForm"><div class="glink-auth-field"><label for="glinkLicenseId">ライセンスID</label><input id="glinkLicenseId" autocomplete="username" placeholder="GL-000001" required></div><div class="glink-auth-field"><label for="glinkLicensePassword">パスワード</label><input id="glinkLicensePassword" type="password" autocomplete="current-password" required></div><div class="glink-login-options"><p class="glink-login-options-title">ログインオプション</p><label class="glink-auth-remember"><input id="glinkRemember" type="checkbox" checked><span>この端末でログイン状態を保持する<br><small>共用端末ではチェックを外してください。</small></span></label><label class="glink-auth-remember"><input id="glinkRecordLocation" type="checkbox" checked><span>ログイン地域を記録する（推奨）<br><small>OFFの場合はIP推定または登録地域を使用します。</small></span></label></div><p class="glink-location-note">位置情報を許可しない場合もログインできます。正確な位置座標は保存されません。</p><button id="glinkAuthSubmit" class="glink-auth-button" type="submit">${onboarded?'ログインして起動':'認証して次へ'}</button><p id="glinkAuthMessage" class="glink-auth-message" aria-live="polite"></p></form><p class="glink-auth-note">通信障害時は、最後の正常認証から72時間以内に限りオフライン起動できます。Command機能はオフライン中は利用できません。</p></div>`;document.documentElement.appendChild(gate);gate.querySelector('#glinkAuthForm').addEventListener('submit',login);const remember=gate.querySelector('#glinkRemember');const record=gate.querySelector('#glinkRecordLocation');remember.checked=readPreference(REMEMBER_PREF_KEY,true);record.checked=readPreference(LOCATION_PREF_KEY,true);remember.addEventListener('change',()=>writePreference(REMEMBER_PREF_KEY,remember.checked));record.addEventListener('change',()=>writePreference(LOCATION_PREF_KEY,record.checked));return gate;}
   function message(text,success=false){createGate();const el=gate.querySelector('#glinkAuthMessage');el.textContent=text||'';el.classList.toggle('success',success);}
-  function stage(code,text,details={}){diag(code,details);message(`[${code}] ${text}`,true);}
   function showLogin(text=''){hideApp();createGate().hidden=false;message(text);setTimeout(()=>gate.querySelector('#glinkLicenseId')?.focus(),0);}
   function showStatus(state,offline=false){
     if(statusBar){statusBar=null;}
@@ -74,20 +71,19 @@
     });
     rail.appendChild(logoutIcon);
     statusBar=rail;
-    diag('S026360-STATUS-ICONS',{offline,icons:['notification','logout']});
   }
   function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
   function canOffline(state){const t=Date.parse(state?.lastValidatedAt||'');return Boolean(state?.token&&Number.isFinite(t)&&Date.now()-t<=OFFLINE_GRACE_MS&&state?.organization?.standard);}
-  function activate(state,offline=false){currentState=state;try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};diag(offline?'P001424-OFFLINE72':'P001423-LAUNCH',{licenseId:state.organization?.licenseId});window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
-  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){diag('validation failed',{status:error.status||0,message:error.message});if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
+  function activate(state,offline=false){currentState=state;try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
+  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
   async function login(event){
     event.preventDefault();
     const button=gate.querySelector('#glinkAuthSubmit');
     button.disabled=true;
     const startedAt=Date.now();
     try{
-      stage('S0835-01','入力内容を確認しています。');
+      message('入力内容を確認しています。',true);
       const licenseId=gate.querySelector('#glinkLicenseId').value.trim().toUpperCase();
       const password=gate.querySelector('#glinkLicensePassword').value;
       const remember=gate.querySelector('#glinkRemember').checked;
@@ -95,45 +91,44 @@
       writePreference(REMEMBER_PREF_KEY,remember);
       writePreference(LOCATION_PREF_KEY,recordLocation);
 
-      stage('S0835-02',recordLocation?'端末位置情報を確認しています。':'位置情報を使用せず認証を開始します。',{recordLocation});
+      message(recordLocation?'端末位置情報を確認しています。':'位置情報を使用せず認証を開始します。',true);
       const locationPayload=recordLocation?await captureLocationData():noLocationData();
-      stage('S0835-03','Portal認証APIへ送信しています。',{permission:locationPayload.permission});
+      message('認証情報を確認しています。',true);
 
       const response=await api('/api/app/auth/login',{
         method:'POST',
         timeoutMs:15000,
         body:JSON.stringify({licenseId,password,remember,location:locationPayload})
       });
-      stage('S0835-04',`Portalから応答を受信しました（HTTP ${response.status}）。`);
+
       const data=await parseResponse(response);
-      diag('S0835-05-response-data',{mustChange:Boolean(data.mustChange),hasToken:Boolean(data.token),passwordChangeUrl:data.passwordChangeUrl||'',portalBuild:data.portalBuild||''});
+
 
       if(data.mustChange){
-        stage('S0835-06','初期パスワード変更画面へ移動します。',{licenseId,passwordChangeUrl:data.passwordChangeUrl||''});
+        message('初期パスワード変更画面へ移動します。',true);
         if(!data.setupToken||!data.passwordChangeUrl)throw new Error('Portal応答に初期パスワード変更情報がありません。');
         const params=new URLSearchParams({setupToken:data.setupToken,remember:remember?'1':'0'});
         const destination=`${data.passwordChangeUrl}#${params.toString()}`;
-        diag('S0835-07-redirect',{destination});
+
         window.location.assign(destination);
         return;
       }
 
-      stage('S0835-08','認証情報を端末へ保存しています。');
+      message('認証情報を保存しています。',true);
       if(!data.token||!data.organization)throw new Error('Portal応答にログイン情報がありません。');
       const state={token:data.token,expiresAt:data.expiresAt,lastValidatedAt:new Date().toISOString(),organization:data.organization,remember};
       saveState(state,remember);
-      stage('S0835-09','認証成功。起動画面を表示します。',{elapsedMs:Date.now()-startedAt});
+      message('認証に成功しました。',true);
       activate(state,false);
     }catch(error){
-      const code=error.data?.diagnosticCode||'S0835-ERROR';
-      diag(code,{name:error.name,status:error.status||0,message:error.message,elapsedMs:Date.now()-startedAt,data:error.data||null});
-      message(`[${code}] ${error.message}`);
+      console.error('[G-Link Auth] Login failed', error);
+      message(error.message||'ログインに失敗しました。');
     }finally{
       button.disabled=false;
     }
   }
   async function logout(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}location.reload();}
-  function decodeTransfer(value){try{let b=value.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const binary=atob(b);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));}catch(e){diag('transfer decode failed',{message:e.message});return null;}}
+  function decodeTransfer(value){try{let b=value.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const binary=atob(b);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));}catch(e){return null;}}
   function readTransfer(){const match=location.hash.match(/(?:^#|&)glinkAuthTransfer=([^&]+)/);if(!match)return null;const state=decodeTransfer(decodeURIComponent(match[1]));history.replaceState(null,'',location.pathname+location.search);return state;}
   async function boot(){hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState(transfer,Boolean(transfer.remember));try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}await validate(state);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
