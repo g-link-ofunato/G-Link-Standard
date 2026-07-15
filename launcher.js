@@ -287,8 +287,8 @@
 'use strict';
 if(window.__GLINK_STANDARD_NOTIFICATIONS_LOADED__) return;
 window.__GLINK_STANDARD_NOTIFICATIONS_LOADED__=true;
-console.info('[G-Link Notify]',{time:new Date().toISOString(),build:'Build1759',event:'S026360-SCRIPT-LOADED'});
-const BUILD='Build1759',PORTAL_BASE='https://g-link-portal.pages.dev',LOCAL_KEY='gLink_standardAuthRemembered',SESSION_KEY='gLink_standardAuthSession';
+console.info('[G-Link Notify]',{time:new Date().toISOString(),build:'Build1849',event:'S026360-SCRIPT-LOADED'});
+const BUILD='Build1849',PORTAL_BASE='https://g-link-portal.pages.dev',LOCAL_KEY='gLink_standardAuthRemembered',SESSION_KEY='gLink_standardAuthSession';
 let state={items:[],unreadCount:0,license:null},root=null;
 function diag(event,details={}){console.info('[G-Link Notify]',{time:new Date().toISOString(),build:BUILD,event,details});}
 function authState(){for(const [store,key] of [[sessionStorage,SESSION_KEY],[localStorage,LOCAL_KEY]]){try{const v=store.getItem(key);if(v)return JSON.parse(v);}catch(e){}}return null;}
