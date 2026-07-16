@@ -207,7 +207,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
  
   const headerDateTime = document.getElementById("headerDateTime");
-  const gridOverlay = document.getElementById("gridOverlay");
+  let gridOverlay = document.getElementById("gridOverlay");
   const cursorLatDisplay = document.getElementById("cursorLatDisplay");
   const cursorLngDisplay = document.getElementById("cursorLngDisplay");
   const cursorGridDisplay = document.getElementById("cursorGridDisplay");
@@ -432,7 +432,20 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // ピン情報Tooltip専用ペイン。グリッド表示より前面に固定する。
+  // Version2026.07.16 Build1459:
+  // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
+  // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
+  const originalGridOverlay = gridOverlay;
+  const gridLabelPane = map.createPane("gridLabelPane");
+  gridLabelPane.id = "gridOverlay";
+  gridLabelPane.style.zIndex = "700";
+  gridLabelPane.style.pointerEvents = "none";
+  if (originalGridOverlay && originalGridOverlay !== gridLabelPane) {
+    originalGridOverlay.remove();
+  }
+  gridOverlay = gridLabelPane;
+
+  // ピン情報Tooltip専用ペイン。グリッド番号より前面に固定する。
   const pinInfoPane = map.createPane("pinInfoPane");
   pinInfoPane.style.zIndex = "6000";
   pinInfoPane.style.pointerEvents = "none";
@@ -2412,7 +2425,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!info) return;
  
     function point(lat, lng) {
-      return map.latLngToContainerPoint([lat, lng]);
+      return map.latLngToLayerPoint([lat, lng]);
     }
  
     function addCell(x1, y1, x2, y2, text, isBlank) {
@@ -4490,23 +4503,30 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function makePopup(data) {
-    const statusText = data.completed ? "【活動完了】<br>" : "";
-    const attachmentText = data.attachmentName ? `<br>添付：${data.attachmentName}` : "";
-    const imageHtml = data.attachmentDataUrl ? `<br><img src="${data.attachmentDataUrl}" style="width:180px;margin-top:6px;border-radius:4px;">` : "";
- 
+    const safe = value => escapeHtml(String(value ?? "-"));
+    const statusText = data.completed ? '<div class="pinInfoStatus">【活動完了】</div>' : "";
+    const attachmentText = data.attachmentName
+      ? `<div class="pinInfoRow pinInfoWrap">添付：${safe(data.attachmentName)}</div>`
+      : "";
+    const imageHtml = data.attachmentDataUrl
+      ? `<div class="pinInfoImage"><img src="${data.attachmentDataUrl}" alt="添付画像"></div>`
+      : "";
+
     return `
-      ${statusText}
-      <b>${pinLabels[normalizePinType(data.type)] || "火災"}</b><br>
-      覚知日時：${data.awarenessLabel || "-"}<br>
-      完了日時：${data.completedLabel || "-"}<br>
-      座標：${formatLatLngPair(data.lat, data.lng)}<br>
-      グリッド番号：${data.gridNo || "-"}<br>
-      災害番号：${data.incidentNo || "-"}<br>
-      概要：${data.summary || "-"}<br>
-      出動部隊：${data.units || "-"}<br>
-      傷病者人数：${data.injured || 0}
-      ${attachmentText}
-      ${imageHtml}
+      <div class="pinInfoContent">
+        ${statusText}
+        <div class="pinInfoTitle">${safe(pinLabels[normalizePinType(data.type)] || "火災")}</div>
+        <div class="pinInfoRow pinInfoNoWrap">覚知日時：${safe(data.awarenessLabel || "-")}</div>
+        <div class="pinInfoRow pinInfoNoWrap">完了日時：${safe(data.completedLabel || "-")}</div>
+        <div class="pinInfoRow pinInfoNoWrap">座標：${safe(formatLatLngPair(data.lat, data.lng))}</div>
+        <div class="pinInfoRow pinInfoNoWrap">グリッド番号：${safe(data.gridNo || "-")}</div>
+        <div class="pinInfoRow pinInfoNoWrap">災害番号：${safe(data.incidentNo || "-")}</div>
+        <div class="pinInfoRow pinInfoWrap">概要：${safe(data.summary || "-")}</div>
+        <div class="pinInfoRow pinInfoWrap">出動部隊：${safe(data.units || "-")}</div>
+        <div class="pinInfoRow pinInfoNoWrap">傷病者人数：${safe(data.injured || 0)}</div>
+        ${attachmentText}
+        ${imageHtml}
+      </div>
     `;
   }
  
