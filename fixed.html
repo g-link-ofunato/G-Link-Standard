@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1650">
-  <link rel="stylesheet" href="license-auth.css?v=Build1650" />
+  <link rel="stylesheet" href="fixed.css?v=Build1720">
+  <link rel="stylesheet" href="license-auth.css?v=Build1720" />
 </head>
  
 <body>
@@ -316,9 +316,36 @@
               <label class="layerSubToggle"><input id="layerPinCompletedVisible" type="checkbox" checked><span class="layerStatusMark layerStatusCompleted">●</span><span>活動完了</span><span id="layerPinCompletedCount" class="layerCount">0</span></label>
             </div>
           </div>
-          <label class="layerToggleRow"><input id="layerDrawingsVisible" type="checkbox" checked><span class="layerIcon">⬡</span><span class="layerName">図形</span></label>
+          <div class="layerGroupBlock">
+            <div class="layerToggleRow layerParentRow">
+              <input id="layerDrawingsVisible" type="checkbox" checked aria-label="図形を表示">
+              <span class="layerIcon">⬡</span><label class="layerName layerParentName" for="layerDrawingsVisible">図形</label>
+              <span id="layerDrawingsCount" class="layerCount">0</span>
+              <button id="layerDrawingsAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="false" aria-controls="layerDrawingsDetails" aria-label="図形の詳細を開く">▼</button>
+            </div>
+            <div id="layerDrawingsDetails" class="layerSubsection" hidden>
+              <div class="layerSubheading">図形の種類</div>
+              <label class="layerSubToggle"><input id="layerDrawingLineVisible" type="checkbox" checked><span>直線</span><span id="layerDrawingLineCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerDrawingPolylineVisible" type="checkbox" checked><span>折れ線</span><span id="layerDrawingPolylineCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerDrawingRectangleVisible" type="checkbox" checked><span>四角形</span><span id="layerDrawingRectangleCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerDrawingCircleVisible" type="checkbox" checked><span>円</span><span id="layerDrawingCircleCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerDrawingArrowVisible" type="checkbox" checked><span>矢印</span><span id="layerDrawingArrowCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerDrawingFreehandVisible" type="checkbox" checked><span>フリーハンド</span><span id="layerDrawingFreehandCount" class="layerCount">0</span></label>
+            </div>
+          </div>
           <label class="layerToggleRow"><input id="layerMeasurementsVisible" type="checkbox" checked><span class="layerIcon">📐</span><span class="layerName">計測</span></label>
-          <label class="layerToggleRow"><input id="layerTracksVisible" type="checkbox" checked><span class="layerIcon">🛰</span><span class="layerName">軌跡</span></label>
+          <div class="layerGroupBlock">
+            <div class="layerToggleRow layerParentRow">
+              <input id="layerTracksVisible" type="checkbox" checked aria-label="軌跡を表示">
+              <span class="layerIcon">🛰</span><label class="layerName layerParentName" for="layerTracksVisible">軌跡</label>
+              <span id="layerTracksCount" class="layerCount">0</span>
+              <button id="layerTracksAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="false" aria-controls="layerTracksDetails" aria-label="軌跡の詳細を開く">▼</button>
+            </div>
+            <div id="layerTracksDetails" class="layerSubsection" hidden>
+              <div class="layerSubheading">GPX軌跡</div>
+              <div id="layerTrackItemList" class="layerDynamicList"><p class="layerDynamicEmpty">軌跡はありません。</p></div>
+            </div>
+          </div>
         </div>
         <button id="showAllLayersBtn" class="secondaryButton layerShowAllBtn" type="button">すべて表示</button>
         <div class="layerNote">PDF・PNGには、現在表示しているレイヤだけが反映されます。CSV・.glinkには非表示のデータも保存されます。</div>
@@ -619,8 +646,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1650"></script>
+  <script src="fixed.js?v=Build1720"></script>
  
-  <script src="license-auth.js?v=Build1650"></script>
+  <script src="license-auth.js?v=Build1720"></script>
 </body>
 </html>

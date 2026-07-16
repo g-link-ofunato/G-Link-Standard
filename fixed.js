@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.16 Build1650: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.16 Build1720: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -427,6 +427,12 @@ window.addEventListener("DOMContentLoaded", () => {
     pinActive: true,
     pinCompleted: true,
     drawings: true,
+    drawingLine: true,
+    drawingPolyline: true,
+    drawingRectangle: true,
+    drawingCircle: true,
+    drawingArrow: true,
+    drawingFreehand: true,
     measurements: true,
     tracks: true
   });
@@ -450,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1650:
+  // Version2026.07.16 Build1720:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -496,12 +502,30 @@ window.addEventListener("DOMContentLoaded", () => {
     pinActive: document.getElementById("layerPinActiveVisible"),
     pinCompleted: document.getElementById("layerPinCompletedVisible"),
     drawings: document.getElementById("layerDrawingsVisible"),
+    drawingLine: document.getElementById("layerDrawingLineVisible"),
+    drawingPolyline: document.getElementById("layerDrawingPolylineVisible"),
+    drawingRectangle: document.getElementById("layerDrawingRectangleVisible"),
+    drawingCircle: document.getElementById("layerDrawingCircleVisible"),
+    drawingArrow: document.getElementById("layerDrawingArrowVisible"),
+    drawingFreehand: document.getElementById("layerDrawingFreehandVisible"),
     measurements: document.getElementById("layerMeasurementsVisible"),
     tracks: document.getElementById("layerTracksVisible")
   };
   const showAllLayersBtn = document.getElementById("showAllLayersBtn");
   const layerPinsAccordionBtn = document.getElementById("layerPinsAccordionBtn");
   const layerPinsDetails = document.getElementById("layerPinsDetails");
+  const layerDrawingsAccordionBtn = document.getElementById("layerDrawingsAccordionBtn");
+  const layerDrawingsDetails = document.getElementById("layerDrawingsDetails");
+  const layerTracksAccordionBtn = document.getElementById("layerTracksAccordionBtn");
+  const layerTracksDetails = document.getElementById("layerTracksDetails");
+  const layerTrackItemList = document.getElementById("layerTrackItemList");
+  const layerDrawingsCount = document.getElementById("layerDrawingsCount");
+  const layerTracksCount = document.getElementById("layerTracksCount");
+  const layerDrawingCountElements = {
+    line: document.getElementById("layerDrawingLineCount"), polyline: document.getElementById("layerDrawingPolylineCount"),
+    rectangle: document.getElementById("layerDrawingRectangleCount"), circle: document.getElementById("layerDrawingCircleCount"),
+    arrow: document.getElementById("layerDrawingArrowCount"), freehand: document.getElementById("layerDrawingFreehandCount")
+  };
   const layerPinCountElements = {
     all: document.getElementById("layerPinsCount"),
     fire: document.getElementById("layerPinFireCount"),
@@ -567,14 +591,76 @@ window.addEventListener("DOMContentLoaded", () => {
     updatePinLayerCounts();
   }
 
+  function isDrawingVisibleByLayer(item) {
+    if (!item || layerVisibility.drawings === false) return false;
+    const type = item.meta?.type || item.layer?._fireGridMeta?.type || "polyline";
+    const key = { line:"drawingLine", polyline:"drawingPolyline", rectangle:"drawingRectangle", circle:"drawingCircle", arrow:"drawingArrow", freehand:"drawingFreehand" }[type] || "drawingPolyline";
+    return layerVisibility[key] !== false;
+  }
+
+  function applyDrawingLayerFilter() {
+    const counts = { line:0, polyline:0, rectangle:0, circle:0, arrow:0, freehand:0 };
+    drawings.forEach(item => {
+      if (!item || !item.layer) return;
+      const type = item.meta?.type || item.layer?._fireGridMeta?.type || "polyline";
+      if (Object.prototype.hasOwnProperty.call(counts, type)) counts[type] += 1;
+      if (isDrawingVisibleByLayer(item)) {
+        if (!drawingLayer.hasLayer(item.layer)) drawingLayer.addLayer(item.layer);
+      } else if (drawingLayer.hasLayer(item.layer)) drawingLayer.removeLayer(item.layer);
+    });
+    if (layerDrawingsCount) layerDrawingsCount.textContent = String(drawings.length);
+    Object.entries(layerDrawingCountElements).forEach(([key, el]) => { if (el) el.textContent = String(counts[key] || 0); });
+  }
+
+  function applyTrackLayerFilter() {
+    tracks.forEach(item => {
+      if (!item || !item.layer) return;
+      const visible = layerVisibility.tracks !== false && item.visible !== false;
+      if (visible) { if (!trackLayer.hasLayer(item.layer)) trackLayer.addLayer(item.layer); }
+      else if (trackLayer.hasLayer(item.layer)) trackLayer.removeLayer(item.layer);
+    });
+    if (layerTracksCount) layerTracksCount.textContent = String(tracks.length);
+    renderLayerTrackItemList();
+  }
+
+  function setLayerDetailsExpanded(details, button, expanded, label) {
+    if (!details || !button) return;
+    const open = expanded === true;
+    details.hidden = !open; button.textContent = open ? "▲" : "▼";
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", `${label}の詳細を${open ? "閉じる" : "開く"}`);
+  }
+
+  function renderLayerTrackItemList() {
+    if (!layerTrackItemList) return;
+    layerTrackItemList.innerHTML = "";
+    if (!tracks.length) { layerTrackItemList.innerHTML = '<p class="layerDynamicEmpty">軌跡はありません。</p>'; return; }
+    tracks.forEach(item => {
+      const label = document.createElement("label"); label.className = "layerSubToggle layerTrackToggle";
+      const input = document.createElement("input"); input.type = "checkbox"; input.checked = item.visible !== false;
+      input.addEventListener("change", () => { item.visible = input.checked; applyTrackLayerFilter(); persistLayerVisibility(); });
+      const dot = document.createElement("span"); dot.className = "layerTrackColor"; dot.style.background = item.color || "#facc15";
+      const name = document.createElement("span"); name.className = "layerTrackName"; name.textContent = item.name || "GPX軌跡"; name.title = name.textContent;
+      label.append(input, dot, name); layerTrackItemList.appendChild(label);
+    });
+  }
+
+  function persistLayerVisibility() {
+    session.layerVisibility = { ...layerVisibility };
+    try { sessionStorage.setItem("disasterSession", JSON.stringify(session)); localStorage.setItem("disasterSession", JSON.stringify(session)); }
+    catch (error) { console.warn("レイヤ表示状態を保存できませんでした。", error); }
+  }
+
   function applyLayerVisibility(options = {}) {
     layerVisibility = normalizeLayerVisibility(layerVisibility);
     setLayerGroupVisible(gridLayer, layerVisibility.grid);
     if (gridOverlay) gridOverlay.style.display = layerVisibility.grid ? "" : "none";
     applyPinLayerFilter();
     setLayerGroupVisible(pinLayer, layerVisibility.pins);
+    applyDrawingLayerFilter();
     setLayerGroupVisible(drawingLayer, layerVisibility.drawings);
     setLayerGroupVisible(measureLayer, layerVisibility.measurements);
+    applyTrackLayerFilter();
     setLayerGroupVisible(trackLayer, layerVisibility.tracks);
 
     Object.entries(layerControls).forEach(([key, input]) => {
@@ -582,13 +668,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     if (!options.skipSessionSave) {
-      session.layerVisibility = { ...layerVisibility };
-      try {
-        sessionStorage.setItem("disasterSession", JSON.stringify(session));
-        localStorage.setItem("disasterSession", JSON.stringify(session));
-      } catch (error) {
-        console.warn("レイヤ表示状態を保存できませんでした。", error);
-      }
+      persistLayerVisibility();
     }
   }
 
@@ -617,13 +697,18 @@ window.addEventListener("DOMContentLoaded", () => {
         setPinLayerDetailsExpanded(!expanded);
       });
     }
+    if (layerDrawingsAccordionBtn) layerDrawingsAccordionBtn.addEventListener("click", () => setLayerDetailsExpanded(layerDrawingsDetails, layerDrawingsAccordionBtn, layerDrawingsAccordionBtn.getAttribute("aria-expanded") !== "true", "図形"));
+    if (layerTracksAccordionBtn) layerTracksAccordionBtn.addEventListener("click", () => setLayerDetailsExpanded(layerTracksDetails, layerTracksAccordionBtn, layerTracksAccordionBtn.getAttribute("aria-expanded") !== "true", "軌跡"));
     if (showAllLayersBtn) {
       showAllLayersBtn.addEventListener("click", () => {
         layerVisibility = { ...defaultLayerVisibility };
+        tracks.forEach(item => { item.visible = true; });
         applyLayerVisibility();
       });
     }
     setPinLayerDetailsExpanded(true);
+    setLayerDetailsExpanded(layerDrawingsDetails, layerDrawingsAccordionBtn, false, "図形");
+    setLayerDetailsExpanded(layerTracksDetails, layerTracksAccordionBtn, false, "軌跡");
     applyLayerVisibility({ skipSessionSave: true });
   }
 
@@ -2843,6 +2928,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
       drawingLayer.addLayer(group);
       drawings.push({ id: meta.id, layer: group, meta });
+      applyDrawingLayerFilter();
       return group;
     }
  
@@ -3166,6 +3252,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attachShapeEvents(layer, meta, layer);
     drawingLayer.addLayer(layer);
     drawings.push({ id: meta.id, layer, meta });
+    applyDrawingLayerFilter();
   }
  
   function resetDrawingState() {
@@ -4061,6 +4148,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     drawingLayer.addLayer(group);
     drawings.push({ id: meta.id, layer: group, meta });
+    applyDrawingLayerFilter();
     resetDrawingState();
   }
  
@@ -4247,6 +4335,7 @@ window.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       drawingLayer.removeLayer(selectedShape);
       drawings = drawings.filter(d => d.layer !== selectedShape);
+      applyDrawingLayerFilter();
       selectedShape = null;
       shapeEditPanel.style.display = "none";
     }
@@ -4332,6 +4421,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     drawingLayer.clearLayers();
     drawings = [];
+    applyDrawingLayerFilter();
     selectedShape = null;
     shapeEditPanel.style.display = "none";
     resetDrawingState();
@@ -4376,6 +4466,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     drawingLayer.removeLayer(selectedShape);
     drawings = drawings.filter(d => d.layer !== selectedShape);
+    applyDrawingLayerFilter();
     selectedShape = null;
     shapeEditPanel.style.display = "none";
   });
@@ -5264,9 +5355,8 @@ window.addEventListener("DOMContentLoaded", () => {
       colorInput.title = "この軌跡の色を変更";
       colorInput.addEventListener("input", () => {
         item.color = colorInput.value;
-        if (item.layer && typeof item.layer.setStyle === "function") {
-          item.layer.setStyle({ color: item.color });
-        }
+        if (item.layer && typeof item.layer.setStyle === "function") item.layer.setStyle({ color: item.color });
+        renderLayerTrackItemList();
       });
 
       const weightWrap = document.createElement("label");
@@ -5304,6 +5394,7 @@ window.addEventListener("DOMContentLoaded", () => {
         if (item.layer) trackLayer.removeLayer(item.layer);
         tracks = tracks.filter(track => track.id !== item.id);
         updateTrackStatus();
+        applyTrackLayerFilter();
       });
 
       card.appendChild(name);
@@ -5387,6 +5478,7 @@ window.addEventListener("DOMContentLoaded", () => {
           color: style.color,
           weight: style.weight,
           opacity: style.opacity,
+          visible: true,
           points
         };
         tracks.push(item);
@@ -5394,6 +5486,7 @@ window.addEventListener("DOMContentLoaded", () => {
         created.push(item);
       });
       updateTrackStatus();
+      applyTrackLayerFilter();
       const bounds = L.latLngBounds(created.flatMap(item => item.points.map(p => [p.lat, p.lng])));
       if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
     } catch (error) {
@@ -5405,6 +5498,7 @@ window.addEventListener("DOMContentLoaded", () => {
     trackLayer.clearLayers();
     tracks = [];
     updateTrackStatus();
+    applyTrackLayerFilter();
   }
 
   function serializeTracks() {
@@ -5414,6 +5508,7 @@ window.addEventListener("DOMContentLoaded", () => {
       color: item.color || "#facc15",
       weight: Number(item.weight || 5),
       opacity: Number(item.opacity ?? 1),
+      visible: item.visible !== false,
       points: (item.points || []).map(latLngToPlain)
     })).filter(item => item.points.length >= 2);
   }
@@ -5430,6 +5525,7 @@ window.addEventListener("DOMContentLoaded", () => {
         color: item.color || "#facc15",
         weight: Number(item.weight || 5),
         opacity: Number(item.opacity ?? 1),
+        visible: item.visible !== false,
         points
       };
       tracks.push(restored);
@@ -5440,6 +5536,7 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
     updateTrackStatus();
+    applyTrackLayerFilter();
   }
 
   function serializeMeasurements() {
