@@ -416,6 +416,19 @@ window.addEventListener("DOMContentLoaded", () => {
   let drawings = [];
   let tracks = [];
   let trackSerial = 1;
+
+  // Version2026.07.16 Build1532: 指揮本部モード簡易レイヤ（第1段階）
+  const defaultLayerVisibility = Object.freeze({
+    grid: true,
+    pins: true,
+    drawings: true,
+    measurements: true,
+    tracks: true
+  });
+  let layerVisibility = {
+    ...defaultLayerVisibility,
+    ...(session.layerVisibility && typeof session.layerVisibility === "object" ? session.layerVisibility : {})
+  };
   let selectedShape = null;
   let copiedShapeData = null;
   let pasteMode = false;
@@ -432,7 +445,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1459:
+  // Version2026.07.16 Build1532:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -468,6 +481,75 @@ window.addEventListener("DOMContentLoaded", () => {
   const searchHighlightLayer = L.layerGroup().addTo(map);
   const coordSearchLayer = L.layerGroup().addTo(map);
   const incidentSearchLayer = L.layerGroup().addTo(map);
+
+  const layerControls = {
+    grid: document.getElementById("layerGridVisible"),
+    pins: document.getElementById("layerPinsVisible"),
+    drawings: document.getElementById("layerDrawingsVisible"),
+    measurements: document.getElementById("layerMeasurementsVisible"),
+    tracks: document.getElementById("layerTracksVisible")
+  };
+  const showAllLayersBtn = document.getElementById("showAllLayersBtn");
+
+  function normalizeLayerVisibility(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return Object.keys(defaultLayerVisibility).reduce((result, key) => {
+      result[key] = source[key] !== false;
+      return result;
+    }, {});
+  }
+
+  function setLayerGroupVisible(group, visible) {
+    if (!group) return;
+    if (visible) {
+      if (!map.hasLayer(group)) map.addLayer(group);
+    } else if (map.hasLayer(group)) {
+      map.removeLayer(group);
+    }
+  }
+
+  function applyLayerVisibility(options = {}) {
+    layerVisibility = normalizeLayerVisibility(layerVisibility);
+    setLayerGroupVisible(gridLayer, layerVisibility.grid);
+    if (gridOverlay) gridOverlay.style.display = layerVisibility.grid ? "" : "none";
+    setLayerGroupVisible(pinLayer, layerVisibility.pins);
+    setLayerGroupVisible(drawingLayer, layerVisibility.drawings);
+    setLayerGroupVisible(measureLayer, layerVisibility.measurements);
+    setLayerGroupVisible(trackLayer, layerVisibility.tracks);
+
+    Object.entries(layerControls).forEach(([key, input]) => {
+      if (input) input.checked = layerVisibility[key] !== false;
+    });
+
+    if (!options.skipSessionSave) {
+      session.layerVisibility = { ...layerVisibility };
+      try {
+        sessionStorage.setItem("disasterSession", JSON.stringify(session));
+        localStorage.setItem("disasterSession", JSON.stringify(session));
+      } catch (error) {
+        console.warn("レイヤ表示状態を保存できませんでした。", error);
+      }
+    }
+  }
+
+  function setupLayerControls() {
+    Object.entries(layerControls).forEach(([key, input]) => {
+      if (!input) return;
+      input.addEventListener("change", () => {
+        layerVisibility[key] = !!input.checked;
+        applyLayerVisibility();
+      });
+    });
+    if (showAllLayersBtn) {
+      showAllLayersBtn.addEventListener("click", () => {
+        layerVisibility = { ...defaultLayerVisibility };
+        applyLayerVisibility();
+      });
+    }
+    applyLayerVisibility({ skipSessionSave: true });
+  }
+
+  setupLayerControls();
  
  
   function loadCoordinateType() {
@@ -854,6 +936,7 @@ window.addEventListener("DOMContentLoaded", () => {
     editToolPanel: "編集",
     measurePanel: "計測",
     trackPanel: "軌跡",
+    layerPanel: "レイヤ",
     historyPanel: "活動履歴",
     settingPanel: "設定",
     sharePanel: "共有"
@@ -1138,7 +1221,8 @@ window.addEventListener("DOMContentLoaded", () => {
         zoom: currentZoom,
         mapType: currentMapType,
         gridSize: currentGridSize,
-        coordinateType
+        coordinateType,
+        layerVisibility: { ...layerVisibility }
       },
       mapType: currentMapType,
       gridSize: currentGridSize,
@@ -1662,6 +1746,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     function drawManualPins(ctx, crop) {
+      if (!layerVisibility.pins) return;
       if (!Array.isArray(pins) || !pins.length) return;
  
       pins.forEach((pin, index) => {
@@ -1791,6 +1876,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     function drawManualDrawings(ctx, crop) {
+      if (!layerVisibility.drawings) return;
       const shapeList = typeof serializeDrawings === "function" ? serializeDrawings() : [];
       shapeList.forEach(shape => {
         if (!shape || !shape.meta) return;
@@ -1844,6 +1930,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     function drawManualTracks(ctx, crop) {
+      if (!layerVisibility.tracks) return;
       const trackList = typeof serializeTracks === "function" ? serializeTracks() : [];
       if (!Array.isArray(trackList) || !trackList.length) return;
 
@@ -1864,6 +1951,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     function drawManualMeasurements(ctx, crop) {
+      if (!layerVisibility.measurements) return;
       if (!Array.isArray(measurements) || !measurements.length) return;
       measurements.forEach((item, index) => {
         const style = item.style || {};
@@ -1940,9 +2028,11 @@ window.addEventListener("DOMContentLoaded", () => {
       drawManualMeasurements(ctx, crop);
       drawManualTracks(ctx, crop);
  
-      // グリッド線と赤ラベルは、保存センター側で再描画しない前提で、ここで完成画像として焼き込む。
-      drawManualGridLines(ctx, crop);
-      drawManualEdgeCells(ctx, crop);
+      // グリッド線と赤ラベルは、表示中の場合だけ完成画像へ焼き込む。
+      if (layerVisibility.grid) {
+        drawManualGridLines(ctx, crop);
+        drawManualEdgeCells(ctx, crop);
+      }
       drawManualPins(ctx, crop);
  
       return cropCanvas.toDataURL("image/png");
@@ -5411,12 +5501,14 @@ window.addEventListener("DOMContentLoaded", () => {
         zoom: currentZoom,
         mapType: currentMapType,
         gridSize: currentGridSize,
-        coordinateType
+        coordinateType,
+        layerVisibility: { ...layerVisibility }
       },
       mapType: currentMapType,
       gridSize: currentGridSize,
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
+      layerVisibility: { ...layerVisibility },
       pinLegend: [
         ...Object.keys(pinLabels).map(key => ({
           type: key,
@@ -5638,6 +5730,8 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       drawGridLines();
       drawGridOverlay();
+      layerVisibility = normalizeLayerVisibility(data.layerVisibility || data.session?.layerVisibility || defaultLayerVisibility);
+      applyLayerVisibility({ skipSessionSave: true });
     });
 
     runSection("pins", () => {
@@ -5669,6 +5763,7 @@ window.addEventListener("DOMContentLoaded", () => {
       updateMeasureSummaryBanner();
       renderMeasureList();
       applyGlinkProjectView(data);
+      applyLayerVisibility({ skipSessionSave: true });
       refreshCoordinateDisplays();
     });
 

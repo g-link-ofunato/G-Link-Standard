@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1459">
-  <link rel="stylesheet" href="license-auth.css?v=Build1459" />
+  <link rel="stylesheet" href="fixed.css?v=Build1532">
+  <link rel="stylesheet" href="license-auth.css?v=Build1532" />
 </head>
  
 <body>
@@ -43,6 +43,7 @@
     <button class="toolBtn" data-panel="editToolPanel"><span>✏</span><small>編集</small></button>
     <button class="toolBtn" data-panel="measurePanel"><span>📐</span><small>計測</small></button>
     <button class="toolBtn" data-panel="trackPanel"><span>🛰</span><small>軌跡</small></button>
+    <button class="toolBtn" data-panel="layerPanel"><span>🗂</span><small>レイヤ</small></button>
     <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動履歴</small></button>
     <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
     <button class="toolBtn" data-panel="settingPanel"><span>⚙</span><small>設定</small></button>
@@ -289,6 +290,21 @@
         <div id="trackItemList" class="trackItemList">
           <p class="emptyTrackItem">軌跡はありません。</p>
         </div>
+      </div>
+
+
+      <div class="panelContent" id="layerPanel">
+        <h3>レイヤ</h3>
+        <p class="layerIntro">チェックを外すと一時的に非表示になります。データは削除されません。</p>
+        <div class="layerList" role="group" aria-label="地図レイヤ表示設定">
+          <label class="layerToggleRow"><input id="layerGridVisible" type="checkbox" checked><span class="layerIcon">▦</span><span class="layerName">グリッド</span></label>
+          <label class="layerToggleRow"><input id="layerPinsVisible" type="checkbox" checked><span class="layerIcon">📍</span><span class="layerName">災害情報</span></label>
+          <label class="layerToggleRow"><input id="layerDrawingsVisible" type="checkbox" checked><span class="layerIcon">⬡</span><span class="layerName">図形</span></label>
+          <label class="layerToggleRow"><input id="layerMeasurementsVisible" type="checkbox" checked><span class="layerIcon">📐</span><span class="layerName">計測</span></label>
+          <label class="layerToggleRow"><input id="layerTracksVisible" type="checkbox" checked><span class="layerIcon">🛰</span><span class="layerName">軌跡</span></label>
+        </div>
+        <button id="showAllLayersBtn" class="secondaryButton layerShowAllBtn" type="button">すべて表示</button>
+        <div class="layerNote">PDF・PNGには、現在表示しているレイヤだけが反映されます。CSV・.glinkには非表示のデータも保存されます。</div>
       </div>
 
       <div class="panelContent" id="historyPanel">
@@ -586,8 +602,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1459"></script>
+  <script src="fixed.js?v=Build1532"></script>
  
-  <script src="license-auth.js?v=Build1459"></script>
+  <script src="license-auth.js?v=Build1532"></script>
 </body>
 </html>
