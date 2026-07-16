@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1532">
-  <link rel="stylesheet" href="license-auth.css?v=Build1532" />
+  <link rel="stylesheet" href="fixed.css?v=Build1559">
+  <link rel="stylesheet" href="license-auth.css?v=Build1559" />
 </head>
  
 <body>
@@ -298,7 +298,18 @@
         <p class="layerIntro">チェックを外すと一時的に非表示になります。データは削除されません。</p>
         <div class="layerList" role="group" aria-label="地図レイヤ表示設定">
           <label class="layerToggleRow"><input id="layerGridVisible" type="checkbox" checked><span class="layerIcon">▦</span><span class="layerName">グリッド</span></label>
-          <label class="layerToggleRow"><input id="layerPinsVisible" type="checkbox" checked><span class="layerIcon">📍</span><span class="layerName">災害情報</span></label>
+          <div class="layerGroupBlock">
+            <label class="layerToggleRow layerParentRow"><input id="layerPinsVisible" type="checkbox" checked><span class="layerIcon">📍</span><span class="layerName">災害情報</span><span id="layerPinsCount" class="layerCount">0</span></label>
+            <div class="layerSubsection">
+              <div class="layerSubheading">種別</div>
+              <label class="layerSubToggle"><input id="layerPinFireVisible" type="checkbox" checked><span class="layerTypeDot layerTypeFire"></span><span>火災</span><span id="layerPinFireCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerPinRescueVisible" type="checkbox" checked><span class="layerTypeDot layerTypeRescue"></span><span>救助</span><span id="layerPinRescueCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerPinEmergencyVisible" type="checkbox" checked><span class="layerTypeDot layerTypeEmergency"></span><span>救急</span><span id="layerPinEmergencyCount" class="layerCount">0</span></label>
+              <div class="layerSubheading layerStatusHeading">活動状態</div>
+              <label class="layerSubToggle"><input id="layerPinActiveVisible" type="checkbox" checked><span class="layerStatusMark">●</span><span>活動中</span><span id="layerPinActiveCount" class="layerCount">0</span></label>
+              <label class="layerSubToggle"><input id="layerPinCompletedVisible" type="checkbox" checked><span class="layerStatusMark layerStatusCompleted">●</span><span>活動完了</span><span id="layerPinCompletedCount" class="layerCount">0</span></label>
+            </div>
+          </div>
           <label class="layerToggleRow"><input id="layerDrawingsVisible" type="checkbox" checked><span class="layerIcon">⬡</span><span class="layerName">図形</span></label>
           <label class="layerToggleRow"><input id="layerMeasurementsVisible" type="checkbox" checked><span class="layerIcon">📐</span><span class="layerName">計測</span></label>
           <label class="layerToggleRow"><input id="layerTracksVisible" type="checkbox" checked><span class="layerIcon">🛰</span><span class="layerName">軌跡</span></label>
@@ -602,8 +613,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1532"></script>
+  <script src="fixed.js?v=Build1559"></script>
  
-  <script src="license-auth.js?v=Build1532"></script>
+  <script src="license-auth.js?v=Build1559"></script>
 </body>
 </html>

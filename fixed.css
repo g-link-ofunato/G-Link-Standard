@@ -3130,7 +3130,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1532: グリッドとピン情報をLeaflet内で正しく階層化 */
+/* Version2026.07.16 Build1559: グリッドとピン情報をLeaflet内で正しく階層化 */
 .leaflet-gridLabelPane-pane {
   z-index: 700 !important;
   pointer-events: none !important;
@@ -3191,7 +3191,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1532: 簡易レイヤ機能（第1段階） */
+/* Version2026.07.16 Build1559: 簡易レイヤ機能（第1段階） */
 .layerIntro {
   margin: 0 0 10px;
   padding: 9px 10px;
@@ -3250,4 +3250,71 @@ body {
   color: #78350f;
   font-size: 11px;
   line-height: 1.55;
+}
+
+
+/* Version2026.07.16 Build1559: 災害情報レイヤ詳細分類（第2段階） */
+.layerGroupBlock {
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+.layerGroupBlock .layerToggleRow { border-bottom: 1px solid #e5e7eb; }
+.layerParentRow { grid-template-columns: 24px 30px 1fr auto; }
+.layerSubsection {
+  padding: 8px 11px 11px 43px;
+  background: #f8fafc;
+}
+.layerSubheading {
+  margin: 2px 0 5px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+.layerStatusHeading { margin-top: 10px; }
+.layerSubToggle {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 20px 16px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 650;
+}
+.layerSubToggle:hover { background: #eef2f7; }
+.layerSubToggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2563eb;
+}
+.layerTypeDot,
+.layerStatusMark {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  text-align: center;
+  font-size: 11px;
+  line-height: 11px;
+}
+.layerTypeFire { background: #ef4444; }
+.layerTypeRescue { background: #f59e0b; }
+.layerTypeEmergency { background: #22c55e; }
+.layerStatusMark { color: #2563eb; }
+.layerStatusCompleted { color: #374151; }
+.layerCount {
+  min-width: 24px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
 }

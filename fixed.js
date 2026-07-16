@@ -417,10 +417,15 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.16 Build1532: 指揮本部モード簡易レイヤ（第1段階）
+  // Version2026.07.16 Build1559: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
+    pinFire: true,
+    pinRescue: true,
+    pinEmergency: true,
+    pinActive: true,
+    pinCompleted: true,
     drawings: true,
     measurements: true,
     tracks: true
@@ -445,7 +450,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1532:
+  // Version2026.07.16 Build1559:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -485,11 +490,24 @@ window.addEventListener("DOMContentLoaded", () => {
   const layerControls = {
     grid: document.getElementById("layerGridVisible"),
     pins: document.getElementById("layerPinsVisible"),
+    pinFire: document.getElementById("layerPinFireVisible"),
+    pinRescue: document.getElementById("layerPinRescueVisible"),
+    pinEmergency: document.getElementById("layerPinEmergencyVisible"),
+    pinActive: document.getElementById("layerPinActiveVisible"),
+    pinCompleted: document.getElementById("layerPinCompletedVisible"),
     drawings: document.getElementById("layerDrawingsVisible"),
     measurements: document.getElementById("layerMeasurementsVisible"),
     tracks: document.getElementById("layerTracksVisible")
   };
   const showAllLayersBtn = document.getElementById("showAllLayersBtn");
+  const layerPinCountElements = {
+    all: document.getElementById("layerPinsCount"),
+    fire: document.getElementById("layerPinFireCount"),
+    rescue: document.getElementById("layerPinRescueCount"),
+    emergency: document.getElementById("layerPinEmergencyCount"),
+    active: document.getElementById("layerPinActiveCount"),
+    completed: document.getElementById("layerPinCompletedCount")
+  };
 
   function normalizeLayerVisibility(value) {
     const source = value && typeof value === "object" ? value : {};
@@ -508,10 +526,50 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function isPinVisibleByLayer(data) {
+    if (!data || layerVisibility.pins === false) return false;
+    const type = normalizePinType(data.type);
+    const typeVisible = {
+      fire: layerVisibility.pinFire !== false,
+      rescue: layerVisibility.pinRescue !== false,
+      emergency: layerVisibility.pinEmergency !== false
+    }[type];
+    const statusVisible = data.completed
+      ? layerVisibility.pinCompleted !== false
+      : layerVisibility.pinActive !== false;
+    return typeVisible && statusVisible;
+  }
+
+  function updatePinLayerCounts() {
+    const counts = { all: 0, fire: 0, rescue: 0, emergency: 0, active: 0, completed: 0 };
+    pins.forEach(pin => {
+      if (!pin || !pin.data) return;
+      counts.all += 1;
+      counts[normalizePinType(pin.data.type)] += 1;
+      counts[pin.data.completed ? "completed" : "active"] += 1;
+    });
+    Object.entries(layerPinCountElements).forEach(([key, element]) => {
+      if (element) element.textContent = String(counts[key] || 0);
+    });
+  }
+
+  function applyPinLayerFilter() {
+    pins.forEach(pin => {
+      if (!pin) return;
+      if (isPinVisibleByLayer(pin.data)) {
+        if (!pinLayer.hasLayer(pin)) pinLayer.addLayer(pin);
+      } else if (pinLayer.hasLayer(pin)) {
+        pinLayer.removeLayer(pin);
+      }
+    });
+    updatePinLayerCounts();
+  }
+
   function applyLayerVisibility(options = {}) {
     layerVisibility = normalizeLayerVisibility(layerVisibility);
     setLayerGroupVisible(gridLayer, layerVisibility.grid);
     if (gridOverlay) gridOverlay.style.display = layerVisibility.grid ? "" : "none";
+    applyPinLayerFilter();
     setLayerGroupVisible(pinLayer, layerVisibility.pins);
     setLayerGroupVisible(drawingLayer, layerVisibility.drawings);
     setLayerGroupVisible(measureLayer, layerVisibility.measurements);
@@ -1750,7 +1808,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!Array.isArray(pins) || !pins.length) return;
  
       pins.forEach((pin, index) => {
-        if (!pin || !pin.data) return;
+        if (!pin || !pin.data || !isPinVisibleByLayer(pin.data)) return;
         const lat = Number(pin.data.lat);
         const lng = Number(pin.data.lng);
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -4634,6 +4692,8 @@ window.addEventListener("DOMContentLoaded", () => {
       sticky: false,
       interactive: false
     });
+    // 第2段階: 種別・活動状態の現在の絞り込みを、作成／編集／完了直後にも適用する。
+    if (typeof applyPinLayerFilter === "function") applyPinLayerFilter();
   }
  
   function openEditPanel(pin) {
@@ -4856,6 +4916,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pins = pins.filter(p => p !== pin);
     activityHistory = activityHistory.filter(item => item.id !== pin.data.id);
     pins.forEach(refreshPin);
+    applyPinLayerFilter();
     renderActivityHistory();
  
     if (selectedPin === pin) {
@@ -5024,6 +5085,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
  
     pins.push(marker);
+    applyPinLayerFilter();
     openEditPanel(marker);
   }
  
@@ -5600,6 +5662,7 @@ window.addEventListener("DOMContentLoaded", () => {
       showPinContextMenu(marker, e.originalEvent);
     });
     pins.push(marker);
+    applyPinLayerFilter();
     return marker;
   }
  
