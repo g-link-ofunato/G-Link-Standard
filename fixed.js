@@ -432,6 +432,11 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
+  // ピン情報Tooltip専用ペイン。グリッド表示より前面に固定する。
+  const pinInfoPane = map.createPane("pinInfoPane");
+  pinInfoPane.style.zIndex = "6000";
+  pinInfoPane.style.pointerEvents = "none";
+
   const selectedMapType = session.mapType || "pale";
   const selectedLayer = mapLayers[selectedMapType] || mapLayers.pale;
  
@@ -4383,7 +4388,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const latlng = foundPin.getLatLng();
  
     map.setView(latlng, Math.max(map.getZoom(), 17), { animate: true });
-    foundPin.openPopup();
+    foundPin.openTooltip();
+    window.setTimeout(() => foundPin.closeTooltip(), 3500);
  
     createBlinkMarker(
       latlng,
@@ -4507,7 +4513,17 @@ window.addEventListener("DOMContentLoaded", () => {
   function refreshPin(pin) {
     if (!pin) return;
     pin.setIcon(createIcon(pin.data.type, pin.data.completed, getPinDisplayNumber(pin)));
-    pin.bindPopup(makePopup(pin.data));
+    pin.unbindPopup();
+    pin.unbindTooltip();
+    pin.bindTooltip(makePopup(pin.data), {
+      pane: "pinInfoPane",
+      className: "pinInfoTooltip",
+      direction: "top",
+      offset: [0, -14],
+      opacity: 1,
+      sticky: false,
+      interactive: false
+    });
   }
  
   function openEditPanel(pin) {
@@ -4890,7 +4906,6 @@ window.addEventListener("DOMContentLoaded", () => {
  
     marker.on("click", () => {
       if (!marker.data.completed) openEditPanel(marker);
-      else marker.openPopup();
     });
  
     marker.on("contextmenu", e => {
@@ -4995,7 +5010,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     refreshPin(selectedPin);
-    selectedPin.openPopup();
     editPanel.style.display = "none";
   });
  
@@ -5468,7 +5482,6 @@ window.addEventListener("DOMContentLoaded", () => {
     refreshPin(marker);
     marker.on("click", () => {
       if (!marker.data.completed) openEditPanel(marker);
-      else marker.openPopup();
     });
     marker.on("contextmenu", e => {
       if (e.originalEvent) e.originalEvent.preventDefault();

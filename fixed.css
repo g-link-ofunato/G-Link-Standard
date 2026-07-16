@@ -3128,3 +3128,23 @@ body {
     grid-column: 1 / -1;
   }
 }
+
+
+/* Version2026.07.16 Build1445: 災害情報ピンのホバー情報をグリッドより前面表示 */
+.leaflet-pinInfoPane-pane {
+  z-index: 6000 !important;
+  pointer-events: none !important;
+}
+
+.pinInfoTooltip {
+  z-index: 6001 !important;
+  max-width: 260px;
+  white-space: normal;
+  line-height: 1.45;
+  pointer-events: none !important;
+}
+
+.pinInfoTooltip img {
+  max-width: 180px;
+  height: auto;
+}
