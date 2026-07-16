@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.16 Build1720: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.16 Build1708: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -456,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1720:
+  // Version2026.07.16 Build1708:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -516,6 +516,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const layerPinsDetails = document.getElementById("layerPinsDetails");
   const layerDrawingsAccordionBtn = document.getElementById("layerDrawingsAccordionBtn");
   const layerDrawingsDetails = document.getElementById("layerDrawingsDetails");
+  const layerMeasurementsAccordionBtn = document.getElementById("layerMeasurementsAccordionBtn");
+  const layerMeasurementsDetails = document.getElementById("layerMeasurementsDetails");
+  const layerMeasurementItemList = document.getElementById("layerMeasurementItemList");
+  const layerMeasurementsCount = document.getElementById("layerMeasurementsCount");
   const layerTracksAccordionBtn = document.getElementById("layerTracksAccordionBtn");
   const layerTracksDetails = document.getElementById("layerTracksDetails");
   const layerTrackItemList = document.getElementById("layerTrackItemList");
@@ -612,6 +616,53 @@ window.addEventListener("DOMContentLoaded", () => {
     Object.entries(layerDrawingCountElements).forEach(([key, el]) => { if (el) el.textContent = String(counts[key] || 0); });
   }
 
+  function applyMeasurementLayerFilter() {
+    measurements.forEach(item => {
+      if (!item || !item.layer) return;
+      const visible = layerVisibility.measurements !== false && item.visible !== false;
+      if (visible) {
+        if (!measureLayer.hasLayer(item.layer)) measureLayer.addLayer(item.layer);
+        if (item.labelMarker && !measureLayer.hasLayer(item.labelMarker)) measureLayer.addLayer(item.labelMarker);
+      } else {
+        if (measureLayer.hasLayer(item.layer)) measureLayer.removeLayer(item.layer);
+        if (item.labelMarker && measureLayer.hasLayer(item.labelMarker)) measureLayer.removeLayer(item.labelMarker);
+      }
+    });
+    if (layerMeasurementsCount) layerMeasurementsCount.textContent = String(measurements.length);
+    renderLayerMeasurementItemList();
+  }
+
+  function renderLayerMeasurementItemList() {
+    if (!layerMeasurementItemList) return;
+    layerMeasurementItemList.innerHTML = "";
+    if (!measurements.length) {
+      layerMeasurementItemList.innerHTML = '<p class="layerDynamicEmpty">面積図形はありません。</p>';
+      return;
+    }
+    measurements.forEach(item => {
+      const label = document.createElement("label");
+      label.className = "layerSubToggle layerMeasurementToggle";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = item.visible !== false;
+      input.addEventListener("change", () => {
+        item.visible = input.checked;
+        applyMeasurementLayerFilter();
+        persistLayerVisibility();
+      });
+      const dot = document.createElement("span");
+      dot.className = "layerMeasurementColor";
+      dot.style.background = item.style?.lineColor || "#7e22ce";
+      const name = document.createElement("span");
+      name.className = "layerMeasurementName";
+      const displayName = getMeasurementDisplayName(item);
+      name.textContent = `${item.number} ${displayName}　${formatNumber(item.areaHa, 3)}ha`;
+      name.title = `${item.number} ${displayName} / ${formatNumber(item.areaM2)}㎡ / ${formatNumber(item.areaHa, 3)}ha`;
+      label.append(input, dot, name);
+      layerMeasurementItemList.appendChild(label);
+    });
+  }
+
   function applyTrackLayerFilter() {
     tracks.forEach(item => {
       if (!item || !item.layer) return;
@@ -659,6 +710,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setLayerGroupVisible(pinLayer, layerVisibility.pins);
     applyDrawingLayerFilter();
     setLayerGroupVisible(drawingLayer, layerVisibility.drawings);
+    applyMeasurementLayerFilter();
     setLayerGroupVisible(measureLayer, layerVisibility.measurements);
     applyTrackLayerFilter();
     setLayerGroupVisible(trackLayer, layerVisibility.tracks);
@@ -698,16 +750,19 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
     if (layerDrawingsAccordionBtn) layerDrawingsAccordionBtn.addEventListener("click", () => setLayerDetailsExpanded(layerDrawingsDetails, layerDrawingsAccordionBtn, layerDrawingsAccordionBtn.getAttribute("aria-expanded") !== "true", "図形"));
+    if (layerMeasurementsAccordionBtn) layerMeasurementsAccordionBtn.addEventListener("click", () => setLayerDetailsExpanded(layerMeasurementsDetails, layerMeasurementsAccordionBtn, layerMeasurementsAccordionBtn.getAttribute("aria-expanded") !== "true", "計測"));
     if (layerTracksAccordionBtn) layerTracksAccordionBtn.addEventListener("click", () => setLayerDetailsExpanded(layerTracksDetails, layerTracksAccordionBtn, layerTracksAccordionBtn.getAttribute("aria-expanded") !== "true", "軌跡"));
     if (showAllLayersBtn) {
       showAllLayersBtn.addEventListener("click", () => {
         layerVisibility = { ...defaultLayerVisibility };
+        measurements.forEach(item => { item.visible = true; });
         tracks.forEach(item => { item.visible = true; });
         applyLayerVisibility();
       });
     }
     setPinLayerDetailsExpanded(true);
     setLayerDetailsExpanded(layerDrawingsDetails, layerDrawingsAccordionBtn, false, "図形");
+    setLayerDetailsExpanded(layerMeasurementsDetails, layerMeasurementsAccordionBtn, false, "計測");
     setLayerDetailsExpanded(layerTracksDetails, layerTracksAccordionBtn, false, "軌跡");
     applyLayerVisibility({ skipSessionSave: true });
   }
@@ -2117,6 +2172,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!layerVisibility.measurements) return;
       if (!Array.isArray(measurements) || !measurements.length) return;
       measurements.forEach((item, index) => {
+        if (item.visible === false) return;
         const style = item.style || {};
         const points = getCanvasPoints(item.points || [], crop);
         if (points.length < 3) return;
@@ -3635,6 +3691,7 @@ window.addEventListener("DOMContentLoaded", () => {
       refreshMeasurementStats(item);
     });
     measureSerial = measurements.length + 1;
+    applyMeasurementLayerFilter();
   }
  
   function updateMeasureSummaryBanner() {
@@ -3734,6 +3791,7 @@ window.addEventListener("DOMContentLoaded", () => {
     item.name = (name || "").trim() || "名称未設定";
     refreshMeasurementStats(item);
     renderMeasureList();
+    applyMeasurementLayerFilter();
   }
  
   function updateMeasurementStyle(id, patch) {
@@ -3743,6 +3801,7 @@ window.addEventListener("DOMContentLoaded", () => {
     applyMeasurementStyle(item);
     refreshMeasurementStats(item);
     renderMeasureList();
+    applyMeasurementLayerFilter();
   }
  
   function bindMeasureListEvents() {
@@ -3800,7 +3859,8 @@ window.addEventListener("DOMContentLoaded", () => {
       points: normalized,
       areaM2: 0,
       areaHa: 0,
-      gridRange: { cells: [], gridCount: 0, areaM2: 0, areaHa: 0, colSpan: 0, rowSpan: 0 }
+      gridRange: { cells: [], gridCount: 0, areaM2: 0, areaHa: 0, colSpan: 0, rowSpan: 0 },
+      visible: true
     };
  
     layer._fireGridMeasurementId = id;
@@ -3813,6 +3873,7 @@ window.addEventListener("DOMContentLoaded", () => {
     refreshMeasurementStats(measurement);
     updateMeasureSummaryBanner();
     renderMeasureList();
+    applyMeasurementLayerFilter();
   }
  
   function deleteMeasurement(id) {
@@ -3825,6 +3886,7 @@ window.addEventListener("DOMContentLoaded", () => {
     renumberMeasurements();
     updateMeasureSummaryBanner();
     renderMeasureList();
+    applyMeasurementLayerFilter();
   }
  
   function clearLastMeasurement() {
@@ -3841,6 +3903,7 @@ window.addEventListener("DOMContentLoaded", () => {
     measureSerial = 1;
     updateMeasureSummaryBanner();
     renderMeasureList();
+    applyMeasurementLayerFilter();
   }
  
   function applyMeasureStyleToAll() {
@@ -5549,7 +5612,8 @@ window.addEventListener("DOMContentLoaded", () => {
       points: (item.points || []).map(latLngToPlain),
       areaM2: item.areaM2 || 0,
       areaHa: item.areaHa || 0,
-      gridRange: item.gridRange || null
+      gridRange: item.gridRange || null,
+      visible: item.visible !== false
     }));
   }
  
@@ -5805,7 +5869,8 @@ window.addEventListener("DOMContentLoaded", () => {
         points,
         areaM2: 0,
         areaHa: 0,
-        gridRange: { cells: [], gridCount: 0, areaM2: 0, areaHa: 0, colSpan: 0, rowSpan: 0 }
+        gridRange: { cells: [], gridCount: 0, areaM2: 0, areaHa: 0, colSpan: 0, rowSpan: 0 },
+        visible: saved.visible !== false
       };
       layer._fireGridMeasurementId = id;
       layer.on("contextmenu", e => {
@@ -5816,6 +5881,7 @@ window.addEventListener("DOMContentLoaded", () => {
       refreshMeasurementStats(measurement);
     });
     renumberMeasurements();
+    applyMeasurementLayerFilter();
   }
  
 

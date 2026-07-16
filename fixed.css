@@ -3130,7 +3130,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1720: グリッドとピン情報をLeaflet内で正しく階層化 */
+/* Version2026.07.16 Build1708: グリッドとピン情報をLeaflet内で正しく階層化 */
 .leaflet-gridLabelPane-pane {
   z-index: 700 !important;
   pointer-events: none !important;
@@ -3191,7 +3191,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1720: 簡易レイヤ機能（第1段階） */
+/* Version2026.07.16 Build1708: 簡易レイヤ機能（第1段階） */
 .layerIntro {
   margin: 0 0 10px;
   padding: 9px 10px;
@@ -3253,7 +3253,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1720: 災害情報レイヤ詳細分類（第2段階） */
+/* Version2026.07.16 Build1708: 災害情報レイヤ詳細分類（第2段階） */
 .layerGroupBlock {
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
@@ -3337,9 +3337,15 @@ body {
 }
 
 
-/* Version2026.07.16 Build1720: レイヤ機能 第3段階 */
+/* Version2026.07.16 Build1708: レイヤ機能 第3段階 */
 .layerDynamicList { display:grid; gap:4px; }
 .layerDynamicEmpty { margin:4px 0; padding:7px; color:#64748b; font-size:11px; text-align:center; border:1px dashed #cbd5e1; border-radius:6px; }
 .layerTrackToggle { grid-template-columns:22px 16px minmax(0,1fr); }
 .layerTrackColor { width:11px; height:11px; border-radius:999px; border:1px solid rgba(15,23,42,.25); }
 .layerTrackName { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+
+/* Version2026.07.16 Build1708: 計測レイヤを面積図形ごとの個別表示に対応 */
+.layerMeasurementToggle { grid-template-columns:22px 16px minmax(0,1fr); }
+.layerMeasurementColor { width:11px; height:11px; border-radius:999px; border:1px solid rgba(15,23,42,.25); }
+.layerMeasurementName { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

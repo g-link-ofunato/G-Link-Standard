@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1720">
-  <link rel="stylesheet" href="license-auth.css?v=Build1720" />
+  <link rel="stylesheet" href="fixed.css?v=Build1708">
+  <link rel="stylesheet" href="license-auth.css?v=Build1708" />
 </head>
  
 <body>
@@ -333,7 +333,18 @@
               <label class="layerSubToggle"><input id="layerDrawingFreehandVisible" type="checkbox" checked><span>フリーハンド</span><span id="layerDrawingFreehandCount" class="layerCount">0</span></label>
             </div>
           </div>
-          <label class="layerToggleRow"><input id="layerMeasurementsVisible" type="checkbox" checked><span class="layerIcon">📐</span><span class="layerName">計測</span></label>
+          <div class="layerGroupBlock">
+            <div class="layerToggleRow layerParentRow">
+              <input id="layerMeasurementsVisible" type="checkbox" checked aria-label="計測を表示">
+              <span class="layerIcon">📐</span><label class="layerName layerParentName" for="layerMeasurementsVisible">計測</label>
+              <span id="layerMeasurementsCount" class="layerCount">0</span>
+              <button id="layerMeasurementsAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="false" aria-controls="layerMeasurementsDetails" aria-label="計測の詳細を開く">▼</button>
+            </div>
+            <div id="layerMeasurementsDetails" class="layerSubsection" hidden>
+              <div class="layerSubheading">面積図形</div>
+              <div id="layerMeasurementItemList" class="layerDynamicList"><p class="layerDynamicEmpty">面積図形はありません。</p></div>
+            </div>
+          </div>
           <div class="layerGroupBlock">
             <div class="layerToggleRow layerParentRow">
               <input id="layerTracksVisible" type="checkbox" checked aria-label="軌跡を表示">
@@ -646,8 +657,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1720"></script>
+  <script src="fixed.js?v=Build1708"></script>
  
-  <script src="license-auth.js?v=Build1720"></script>
+  <script src="license-auth.js?v=Build1708"></script>
 </body>
 </html>
