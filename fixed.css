@@ -3130,7 +3130,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1559: グリッドとピン情報をLeaflet内で正しく階層化 */
+/* Version2026.07.16 Build1650: グリッドとピン情報をLeaflet内で正しく階層化 */
 .leaflet-gridLabelPane-pane {
   z-index: 700 !important;
   pointer-events: none !important;
@@ -3191,7 +3191,7 @@ body {
 }
 
 
-/* Version2026.07.16 Build1559: 簡易レイヤ機能（第1段階） */
+/* Version2026.07.16 Build1650: 簡易レイヤ機能（第1段階） */
 .layerIntro {
   margin: 0 0 10px;
   padding: 9px 10px;
@@ -3253,13 +3253,30 @@ body {
 }
 
 
-/* Version2026.07.16 Build1559: 災害情報レイヤ詳細分類（第2段階） */
+/* Version2026.07.16 Build1650: 災害情報レイヤ詳細分類（第2段階） */
 .layerGroupBlock {
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
 }
 .layerGroupBlock .layerToggleRow { border-bottom: 1px solid #e5e7eb; }
-.layerParentRow { grid-template-columns: 24px 30px 1fr auto; }
+.layerParentRow { grid-template-columns: 24px 30px 1fr auto 30px; }
+.layerParentName { cursor: pointer; }
+.layerAccordionBtn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.layerAccordionBtn:hover { background: #e2e8f0; color: #0f172a; }
+.layerAccordionBtn:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+.layerSubsection[hidden] { display: none !important; }
 .layerSubsection {
   padding: 8px 11px 11px 43px;
   background: #f8fafc;
@@ -3305,8 +3322,8 @@ body {
 }
 .layerTypeFire { background: #ef4444; }
 .layerTypeRescue { background: #f59e0b; }
-.layerTypeEmergency { background: #22c55e; }
-.layerStatusMark { color: #2563eb; }
+.layerTypeEmergency { background: #2563eb; }
+.layerStatusMark { color: #22c55e; }
 .layerStatusCompleted { color: #374151; }
 .layerCount {
   min-width: 24px;

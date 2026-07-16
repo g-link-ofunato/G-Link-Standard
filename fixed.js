@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.16 Build1559: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.16 Build1650: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -450,7 +450,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1559:
+  // Version2026.07.16 Build1650:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -500,6 +500,8 @@ window.addEventListener("DOMContentLoaded", () => {
     tracks: document.getElementById("layerTracksVisible")
   };
   const showAllLayersBtn = document.getElementById("showAllLayersBtn");
+  const layerPinsAccordionBtn = document.getElementById("layerPinsAccordionBtn");
+  const layerPinsDetails = document.getElementById("layerPinsDetails");
   const layerPinCountElements = {
     all: document.getElementById("layerPinsCount"),
     fire: document.getElementById("layerPinFireCount"),
@@ -590,6 +592,17 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function setPinLayerDetailsExpanded(expanded) {
+    if (!layerPinsDetails || !layerPinsAccordionBtn) return;
+    const isExpanded = expanded !== false;
+    layerPinsDetails.hidden = !isExpanded;
+    layerPinsAccordionBtn.textContent = isExpanded ? "▲" : "▼";
+    layerPinsAccordionBtn.setAttribute("aria-expanded", String(isExpanded));
+    layerPinsAccordionBtn.setAttribute("aria-label", isExpanded
+      ? "災害情報の詳細を閉じる"
+      : "災害情報の詳細を開く");
+  }
+
   function setupLayerControls() {
     Object.entries(layerControls).forEach(([key, input]) => {
       if (!input) return;
@@ -598,12 +611,19 @@ window.addEventListener("DOMContentLoaded", () => {
         applyLayerVisibility();
       });
     });
+    if (layerPinsAccordionBtn) {
+      layerPinsAccordionBtn.addEventListener("click", () => {
+        const expanded = layerPinsAccordionBtn.getAttribute("aria-expanded") === "true";
+        setPinLayerDetailsExpanded(!expanded);
+      });
+    }
     if (showAllLayersBtn) {
       showAllLayersBtn.addEventListener("click", () => {
         layerVisibility = { ...defaultLayerVisibility };
         applyLayerVisibility();
       });
     }
+    setPinLayerDetailsExpanded(true);
     applyLayerVisibility({ skipSessionSave: true });
   }
 
