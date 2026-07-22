@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.16 Build1708: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.22 Build1922: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -456,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.16 Build1708:
+  // Version2026.07.22 Build1922:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -817,7 +817,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!Number.isFinite(Number(value))) return "-";
     const parts = decimalToDmsParts(value);
     const suffix = axis === "lat" ? (Number(value) >= 0 ? "N" : "S") : (Number(value) >= 0 ? "E" : "W");
-    return `${parts.degrees}°${String(parts.minutes).padStart(2, "0")}′${parts.seconds.toFixed(2).padStart(5, "0")}″${suffix}`;
+    return `${parts.degrees}度${String(parts.minutes).padStart(2, "0")}分${parts.seconds.toFixed(2).padStart(5, "0")}秒${suffix}`;
   }
  
   function formatDecimal(value) {
@@ -4619,7 +4619,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     const parsed = parseLatLngInput(value);
     if (!parsed) {
-      alert("座標の形式を確認してください。\n例：39°04′12.34″N, 141°42′34.56″E\n例：39.070094, 141.709600");
+      alert("座標の形式を確認してください。\n例：39度04分12.34秒N, 141度42分34.56秒E\n例：39.070094, 141.709600");
       return;
     }
  

@@ -694,7 +694,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!Number.isFinite(Number(value))) return "-";
     const parts = decimalToDmsParts(value);
     const suffix = axis === "lat" ? (Number(value) >= 0 ? "N" : "S") : (Number(value) >= 0 ? "E" : "W");
-    return `${parts.degrees}°${String(parts.minutes).padStart(2, "0")}′${parts.seconds.toFixed(2).padStart(5, "0")}″${suffix}`;
+    return `${parts.degrees}度${String(parts.minutes).padStart(2, "0")}分${parts.seconds.toFixed(2).padStart(5, "0")}秒${suffix}`;
   }
 
   function formatViewerCoordinate(latlng, data) {

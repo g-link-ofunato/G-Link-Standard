@@ -6,8 +6,8 @@
   <title>G-Link Standard エリア選択</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="stylesheet" href="license-auth.css?v=Build1708" />
+  <link rel="stylesheet" href="style.css?v=Build1922"/>
+  <link rel="stylesheet" href="license-auth.css?v=Build1922" />
 </head>
  
 <body>
@@ -69,6 +69,14 @@
       <button id="searchBtn">検索</button>
     </div>
   </div>
+
+  <div class="toolItem searchItem coordinateSearchItem">
+    <label>座標検索</label>
+    <div class="searchRow">
+      <input id="coordinateSearchBox" type="text" placeholder="例：35度43分36.21秒N, 139度48分23.47秒E">
+      <button id="coordinateSearchBtn">検索</button>
+    </div>
+  </div>
  
  
   <div class="toolItem commitItem">
@@ -80,8 +88,8 @@
 <div id="map"></div>
 <div id="printFrame"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=Build1922"></script>
  
-  <script src="license-auth.js?v=Build1708"></script>
+  <script src="license-auth.js?v=Build1922"></script>
 </body>
 </html>

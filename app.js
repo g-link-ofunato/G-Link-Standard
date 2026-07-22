@@ -198,6 +198,32 @@ window.addEventListener("DOMContentLoaded", () => {
     return null;
   }
  
+
+  function formatDms(value, axis) {
+    const absolute = Math.abs(Number(value));
+    let degrees = Math.floor(absolute);
+    let minutesFloat = (absolute - degrees) * 60;
+    let minutes = Math.floor(minutesFloat);
+    let seconds = (minutesFloat - minutes) * 60;
+
+    seconds = Math.round(seconds * 100) / 100;
+    if (seconds >= 60) {
+      seconds = 0;
+      minutes += 1;
+    }
+    if (minutes >= 60) {
+      minutes = 0;
+      degrees += 1;
+    }
+
+    const suffix = axis === "lat" ? (value < 0 ? "S" : "N") : (value < 0 ? "W" : "E");
+    return `${degrees}度${String(minutes).padStart(2, "0")}分${seconds.toFixed(2).padStart(5, "0")}秒${suffix}`;
+  }
+
+  function formatLatLngPair(lat, lng) {
+    return `${formatDms(lat, "lat")}, ${formatDms(lng, "lng")}`;
+  }
+
   const frame = document.getElementById("printFrame");
   const currentScale = document.getElementById("currentScale");
  
@@ -208,6 +234,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
   const searchBox = document.getElementById("searchBox");
   const searchBtn = document.getElementById("searchBtn");
+  const coordinateSearchBox = document.getElementById("coordinateSearchBox");
+  const coordinateSearchBtn = document.getElementById("coordinateSearchBtn");
   const commitBtn = document.getElementById("commitSessionBtn");
   const toolbar = document.getElementById("toolbar");
   const diagnosticBody = document.getElementById("areaDiagnosticBody");
@@ -398,12 +426,48 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
  
+  function searchCoordinateLocation() {
+    const value = coordinateSearchBox.value.trim();
+    lastSearchMode = "座標検索";
+    lastSearchKeyword = value;
+    lastSearchResult = "検索開始";
+    updateDiagnostic();
+
+    if (!value) {
+      lastSearchResult = "未入力";
+      updateDiagnostic();
+      alert("検索する座標を入力してください。");
+      return;
+    }
+
+    const parsed = parseLatLngInput(value);
+    if (!parsed) {
+      lastSearchResult = "形式エラー";
+      updateDiagnostic();
+      alert("座標の形式を確認してください。\n例：35度43分36.21秒N, 139度48分23.47秒E\n例：35.726725, 139.806519");
+      return;
+    }
+
+    const { lat, lng } = parsed;
+    map.setView([lat, lng], 15);
+
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.marker([lat, lng]).addTo(map);
+    searchMarker.bindPopup(`座標検索<br>${formatLatLngPair(lat, lng)}`).openPopup();
+
+    lastSearchResult = formatLatLngPair(lat, lng);
+    updateDiagnostic();
+  }
+
   searchBtn.addEventListener("click", searchLocation);
+  coordinateSearchBtn.addEventListener("click", searchCoordinateLocation);
  
   searchBox.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      searchLocation();
-    }
+    if (e.key === "Enter") searchLocation();
+  });
+
+  coordinateSearchBox.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") searchCoordinateLocation();
   });
  
   commitBtn.addEventListener("click", () => {

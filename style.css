@@ -73,7 +73,7 @@ body {
   gap: 6px;
 }
  
-#searchBox {
+.searchRow input {
   height: 32px;
   width: 350px;
   max-width: 100%;
@@ -83,7 +83,7 @@ body {
   font-size: 14px;
 }
  
-#searchBtn {
+.searchRow button {
   height: 32px;
   min-width: 64px;
   font-weight: bold;
@@ -194,7 +194,7 @@ body {
     flex-direction: column;
   }
 
-  #searchBtn {
+  .searchRow button {
     width: 100%;
   }
 

@@ -478,10 +478,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function toDmsParts(value) {
     const absolute = Math.abs(Number(value));
-    const degrees = Math.floor(absolute);
+    let degrees = Math.floor(absolute);
     const minutesFloat = (absolute - degrees) * 60;
-    const minutes = Math.floor(minutesFloat);
-    const seconds = (minutesFloat - minutes) * 60;
+    let minutes = Math.floor(minutesFloat);
+    let seconds = (minutesFloat - minutes) * 60;
+    seconds = Math.round(seconds * 100) / 100;
+    if (seconds >= 60) { seconds = 0; minutes += 1; }
+    if (minutes >= 60) { minutes = 0; degrees += 1; }
     return { degrees, minutes, seconds };
   }
 
@@ -490,7 +493,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!Number.isFinite(number)) return "";
     const parts = toDmsParts(number);
     const suffix = axis === "lat" ? (number >= 0 ? "N" : "S") : (number >= 0 ? "E" : "W");
-    return `${parts.degrees}度${parts.minutes}分${parts.seconds.toFixed(2)}秒${suffix}`;
+    return `${parts.degrees}度${String(parts.minutes).padStart(2, "0")}分${parts.seconds.toFixed(2).padStart(5, "0")}秒${suffix}`;
   }
 
   function formatLatLngPair(lat, lng) {
