@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1725">
-  <link rel="stylesheet" href="license-auth.css?v=Build1725" />
+  <link rel="stylesheet" href="fixed.css?v=Build1810">
+  <link rel="stylesheet" href="license-auth.css?v=Build1810" />
 </head>
  
 <body>
@@ -185,7 +185,7 @@
           </div>
           <div class="editBlock">
             <label>文字サイズ：<span id="textFontSizeValue">28</span>px</label>
-            <input id="textFontSizeInput" type="range" min="12" max="72" step="1" value="28">
+            <input id="textFontSizeInput" type="range" min="12" max="96" step="1" value="28">
           </div>
           <div class="editBlock">
             <label class="textBoldRow"><input id="textBoldInput" type="checkbox" checked><span>太字</span></label>
@@ -196,13 +196,13 @@
           </div>
           <div class="editBlock">
             <label>枠の横幅：<span id="textBoxWidthValue">240</span>px</label>
-            <input id="textBoxWidthInput" type="range" min="60" max="600" step="10" value="240">
+            <input id="textBoxWidthInput" type="range" min="60" max="900" step="10" value="240">
           </div>
           <div class="editBlock">
             <label>枠の高さ：<span id="textBoxHeightValue">80</span>px</label>
-            <input id="textBoxHeightInput" type="range" min="30" max="400" step="10" value="80">
+            <input id="textBoxHeightInput" type="range" min="30" max="600" step="10" value="80">
           </div>
-          <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。</div>
+          <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。選択後は枠の四隅をドラッグして大きさを変更できます。</div>
           <button id="clearTextsBtn" class="dangerButton" type="button">テキストを全削除</button>
         </div>
 
@@ -665,17 +665,17 @@
  
 
   <div id="textEditPanel" class="textEditPanel" hidden>
-    <h3>テキスト編集</h3>
+    <h3>テキスト編集</h3><p class="textToolHelp">内容・書式は操作と同時に地図へ反映されます。選択枠の四隅をドラッグすると、枠を任意の大きさに変更できます。</p>
     <label>テキスト<textarea id="textEditContent" rows="3" maxlength="200"></textarea></label>
     <label>文字色<input id="textEditColor" type="color"></label>
     <label>背景色<div class="textBackgroundRow"><input id="textEditBackgroundEnabled" type="checkbox"><span>背景を表示</span><input id="textEditBackgroundColor" type="color"></div></label>
     <label>フォント<select id="textEditFontFamily"><option value="sans-serif">ゴシック体</option><option value="serif">明朝体</option><option value="rounded">丸ゴシック体</option></select></label>
-    <label>文字サイズ：<span id="textEditFontSizeValue">28</span>px<input id="textEditFontSize" type="range" min="12" max="72" step="1"></label>
+    <label>文字サイズ：<span id="textEditFontSizeValue">28</span>px<input id="textEditFontSize" type="range" min="12" max="96" step="1"></label>
     <label class="textBoldRow"><input id="textEditBold" type="checkbox"><span>太字</span></label>
     <label>文字方向<select id="textEditOrientation"><option value="horizontal">横</option><option value="vertical">縦</option></select></label>
-    <label>枠の横幅：<span id="textEditBoxWidthValue">240</span>px<input id="textEditBoxWidth" type="range" min="60" max="600" step="10"></label>
-    <label>枠の高さ：<span id="textEditBoxHeightValue">80</span>px<input id="textEditBoxHeight" type="range" min="30" max="400" step="10"></label>
-    <div class="buttonRow"><button id="saveTextEdit" type="button">保存</button><button id="deleteTextEdit" type="button" class="dangerButton">削除</button><button id="closeTextEdit" type="button">閉じる</button></div>
+    <label>枠の横幅：<span id="textEditBoxWidthValue">240</span>px<input id="textEditBoxWidth" type="range" min="60" max="900" step="10"></label>
+    <label>枠の高さ：<span id="textEditBoxHeightValue">80</span>px<input id="textEditBoxHeight" type="range" min="30" max="600" step="10"></label>
+    <div class="buttonRow"><button id="saveTextEdit" type="button">確定</button><button id="deleteTextEdit" type="button" class="dangerButton">削除</button><button id="closeTextEdit" type="button">閉じる</button></div>
   </div>
 
   <!-- ★追加：図形編集パネル -->
@@ -722,8 +722,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1725"></script>
+  <script src="fixed.js?v=Build1810"></script>
  
-  <script src="license-auth.js?v=Build1725"></script>
+  <script src="license-auth.js?v=Build1810"></script>
 </body>
 </html>

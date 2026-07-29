@@ -454,7 +454,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1725: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1810: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -494,7 +494,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1725:
+  // Version2026.07.29 Build1810:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -4468,17 +4468,25 @@ window.addEventListener("DOMContentLoaded", () => {
     return '"Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif';
   }
 
-  function createTextIcon(data) {
+  function createTextResizeHandles() {
+    return ["nw", "ne", "sw", "se"]
+      .map(dir => `<span class="mapTextResizeHandle mapTextResizeHandle-${dir}" data-resize-dir="${dir}" aria-hidden="true"></span>`)
+      .join("");
+  }
+
+  function createTextIcon(data, selected = false) {
     const bg = data.backgroundEnabled === false ? "transparent" : (data.backgroundColor || "#ffffff");
-    const border = data.backgroundEnabled === false ? "none" : "1px solid rgba(0,0,0,.22)";
+    const border = data.backgroundEnabled === false ? "1px dashed rgba(35,95,180,.72)" : "1px solid rgba(0,0,0,.22)";
     const orientation = data.orientation === "vertical" ? "vertical" : "horizontal";
-    const width = Math.max(60, Math.min(600, Number(data.boxWidth || 240)));
-    const height = Math.max(30, Math.min(400, Number(data.boxHeight || 80)));
-    const fontSize = Math.max(12, Math.min(72, Number(data.fontSize || 28)));
+    const width = Math.max(60, Math.min(900, Number(data.boxWidth || 240)));
+    const height = Math.max(30, Math.min(600, Number(data.boxHeight || 80)));
+    const fontSize = Math.max(12, Math.min(96, Number(data.fontSize || 28)));
     const writing = orientation === "vertical"
       ? "writing-mode:vertical-rl;text-orientation:upright;white-space:pre-wrap;"
       : "writing-mode:horizontal-tb;text-orientation:mixed;white-space:pre-wrap;";
-    const html = `<div class="mapTextLabel" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px;font-weight:${data.bold === false ? 400 : 700};width:${width}px;height:${height}px;${writing}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</div>`;
+    const selectedClass = selected ? " is-selected" : "";
+    const handles = selected ? createTextResizeHandles() : "";
+    const html = `<div class="mapTextLabel${selectedClass}" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px;font-weight:${data.bold === false ? 400 : 700};width:${width}px;height:${height}px;${writing}"><span class="mapTextContent">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</span>${handles}</div>`;
     return L.divIcon({
       className: "mapTextIcon",
       html,
@@ -4487,37 +4495,143 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function refreshTextMarker(item) {
-    if (!item || !item.marker || !item.data) return;
-    const ll = item.marker.getLatLng();
-    item.marker.setIcon(createTextIcon(item.data));
-    item.marker.setLatLng(ll);
-    if (item.marker.update) item.marker.update();
+  function syncTextEditControlsFromData(data) {
+    if (!data) return;
+    textEditContent.value = data.text || "";
+    textEditColor.value = data.color || "#e60000";
+    textEditBackgroundEnabled.checked = data.backgroundEnabled !== false;
+    textEditBackgroundColor.value = data.backgroundColor || "#ffffff";
+    textEditFontFamily.value = data.fontFamily || "sans-serif";
+    textEditFontSize.value = Number(data.fontSize || 28);
+    textEditFontSizeValue.textContent = textEditFontSize.value;
+    textEditBold.checked = data.bold !== false;
+    textEditOrientation.value = data.orientation === "vertical" ? "vertical" : "horizontal";
+    textEditBoxWidth.value = Number(data.boxWidth || 240);
+    textEditBoxWidthValue.textContent = textEditBoxWidth.value;
+    textEditBoxHeight.value = Number(data.boxHeight || 80);
+    textEditBoxHeightValue.textContent = textEditBoxHeight.value;
   }
 
+  function readTextEditControls() {
+    return {
+      text: textEditContent.value,
+      color: textEditColor.value,
+      backgroundEnabled: textEditBackgroundEnabled.checked,
+      backgroundColor: textEditBackgroundColor.value,
+      fontFamily: textEditFontFamily.value,
+      fontSize: Math.max(12, Math.min(96, Number(textEditFontSize.value || 28))),
+      bold: textEditBold.checked,
+      orientation: textEditOrientation.value === "vertical" ? "vertical" : "horizontal",
+      boxWidth: Math.max(60, Math.min(900, Number(textEditBoxWidth.value || 240))),
+      boxHeight: Math.max(30, Math.min(600, Number(textEditBoxHeight.value || 80)))
+    };
+  }
+
+  function bindTextResizeHandles(item) {
+    if (!item?.marker || selectedTextItem !== item) return;
+    const markerElement = item.marker.getElement();
+    if (!markerElement) return;
+    markerElement.querySelectorAll("[data-resize-dir]").forEach(handle => {
+      handle.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        const dir = handle.dataset.resizeDir || "se";
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startWidth = Number(item.data.boxWidth || 240);
+        const startHeight = Number(item.data.boxHeight || 80);
+        const startPoint = map.latLngToContainerPoint(item.marker.getLatLng());
+        const wasMapDragging = map.dragging.enabled();
+        if (wasMapDragging) map.dragging.disable();
+        if (item.marker.dragging) item.marker.dragging.disable();
+        handle.setPointerCapture?.(event.pointerId);
+
+        const onMove = moveEvent => {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          const horizontalSign = dir.includes("e") ? 1 : -1;
+          const verticalSign = dir.includes("s") ? 1 : -1;
+          const newWidth = Math.max(60, Math.min(900, startWidth + dx * horizontalSign));
+          const newHeight = Math.max(30, Math.min(600, startHeight + dy * verticalSign));
+          const widthDelta = newWidth - startWidth;
+          const heightDelta = newHeight - startHeight;
+          const centerShiftX = widthDelta * horizontalSign / 2;
+          const centerShiftY = heightDelta * verticalSign / 2;
+          item.data.boxWidth = Math.round(newWidth);
+          item.data.boxHeight = Math.round(newHeight);
+          item.marker.setLatLng(map.containerPointToLatLng(L.point(startPoint.x + centerShiftX, startPoint.y + centerShiftY)));
+          const ll = item.marker.getLatLng();
+          item.data.lat = ll.lat;
+          item.data.lng = ll.lng;
+          textEditBoxWidth.value = item.data.boxWidth;
+          textEditBoxWidthValue.textContent = item.data.boxWidth;
+          textEditBoxHeight.value = item.data.boxHeight;
+          textEditBoxHeightValue.textContent = item.data.boxHeight;
+          refreshTextMarker(item, true);
+        };
+
+        const onEnd = () => {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onEnd);
+          window.removeEventListener("pointercancel", onEnd);
+          if (item.marker.dragging) item.marker.dragging.enable();
+          if (wasMapDragging) map.dragging.enable();
+          refreshTextMarker(item, true);
+        };
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onEnd, { once:true });
+        window.addEventListener("pointercancel", onEnd, { once:true });
+      });
+    });
+  }
+
+  function refreshTextMarker(item, selected = selectedTextItem === item) {
+    if (!item || !item.marker || !item.data) return;
+    const ll = item.marker.getLatLng();
+    item.marker.setIcon(createTextIcon(item.data, selected));
+    item.marker.setLatLng(ll);
+    requestAnimationFrame(() => bindTextResizeHandles(item));
+  }
+
+  let textEditSnapshot = null;
+
   function openTextEdit(item) {
+    if (selectedTextItem && selectedTextItem !== item) refreshTextMarker(selectedTextItem, false);
     selectedTextItem = item;
-    textEditContent.value = item.data.text || "";
-    textEditColor.value = item.data.color || "#e60000";
-    textEditBackgroundEnabled.checked = item.data.backgroundEnabled !== false;
-    textEditBackgroundColor.value = item.data.backgroundColor || "#ffffff";
-    textEditFontFamily.value = item.data.fontFamily || "sans-serif";
-    textEditFontSize.value = Number(item.data.fontSize || 28);
-    textEditFontSizeValue.textContent = textEditFontSize.value;
-    textEditBold.checked = item.data.bold !== false;
-    textEditOrientation.value = item.data.orientation === "vertical" ? "vertical" : "horizontal";
-    textEditBoxWidth.value = Number(item.data.boxWidth || 240); textEditBoxWidthValue.textContent = textEditBoxWidth.value;
-    textEditBoxHeight.value = Number(item.data.boxHeight || 80); textEditBoxHeightValue.textContent = textEditBoxHeight.value;
+    textEditSnapshot = { ...item.data, lat:item.marker.getLatLng().lat, lng:item.marker.getLatLng().lng };
+    syncTextEditControlsFromData(item.data);
     textEditPanel.hidden = false;
+    refreshTextMarker(item, true);
+  }
+
+  function applyTextEditPreview() {
+    if (!selectedTextItem) return;
+    Object.assign(selectedTextItem.data, readTextEditControls());
+    refreshTextMarker(selectedTextItem, true);
+  }
+
+  function closeTextEditor({ revert = false } = {}) {
+    if (!selectedTextItem) {
+      textEditPanel.hidden = true;
+      return;
+    }
+    if (revert && textEditSnapshot) {
+      Object.assign(selectedTextItem.data, textEditSnapshot);
+      selectedTextItem.marker.setLatLng([textEditSnapshot.lat, textEditSnapshot.lng]);
+    }
+    refreshTextMarker(selectedTextItem, false);
+    selectedTextItem = null;
+    textEditSnapshot = null;
+    textEditPanel.hidden = true;
   }
 
   function addTextItem(data) {
     if (!data || !data.text || !Number.isFinite(Number(data.lat)) || !Number.isFinite(Number(data.lng))) return null;
-    const normalized = { id: data.id || `text_${Date.now()}_${Math.random().toString(16).slice(2)}`, text: String(data.text), lat:Number(data.lat), lng:Number(data.lng), color:data.color||"#e60000", backgroundEnabled:data.backgroundEnabled!==false, backgroundColor:data.backgroundColor||"#ffffff", fontFamily:data.fontFamily||"sans-serif", fontSize:Math.max(12,Math.min(72,Number(data.fontSize||28))), bold:data.bold!==false, orientation:data.orientation === "vertical" ? "vertical" : "horizontal", boxWidth:Math.max(60,Math.min(600,Number(data.boxWidth||240))), boxHeight:Math.max(30,Math.min(400,Number(data.boxHeight||80))), visible:data.visible!==false };
+    const normalized = { id: data.id || `text_${Date.now()}_${Math.random().toString(16).slice(2)}`, text: String(data.text), lat:Number(data.lat), lng:Number(data.lng), color:data.color||"#e60000", backgroundEnabled:data.backgroundEnabled!==false, backgroundColor:data.backgroundColor||"#ffffff", fontFamily:data.fontFamily||"sans-serif", fontSize:Math.max(12,Math.min(96,Number(data.fontSize||28))), bold:data.bold!==false, orientation:data.orientation === "vertical" ? "vertical" : "horizontal", boxWidth:Math.max(60,Math.min(900,Number(data.boxWidth||240))), boxHeight:Math.max(30,Math.min(600,Number(data.boxHeight||80))), visible:data.visible!==false };
     const marker = L.marker([normalized.lat, normalized.lng], { icon:createTextIcon(normalized), draggable:true, keyboard:false }).addTo(textLayer);
+    const item = { id:normalized.id, data:normalized, marker };
     marker.on("dragend", () => { const ll=marker.getLatLng(); normalized.lat=ll.lat; normalized.lng=ll.lng; });
     marker.on("click", ev => { if (ev.originalEvent) L.DomEvent.stopPropagation(ev.originalEvent); openTextEdit(item); });
-    const item = { id:normalized.id, data:normalized, marker };
     texts.push(item);
     applyTextLayerFilter();
     return item;
@@ -4575,34 +4689,31 @@ window.addEventListener("DOMContentLoaded", () => {
   syncTextToolVisibility();
  
   if (textFontSizeInput) textFontSizeInput.addEventListener("input", () => { textFontSizeValue.textContent = textFontSizeInput.value; });
-  if (textEditFontSize) textEditFontSize.addEventListener("input", () => { textEditFontSizeValue.textContent = textEditFontSize.value; });
   if (textBoxWidthInput) textBoxWidthInput.addEventListener("input", () => { textBoxWidthValue.textContent = textBoxWidthInput.value; });
   if (textBoxHeightInput) textBoxHeightInput.addEventListener("input", () => { textBoxHeightValue.textContent = textBoxHeightInput.value; });
-  if (textEditBoxWidth) textEditBoxWidth.addEventListener("input", () => { textEditBoxWidthValue.textContent = textEditBoxWidth.value; });
-  if (textEditBoxHeight) textEditBoxHeight.addEventListener("input", () => { textEditBoxHeightValue.textContent = textEditBoxHeight.value; });
-  if (clearTextsBtn) clearTextsBtn.addEventListener("click", () => { if (!texts.length) return; if (!confirm("配置したテキストをすべて削除しますか？")) return; textLayer.clearLayers(); texts=[]; applyTextLayerFilter(); textEditPanel.hidden=true; });
+
+  [textEditContent, textEditColor, textEditBackgroundEnabled, textEditBackgroundColor, textEditFontFamily, textEditFontSize, textEditBold, textEditOrientation, textEditBoxWidth, textEditBoxHeight]
+    .filter(Boolean)
+    .forEach(control => {
+      const eventName = (control.tagName === "SELECT" || control.type === "checkbox") ? "change" : "input";
+      control.addEventListener(eventName, () => {
+        textEditFontSizeValue.textContent = textEditFontSize.value;
+        textEditBoxWidthValue.textContent = textEditBoxWidth.value;
+        textEditBoxHeightValue.textContent = textEditBoxHeight.value;
+        applyTextEditPreview();
+      });
+    });
+
+  if (clearTextsBtn) clearTextsBtn.addEventListener("click", () => { if (!texts.length) return; if (!confirm("配置したテキストをすべて削除しますか？")) return; textLayer.clearLayers(); texts=[]; applyTextLayerFilter(); selectedTextItem=null; textEditSnapshot=null; textEditPanel.hidden=true; });
   if (saveTextEdit) saveTextEdit.addEventListener("click", () => {
     if (!selectedTextItem) return;
     const text = textEditContent.value.trim();
     if (!text) return alert("テキストを入力してください。");
-    Object.assign(selectedTextItem.data, {
-      text,
-      color: textEditColor.value,
-      backgroundEnabled: textEditBackgroundEnabled.checked,
-      backgroundColor: textEditBackgroundColor.value,
-      fontFamily: textEditFontFamily.value,
-      fontSize: Math.max(12, Math.min(72, Number(textEditFontSize.value || 28))),
-      bold: textEditBold.checked,
-      orientation: textEditOrientation.value === "vertical" ? "vertical" : "horizontal",
-      boxWidth: Math.max(60, Math.min(600, Number(textEditBoxWidth.value || 240))),
-      boxHeight: Math.max(30, Math.min(400, Number(textEditBoxHeight.value || 80)))
-    });
-    refreshTextMarker(selectedTextItem);
-    textEditPanel.hidden = true;
-    selectedTextItem = null;
+    Object.assign(selectedTextItem.data, readTextEditControls(), { text });
+    closeTextEditor({ revert:false });
   });
-  if (deleteTextEdit) deleteTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; textLayer.removeLayer(selectedTextItem.marker); texts=texts.filter(x=>x!==selectedTextItem); applyTextLayerFilter(); textEditPanel.hidden=true; selectedTextItem=null; });
-  if (closeTextEdit) closeTextEdit.addEventListener("click", () => { textEditPanel.hidden=true; selectedTextItem=null; });
+  if (deleteTextEdit) deleteTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; const deleting=selectedTextItem; selectedTextItem=null; textEditSnapshot=null; textLayer.removeLayer(deleting.marker); texts=texts.filter(x=>x!==deleting); applyTextLayerFilter(); textEditPanel.hidden=true; });
+  if (closeTextEdit) closeTextEdit.addEventListener("click", () => closeTextEditor({ revert:true }));
 
   colorPresets.forEach(btn => {
     btn.addEventListener("click", () => {
