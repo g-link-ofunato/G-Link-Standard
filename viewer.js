@@ -365,7 +365,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       gridLineSettings: data.g || {},
       pins: (data.p || []).map(expandPin).filter(Boolean),
       drawings: (data.d || []).map(expandDrawing).filter(Boolean),
-      texts: (data.y || []).map(v => ({text:v?.[0]||"",lat:Number(v?.[1]),lng:Number(v?.[2]),color:v?.[3]||"#e60000",backgroundEnabled:v?.[4]!==false,backgroundColor:v?.[5]||"#ffffff",fontFamily:v?.[6]||"sans-serif",fontSize:Number(v?.[7]||28),bold:v?.[8]!==false,orientation:v?.[9]==="vertical"?"vertical":"horizontal",boxWidth:Number(v?.[10]||240),boxHeight:Number(v?.[11]||80)})).filter(v=>v.text&&Number.isFinite(v.lat)&&Number.isFinite(v.lng)),
+      texts: (data.y || []).map(v => ({text:v?.[0]||"",lat:Number(v?.[1]),lng:Number(v?.[2]),color:v?.[3]||"#e60000",backgroundEnabled:v?.[4]!==false,backgroundColor:v?.[5]||"#ffffff",fontFamily:v?.[6]||"sans-serif",fontSize:Number(v?.[7]||28),bold:v?.[8]!==false,orientation:v?.[9]==="vertical"?"vertical":"horizontal",boxWidth:Number(v?.[10]||240),boxHeight:Number(v?.[11]||80),backgroundOpacity:Number.isFinite(Number(v?.[12]))?Math.max(0,Math.min(1,Number(v[12]))):1})).filter(v=>v.text&&Number.isFinite(v.lat)&&Number.isFinite(v.lng)),
       tracks: (data.x || []).map(expandTrack).filter(Boolean),
       measurements: (data.m || []).map(expandMeasurement).filter(Boolean),
       activityHistory: (data.a || []).map(expandHistory).filter(Boolean)
@@ -545,11 +545,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function textBackgroundRgba(color, opacity) {
+    const alpha = Math.max(0, Math.min(1, Number(opacity)));
+    const value = String(color || "#ffffff").trim();
+    const short = /^#([0-9a-f]{3})$/i.exec(value);
+    const full = /^#([0-9a-f]{6})$/i.exec(value);
+    let hex = null;
+    if (short) hex = short[1].split("").map(ch => ch + ch).join("");
+    if (full) hex = full[1];
+    if (!hex) return `rgba(255,255,255,${alpha})`;
+    return `rgba(${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)},${alpha})`;
+  }
+
   function renderTexts(map, data) {
     const group = L.layerGroup().addTo(map);
     (data.texts || []).forEach(item => {
       if (!item || !item.text || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
-      const bg = item.backgroundEnabled === false ? "transparent" : (item.backgroundColor || "#ffffff");
+      const opacity = Number.isFinite(Number(item.backgroundOpacity)) ? Math.max(0, Math.min(1, Number(item.backgroundOpacity))) : 1;
+      const bg = item.backgroundEnabled === false ? "transparent" : textBackgroundRgba(item.backgroundColor || "#ffffff", opacity);
       const family = item.fontFamily === "serif" ? '"Yu Mincho",serif' : (item.fontFamily === "rounded" ? '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif' : '"Yu Gothic",sans-serif');
       const html = `<div class="mapTextLabel" style="color:${escapeHtml(item.color||'#e60000')};background:${escapeHtml(bg)};font-family:${family};font-size:${Number(item.fontSize||28)}px;font-weight:${item.bold===false?400:700};width:${Math.max(60,Math.min(900,Number(item.boxWidth||240)))}px;height:${Math.max(30,Math.min(600,Number(item.boxHeight||80)))}px;writing-mode:${item.orientation==='vertical'?'vertical-rl':'horizontal-tb'};text-orientation:${item.orientation==='vertical'?'upright':'mixed'};overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;">${escapeHtml(item.text).replace(/\n/g,'<br>')}</div>`;
       const width = Math.max(60,Math.min(900,Number(item.boxWidth||240)));

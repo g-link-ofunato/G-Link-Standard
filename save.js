@@ -732,9 +732,22 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
  
+    const textBackgroundRgba = (color, opacity) => {
+      const alpha = Math.max(0, Math.min(1, Number(opacity)));
+      const value = String(color || "#ffffff").trim();
+      const short = /^#([0-9a-f]{3})$/i.exec(value);
+      const full = /^#([0-9a-f]{6})$/i.exec(value);
+      let hex = null;
+      if (short) hex = short[1].split("").map(ch => ch + ch).join("");
+      if (full) hex = full[1];
+      if (!hex) return `rgba(255,255,255,${alpha})`;
+      return `rgba(${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)},${alpha})`;
+    };
+
     (Array.isArray(saveCenterData.texts) ? saveCenterData.texts : []).forEach(item => {
       if (!item || typeof item.lat !== "number" || typeof item.lng !== "number" || !item.text) return;
-      const bg = item.backgroundEnabled === false ? "transparent" : (item.backgroundColor || "#ffffff");
+      const opacity = Number.isFinite(Number(item.backgroundOpacity)) ? Math.max(0, Math.min(1, Number(item.backgroundOpacity))) : 1;
+      const bg = item.backgroundEnabled === false ? "transparent" : textBackgroundRgba(item.backgroundColor || "#ffffff", opacity);
       const family = item.fontFamily === "serif" ? '"Yu Mincho",serif' : (item.fontFamily === "rounded" ? '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif' : '"Yu Gothic",sans-serif');
       L.marker([item.lat,item.lng], { icon:L.divIcon({ className:"mapTextIcon", html:`<div class="mapTextLabel" style="color:${escapeHtml(item.color||'#e60000')};background:${escapeHtml(bg)};font-family:${family};font-size:${Number(item.fontSize||28)}px;font-weight:${item.bold===false?400:700};width:${Math.max(60,Math.min(900,Number(item.boxWidth||240)))}px;height:${Math.max(30,Math.min(600,Number(item.boxHeight||80)))}px;writing-mode:${item.orientation==='vertical'?'vertical-rl':'horizontal-tb'};text-orientation:${item.orientation==='vertical'?'upright':'mixed'};overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;">${escapeHtml(item.text).replace(/\n/g,'<br>')}</div>`, iconSize:[Math.max(60,Math.min(900,Number(item.boxWidth||240))),Math.max(30,Math.min(600,Number(item.boxHeight||80)))], iconAnchor:[Math.max(60,Math.min(900,Number(item.boxWidth||240)))/2,Math.max(30,Math.min(600,Number(item.boxHeight||80)))/2] }) }).addTo(previewFeatureLayer);
     });
@@ -1281,7 +1294,7 @@ window.addEventListener("DOMContentLoaded", () => {
       g: data.gridLineSettings || {},
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
-      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80)]),
+      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80),Number.isFinite(Number(item.backgroundOpacity))?Math.max(0,Math.min(1,Number(item.backgroundOpacity))):1]),
       x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
       a: (data.activityHistory || []).map(compactHistory)

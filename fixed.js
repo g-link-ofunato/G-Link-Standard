@@ -273,6 +273,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const textColorInput = document.getElementById("textColorInput");
   const textBackgroundEnabled = document.getElementById("textBackgroundEnabled");
   const textBackgroundColorInput = document.getElementById("textBackgroundColorInput");
+  const textBackgroundOpacityInput = document.getElementById("textBackgroundOpacityInput");
+  const textBackgroundOpacityValue = document.getElementById("textBackgroundOpacityValue");
   const textFontFamilyInput = document.getElementById("textFontFamilyInput");
   const textFontSizeInput = document.getElementById("textFontSizeInput");
   const textFontSizeValue = document.getElementById("textFontSizeValue");
@@ -288,6 +290,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const textEditColor = document.getElementById("textEditColor");
   const textEditBackgroundEnabled = document.getElementById("textEditBackgroundEnabled");
   const textEditBackgroundColor = document.getElementById("textEditBackgroundColor");
+  const textEditBackgroundOpacity = document.getElementById("textEditBackgroundOpacity");
+  const textEditBackgroundOpacityValue = document.getElementById("textEditBackgroundOpacityValue");
   const textEditFontFamily = document.getElementById("textEditFontFamily");
   const textEditFontSize = document.getElementById("textEditFontSize");
   const textEditFontSizeValue = document.getElementById("textEditFontSizeValue");
@@ -454,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1835: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1851: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -494,7 +498,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1835:
+  // Version2026.07.29 Build1851:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1435,7 +1439,7 @@ window.addEventListener("DOMContentLoaded", () => {
       g: data.gridLineSettings || {},
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
-      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80)]),
+      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80),Number.isFinite(Number(item.backgroundOpacity))?Math.max(0,Math.min(1,Number(item.backgroundOpacity))):1]),
       x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
       a: (data.activityHistory || []).map(compactHistory)
@@ -4475,9 +4479,25 @@ window.addEventListener("DOMContentLoaded", () => {
       .join("");
   }
 
+  function hexColorToRgba(color, opacity) {
+    const alpha = Math.max(0, Math.min(1, Number(opacity)));
+    const value = String(color || "#ffffff").trim();
+    const short = /^#([0-9a-f]{3})$/i.exec(value);
+    const full = /^#([0-9a-f]{6})$/i.exec(value);
+    let hex = null;
+    if (short) hex = short[1].split("").map(ch => ch + ch).join("");
+    if (full) hex = full[1];
+    if (!hex) return `rgba(255,255,255,${alpha})`;
+    return `rgba(${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)},${alpha})`;
+  }
+
   function getNormalizedTextVisuals(data) {
+    const backgroundOpacity = Number.isFinite(Number(data.backgroundOpacity))
+      ? Math.max(0, Math.min(1, Number(data.backgroundOpacity)))
+      : 1;
     return {
-      background: data.backgroundEnabled === false ? "transparent" : (data.backgroundColor || "#ffffff"),
+      backgroundOpacity,
+      background: data.backgroundEnabled === false ? "transparent" : hexColorToRgba(data.backgroundColor || "#ffffff", backgroundOpacity),
       border: data.backgroundEnabled === false ? "1px dashed rgba(35,95,180,.72)" : "1px solid rgba(0,0,0,.22)",
       orientation: data.orientation === "vertical" ? "vertical" : "horizontal",
       width: Math.max(60, Math.min(900, Number(data.boxWidth || 240))),
@@ -4545,6 +4565,8 @@ window.addEventListener("DOMContentLoaded", () => {
     textEditColor.value = data.color || "#e60000";
     textEditBackgroundEnabled.checked = data.backgroundEnabled !== false;
     textEditBackgroundColor.value = data.backgroundColor || "#ffffff";
+    textEditBackgroundOpacity.value = Math.round((Number.isFinite(Number(data.backgroundOpacity)) ? Math.max(0, Math.min(1, Number(data.backgroundOpacity))) : 1) * 100);
+    textEditBackgroundOpacityValue.textContent = textEditBackgroundOpacity.value;
     textEditFontFamily.value = data.fontFamily || "sans-serif";
     textEditFontSize.value = Number(data.fontSize || 28);
     textEditFontSizeValue.textContent = textEditFontSize.value;
@@ -4562,6 +4584,7 @@ window.addEventListener("DOMContentLoaded", () => {
       color: textEditColor.value,
       backgroundEnabled: textEditBackgroundEnabled.checked,
       backgroundColor: textEditBackgroundColor.value,
+      backgroundOpacity: Math.max(0, Math.min(1, Number(textEditBackgroundOpacity.value || 0) / 100)),
       fontFamily: textEditFontFamily.value,
       fontSize: Math.max(12, Math.min(96, Number(textEditFontSize.value || 28))),
       bold: textEditBold.checked,
@@ -4682,7 +4705,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function addTextItem(data) {
     if (!data || !data.text || !Number.isFinite(Number(data.lat)) || !Number.isFinite(Number(data.lng))) return null;
-    const normalized = { id: data.id || `text_${Date.now()}_${Math.random().toString(16).slice(2)}`, text: String(data.text), lat:Number(data.lat), lng:Number(data.lng), color:data.color||"#e60000", backgroundEnabled:data.backgroundEnabled!==false, backgroundColor:data.backgroundColor||"#ffffff", fontFamily:data.fontFamily||"sans-serif", fontSize:Math.max(12,Math.min(96,Number(data.fontSize||28))), bold:data.bold!==false, orientation:data.orientation === "vertical" ? "vertical" : "horizontal", boxWidth:Math.max(60,Math.min(900,Number(data.boxWidth||240))), boxHeight:Math.max(30,Math.min(600,Number(data.boxHeight||80))), visible:data.visible!==false };
+    const normalized = { id: data.id || `text_${Date.now()}_${Math.random().toString(16).slice(2)}`, text: String(data.text), lat:Number(data.lat), lng:Number(data.lng), color:data.color||"#e60000", backgroundEnabled:data.backgroundEnabled!==false, backgroundColor:data.backgroundColor||"#ffffff", backgroundOpacity:Number.isFinite(Number(data.backgroundOpacity))?Math.max(0,Math.min(1,Number(data.backgroundOpacity))):1, fontFamily:data.fontFamily||"sans-serif", fontSize:Math.max(12,Math.min(96,Number(data.fontSize||28))), bold:data.bold!==false, orientation:data.orientation === "vertical" ? "vertical" : "horizontal", boxWidth:Math.max(60,Math.min(900,Number(data.boxWidth||240))), boxHeight:Math.max(30,Math.min(600,Number(data.boxHeight||80))), visible:data.visible!==false };
     const marker = L.marker([normalized.lat, normalized.lng], { icon:createTextIcon(normalized), draggable:true, keyboard:false }).addTo(textLayer);
     const item = { id:normalized.id, data:normalized, marker };
     marker.on("dragend", () => { const ll=marker.getLatLng(); normalized.lat=ll.lat; normalized.lng=ll.lng; });
@@ -4743,18 +4766,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
   syncTextToolVisibility();
  
+  if (textBackgroundOpacityInput) textBackgroundOpacityInput.addEventListener("input", () => { textBackgroundOpacityValue.textContent = textBackgroundOpacityInput.value; });
   if (textFontSizeInput) textFontSizeInput.addEventListener("input", () => { textFontSizeValue.textContent = textFontSizeInput.value; });
   if (textBoxWidthInput) textBoxWidthInput.addEventListener("input", () => { textBoxWidthValue.textContent = textBoxWidthInput.value; });
   if (textBoxHeightInput) textBoxHeightInput.addEventListener("input", () => { textBoxHeightValue.textContent = textBoxHeightInput.value; });
 
   const handleTextEditControlChange = () => {
+    textEditBackgroundOpacityValue.textContent = textEditBackgroundOpacity.value;
     textEditFontSizeValue.textContent = textEditFontSize.value;
     textEditBoxWidthValue.textContent = textEditBoxWidth.value;
     textEditBoxHeightValue.textContent = textEditBoxHeight.value;
     applyTextEditPreview();
   };
 
-  [textEditContent, textEditColor, textEditBackgroundColor, textEditFontSize, textEditBoxWidth, textEditBoxHeight]
+  [textEditContent, textEditColor, textEditBackgroundColor, textEditBackgroundOpacity, textEditFontSize, textEditBoxWidth, textEditBoxHeight]
     .filter(Boolean)
     .forEach(control => {
       control.addEventListener("input", handleTextEditControlChange);
@@ -5703,7 +5728,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (drawSettings.type === "text") {
       const value = (textContentInput?.value || "").trim();
       if (!value) { alert("配置するテキストを入力してください。"); return; }
-      addTextItem({ text:value, lat:e.latlng.lat, lng:e.latlng.lng, color:textColorInput.value, backgroundEnabled:textBackgroundEnabled.checked, backgroundColor:textBackgroundColorInput.value, fontFamily:textFontFamilyInput.value, fontSize:Number(textFontSizeInput.value), bold:textBoldInput.checked, orientation:textOrientationInput.value, boxWidth:Number(textBoxWidthInput.value), boxHeight:Number(textBoxHeightInput.value) });
+      addTextItem({ text:value, lat:e.latlng.lat, lng:e.latlng.lng, color:textColorInput.value, backgroundEnabled:textBackgroundEnabled.checked, backgroundColor:textBackgroundColorInput.value, backgroundOpacity:Math.max(0,Math.min(1,Number(textBackgroundOpacityInput.value||0)/100)), fontFamily:textFontFamilyInput.value, fontSize:Number(textFontSizeInput.value), bold:textBoldInput.checked, orientation:textOrientationInput.value, boxWidth:Number(textBoxWidthInput.value), boxHeight:Number(textBoxHeightInput.value) });
       return;
     }
 
