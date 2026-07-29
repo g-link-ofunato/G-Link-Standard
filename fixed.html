@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1632">
-  <link rel="stylesheet" href="license-auth.css?v=Build1632" />
+  <link rel="stylesheet" href="fixed.css?v=Build1648">
+  <link rel="stylesheet" href="license-auth.css?v=Build1648" />
 </head>
  
 <body>
@@ -112,8 +112,9 @@
           </select>
         </div>
  
+        <div id="shapeToolSettings" class="shapeToolSettings" hidden>
         <div class="editBlock">
-          <label>線色</label>
+          <label>配色</label>
           <div class="colorPresetRow">
             <button class="colorPreset active" data-color="#e60000" style="background:#e60000;"></button>
             <button class="colorPreset" data-color="#0066ff" style="background:#0066ff;"></button>
@@ -159,6 +160,8 @@
         </div>
  
 
+        </div>
+
         <div id="textToolSettings" class="textToolSettings" hidden>
           <div class="editBlock">
             <label for="textContentInput">テキスト</label>
@@ -187,11 +190,23 @@
           <div class="editBlock">
             <label class="textBoldRow"><input id="textBoldInput" type="checkbox" checked><span>太字</span></label>
           </div>
+          <div class="editBlock">
+            <label for="textOrientationInput">文字方向</label>
+            <select id="textOrientationInput"><option value="horizontal">横</option><option value="vertical">縦</option></select>
+          </div>
+          <div class="editBlock">
+            <label>枠の横幅：<span id="textBoxWidthValue">240</span>px</label>
+            <input id="textBoxWidthInput" type="range" min="60" max="600" step="10" value="240">
+          </div>
+          <div class="editBlock">
+            <label>枠の高さ：<span id="textBoxHeightValue">80</span>px</label>
+            <input id="textBoxHeightInput" type="range" min="30" max="400" step="10" value="80">
+          </div>
           <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。</div>
           <button id="clearTextsBtn" class="dangerButton" type="button">テキストを全削除</button>
         </div>
 
-        <div class="editBlock">
+        <div id="shapeManagementSettings" class="editBlock" hidden>
           <label>管理</label>
           <button id="clearDrawingsBtn" class="dangerButton">図形を全削除</button>
         </div>
@@ -338,9 +353,9 @@
               <span class="layerIcon">📍</span>
               <label class="layerName layerParentName" for="layerPinsVisible">災害情報</label>
               <span id="layerPinsCount" class="layerCount">0</span>
-              <button id="layerPinsAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="true" aria-controls="layerPinsDetails" aria-label="災害情報の詳細を閉じる">▲</button>
+              <button id="layerPinsAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="false" aria-controls="layerPinsDetails" aria-label="災害情報の詳細を開く">▼</button>
             </div>
-            <div id="layerPinsDetails" class="layerSubsection">
+            <div id="layerPinsDetails" class="layerSubsection" hidden>
               <div class="layerSubheading">種別</div>
               <label class="layerSubToggle"><input id="layerPinFireVisible" type="checkbox" checked><span class="layerTypeDot layerTypeFire"></span><span>火災</span><span id="layerPinFireCount" class="layerCount">0</span></label>
               <label class="layerSubToggle"><input id="layerPinRescueVisible" type="checkbox" checked><span class="layerTypeDot layerTypeRescue"></span><span>救助</span><span id="layerPinRescueCount" class="layerCount">0</span></label>
@@ -367,6 +382,7 @@
               <label class="layerSubToggle"><input id="layerDrawingFreehandVisible" type="checkbox" checked><span>フリーハンド</span><span id="layerDrawingFreehandCount" class="layerCount">0</span></label>
             </div>
           </div>
+          <label class="layerToggleRow"><input id="layerTextsVisible" type="checkbox" checked><span class="layerIcon">T</span><span class="layerName">テキスト</span><span id="layerTextsCount" class="layerCount">0</span></label>
           <div class="layerGroupBlock">
             <div class="layerToggleRow layerParentRow">
               <input id="layerMeasurementsVisible" type="checkbox" checked aria-label="計測を表示">
@@ -656,6 +672,9 @@
     <label>フォント<select id="textEditFontFamily"><option value="sans-serif">ゴシック体</option><option value="serif">明朝体</option><option value="rounded">丸ゴシック体</option></select></label>
     <label>文字サイズ：<span id="textEditFontSizeValue">28</span>px<input id="textEditFontSize" type="range" min="12" max="72" step="1"></label>
     <label class="textBoldRow"><input id="textEditBold" type="checkbox"><span>太字</span></label>
+    <label>文字方向<select id="textEditOrientation"><option value="horizontal">横</option><option value="vertical">縦</option></select></label>
+    <label>枠の横幅：<span id="textEditBoxWidthValue">240</span>px<input id="textEditBoxWidth" type="range" min="60" max="600" step="10"></label>
+    <label>枠の高さ：<span id="textEditBoxHeightValue">80</span>px<input id="textEditBoxHeight" type="range" min="30" max="400" step="10"></label>
     <div class="buttonRow"><button id="saveTextEdit" type="button">保存</button><button id="deleteTextEdit" type="button" class="dangerButton">削除</button><button id="closeTextEdit" type="button">閉じる</button></div>
   </div>
 
@@ -703,8 +722,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1632"></script>
+  <script src="fixed.js?v=Build1648"></script>
  
-  <script src="license-auth.js?v=Build1632"></script>
+  <script src="license-auth.js?v=Build1648"></script>
 </body>
 </html>
