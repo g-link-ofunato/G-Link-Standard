@@ -454,7 +454,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1648: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1725: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -494,7 +494,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1648:
+  // Version2026.07.29 Build1725:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -4474,9 +4474,25 @@ window.addEventListener("DOMContentLoaded", () => {
     const orientation = data.orientation === "vertical" ? "vertical" : "horizontal";
     const width = Math.max(60, Math.min(600, Number(data.boxWidth || 240)));
     const height = Math.max(30, Math.min(400, Number(data.boxHeight || 80)));
-    const writing = orientation === "vertical" ? "writing-mode:vertical-rl;text-orientation:upright;" : "writing-mode:horizontal-tb;white-space:pre-wrap;";
-    const html = `<div class="mapTextLabel" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${Number(data.fontSize || 28)}px;font-weight:${data.bold === false ? 400 : 700};width:${width}px;height:${height}px;${writing}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</div>`;
-    return L.divIcon({ className: "mapTextIcon", html, iconSize: [1,1], iconAnchor: [0,0] });
+    const fontSize = Math.max(12, Math.min(72, Number(data.fontSize || 28)));
+    const writing = orientation === "vertical"
+      ? "writing-mode:vertical-rl;text-orientation:upright;white-space:pre-wrap;"
+      : "writing-mode:horizontal-tb;text-orientation:mixed;white-space:pre-wrap;";
+    const html = `<div class="mapTextLabel" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px;font-weight:${data.bold === false ? 400 : 700};width:${width}px;height:${height}px;${writing}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</div>`;
+    return L.divIcon({
+      className: "mapTextIcon",
+      html,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
+    });
+  }
+
+  function refreshTextMarker(item) {
+    if (!item || !item.marker || !item.data) return;
+    const ll = item.marker.getLatLng();
+    item.marker.setIcon(createTextIcon(item.data));
+    item.marker.setLatLng(ll);
+    if (item.marker.update) item.marker.update();
   }
 
   function openTextEdit(item) {
@@ -4565,7 +4581,26 @@ window.addEventListener("DOMContentLoaded", () => {
   if (textEditBoxWidth) textEditBoxWidth.addEventListener("input", () => { textEditBoxWidthValue.textContent = textEditBoxWidth.value; });
   if (textEditBoxHeight) textEditBoxHeight.addEventListener("input", () => { textEditBoxHeightValue.textContent = textEditBoxHeight.value; });
   if (clearTextsBtn) clearTextsBtn.addEventListener("click", () => { if (!texts.length) return; if (!confirm("配置したテキストをすべて削除しますか？")) return; textLayer.clearLayers(); texts=[]; applyTextLayerFilter(); textEditPanel.hidden=true; });
-  if (saveTextEdit) saveTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; const text=textEditContent.value.trim(); if (!text) return alert("テキストを入力してください。"); Object.assign(selectedTextItem.data,{text,color:textEditColor.value,backgroundEnabled:textEditBackgroundEnabled.checked,backgroundColor:textEditBackgroundColor.value,fontFamily:textEditFontFamily.value,fontSize:Number(textEditFontSize.value),bold:textEditBold.checked,orientation:textEditOrientation.value,boxWidth:Number(textEditBoxWidth.value),boxHeight:Number(textEditBoxHeight.value)}); selectedTextItem.marker.setIcon(createTextIcon(selectedTextItem.data)); textEditPanel.hidden=true; selectedTextItem=null; });
+  if (saveTextEdit) saveTextEdit.addEventListener("click", () => {
+    if (!selectedTextItem) return;
+    const text = textEditContent.value.trim();
+    if (!text) return alert("テキストを入力してください。");
+    Object.assign(selectedTextItem.data, {
+      text,
+      color: textEditColor.value,
+      backgroundEnabled: textEditBackgroundEnabled.checked,
+      backgroundColor: textEditBackgroundColor.value,
+      fontFamily: textEditFontFamily.value,
+      fontSize: Math.max(12, Math.min(72, Number(textEditFontSize.value || 28))),
+      bold: textEditBold.checked,
+      orientation: textEditOrientation.value === "vertical" ? "vertical" : "horizontal",
+      boxWidth: Math.max(60, Math.min(600, Number(textEditBoxWidth.value || 240))),
+      boxHeight: Math.max(30, Math.min(400, Number(textEditBoxHeight.value || 80)))
+    });
+    refreshTextMarker(selectedTextItem);
+    textEditPanel.hidden = true;
+    selectedTextItem = null;
+  });
   if (deleteTextEdit) deleteTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; textLayer.removeLayer(selectedTextItem.marker); texts=texts.filter(x=>x!==selectedTextItem); applyTextLayerFilter(); textEditPanel.hidden=true; selectedTextItem=null; });
   if (closeTextEdit) closeTextEdit.addEventListener("click", () => { textEditPanel.hidden=true; selectedTextItem=null; });
 

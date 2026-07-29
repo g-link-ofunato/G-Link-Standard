@@ -552,7 +552,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       const bg = item.backgroundEnabled === false ? "transparent" : (item.backgroundColor || "#ffffff");
       const family = item.fontFamily === "serif" ? '"Yu Mincho",serif' : (item.fontFamily === "rounded" ? '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif' : '"Yu Gothic",sans-serif');
       const html = `<div class="mapTextLabel" style="color:${escapeHtml(item.color||'#e60000')};background:${escapeHtml(bg)};font-family:${family};font-size:${Number(item.fontSize||28)}px;font-weight:${item.bold===false?400:700};width:${Math.max(60,Math.min(600,Number(item.boxWidth||240)))}px;height:${Math.max(30,Math.min(400,Number(item.boxHeight||80)))}px;writing-mode:${item.orientation==='vertical'?'vertical-rl':'horizontal-tb'};text-orientation:${item.orientation==='vertical'?'upright':'mixed'};overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;">${escapeHtml(item.text).replace(/\n/g,'<br>')}</div>`;
-      group.addLayer(L.marker([item.lat,item.lng], { interactive:false, icon:L.divIcon({className:"mapTextIcon",html,iconSize:[1,1],iconAnchor:[0,0]}) }));
+      const width = Math.max(60,Math.min(600,Number(item.boxWidth||240)));
+      const height = Math.max(30,Math.min(400,Number(item.boxHeight||80)));
+      group.addLayer(L.marker([item.lat,item.lng], { interactive:false, icon:L.divIcon({className:"mapTextIcon",html,iconSize:[width,height],iconAnchor:[width/2,height/2]}) }));
     });
   }
 
