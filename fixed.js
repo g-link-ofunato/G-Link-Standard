@@ -36,6 +36,7 @@ window.addEventListener("DOMContentLoaded", () => {
       bounds: !!(data?.session?.bounds || data?.bounds),
       pins: Array.isArray(data?.pins) ? data.pins.length : 0,
       drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      texts: Array.isArray(data?.texts) ? data.texts.length : 0,
       tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
       measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
       activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
@@ -265,6 +266,28 @@ window.addEventListener("DOMContentLoaded", () => {
   const fillMode = document.getElementById("fillMode");
   const clearDrawingsBtn = document.getElementById("clearDrawingsBtn");
   const drawStatusText = document.getElementById("drawStatusText");
+  const textToolSettings = document.getElementById("textToolSettings");
+  const textContentInput = document.getElementById("textContentInput");
+  const textColorInput = document.getElementById("textColorInput");
+  const textBackgroundEnabled = document.getElementById("textBackgroundEnabled");
+  const textBackgroundColorInput = document.getElementById("textBackgroundColorInput");
+  const textFontFamilyInput = document.getElementById("textFontFamilyInput");
+  const textFontSizeInput = document.getElementById("textFontSizeInput");
+  const textFontSizeValue = document.getElementById("textFontSizeValue");
+  const textBoldInput = document.getElementById("textBoldInput");
+  const clearTextsBtn = document.getElementById("clearTextsBtn");
+  const textEditPanel = document.getElementById("textEditPanel");
+  const textEditContent = document.getElementById("textEditContent");
+  const textEditColor = document.getElementById("textEditColor");
+  const textEditBackgroundEnabled = document.getElementById("textEditBackgroundEnabled");
+  const textEditBackgroundColor = document.getElementById("textEditBackgroundColor");
+  const textEditFontFamily = document.getElementById("textEditFontFamily");
+  const textEditFontSize = document.getElementById("textEditFontSize");
+  const textEditFontSizeValue = document.getElementById("textEditFontSizeValue");
+  const textEditBold = document.getElementById("textEditBold");
+  const saveTextEdit = document.getElementById("saveTextEdit");
+  const deleteTextEdit = document.getElementById("deleteTextEdit");
+  const closeTextEdit = document.getElementById("closeTextEdit");
  
   const shapeEditPanel = document.getElementById("shapeEditPanel");
   const shapeEditColor = document.getElementById("shapeEditColor");
@@ -414,10 +437,12 @@ window.addEventListener("DOMContentLoaded", () => {
   let coordinateType = loadCoordinateType();
  
   let drawings = [];
+  let texts = [];
+  let selectedTextItem = null;
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1405: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1424: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -456,7 +481,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1405:
+  // Version2026.07.29 Build1424:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -487,6 +512,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const gridLayer = L.layerGroup().addTo(map);
   const trackLayer = L.layerGroup().addTo(map);
   const drawingLayer = L.layerGroup().addTo(map);
+  const textLayer = L.layerGroup().addTo(map);
   const measureLayer = L.layerGroup().addTo(map);
   const pinLayer = L.layerGroup().addTo(map);
   const searchHighlightLayer = L.layerGroup().addTo(map);
@@ -1382,6 +1408,7 @@ window.addEventListener("DOMContentLoaded", () => {
       g: data.gridLineSettings || {},
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
+      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false]),
       x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
       a: (data.activityHistory || []).map(compactHistory)
@@ -1448,6 +1475,7 @@ window.addEventListener("DOMContentLoaded", () => {
       gridLineSettings: { ...gridLineSettings },
       pins: serializePins().map(stripAttachmentForViewer),
       drawings: serializeDrawings(),
+      texts: serializeTexts(),
       tracks: serializeTracks(),
       measurements: serializeMeasurements(),
       activityHistory: activityHistory.map(item => ({ ...item }))
@@ -4362,6 +4390,8 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
  
+    if (textToolSettings) textToolSettings.hidden = drawSettings.type !== "text";
+
     if (drawSettings.type === "polyline") {
       if (e.originalEvent) {
         e.originalEvent.preventDefault();
@@ -4404,6 +4434,50 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
  
+  function escapeTextHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  }
+
+  function normalizeTextFontFamily(value) {
+    if (value === "serif") return '"Yu Mincho","Hiragino Mincho ProN",serif';
+    if (value === "rounded") return '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+    return '"Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif';
+  }
+
+  function createTextIcon(data) {
+    const bg = data.backgroundEnabled === false ? "transparent" : (data.backgroundColor || "#ffffff");
+    const border = data.backgroundEnabled === false ? "none" : "1px solid rgba(0,0,0,.22)";
+    const html = `<div class="mapTextLabel" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${Number(data.fontSize || 28)}px;font-weight:${data.bold === false ? 400 : 700};">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</div>`;
+    return L.divIcon({ className: "mapTextIcon", html, iconSize: [1,1], iconAnchor: [0,0] });
+  }
+
+  function openTextEdit(item) {
+    selectedTextItem = item;
+    textEditContent.value = item.data.text || "";
+    textEditColor.value = item.data.color || "#e60000";
+    textEditBackgroundEnabled.checked = item.data.backgroundEnabled !== false;
+    textEditBackgroundColor.value = item.data.backgroundColor || "#ffffff";
+    textEditFontFamily.value = item.data.fontFamily || "sans-serif";
+    textEditFontSize.value = Number(item.data.fontSize || 28);
+    textEditFontSizeValue.textContent = textEditFontSize.value;
+    textEditBold.checked = item.data.bold !== false;
+    textEditPanel.hidden = false;
+  }
+
+  function addTextItem(data) {
+    if (!data || !data.text || !Number.isFinite(Number(data.lat)) || !Number.isFinite(Number(data.lng))) return null;
+    const normalized = { id: data.id || `text_${Date.now()}_${Math.random().toString(16).slice(2)}`, text: String(data.text), lat:Number(data.lat), lng:Number(data.lng), color:data.color||"#e60000", backgroundEnabled:data.backgroundEnabled!==false, backgroundColor:data.backgroundColor||"#ffffff", fontFamily:data.fontFamily||"sans-serif", fontSize:Math.max(12,Math.min(72,Number(data.fontSize||28))), bold:data.bold!==false };
+    const marker = L.marker([normalized.lat, normalized.lng], { icon:createTextIcon(normalized), draggable:true, keyboard:false }).addTo(textLayer);
+    marker.on("dragend", () => { const ll=marker.getLatLng(); normalized.lat=ll.lat; normalized.lng=ll.lng; });
+    marker.on("click", ev => { if (ev.originalEvent) L.DomEvent.stopPropagation(ev.originalEvent); openTextEdit(item); });
+    const item = { id:normalized.id, data:normalized, marker };
+    texts.push(item);
+    return item;
+  }
+
+  function serializeTexts() { return texts.map(item => ({ ...item.data, lat:item.marker.getLatLng().lat, lng:item.marker.getLatLng().lng })); }
+  function restoreTexts(list) { textLayer.clearLayers(); texts=[]; (Array.isArray(list)?list:[]).forEach(addTextItem); }
+
   function updateDrawStatus() {
     const typeLabel = {
       none: "未選択",
@@ -4412,7 +4486,8 @@ window.addEventListener("DOMContentLoaded", () => {
       rectangle: "四角形",
       circle: "円",
       arrow: "矢印",
-      freehand: "フリーハンド"
+      freehand: "フリーハンド",
+      text: "テキスト"
     }[drawSettings.type] || "未選択";
  
     const styleLabel = {
@@ -4440,6 +4515,13 @@ window.addEventListener("DOMContentLoaded", () => {
     updateDrawStatus();
   });
  
+  if (textFontSizeInput) textFontSizeInput.addEventListener("input", () => { textFontSizeValue.textContent = textFontSizeInput.value; });
+  if (textEditFontSize) textEditFontSize.addEventListener("input", () => { textEditFontSizeValue.textContent = textEditFontSize.value; });
+  if (clearTextsBtn) clearTextsBtn.addEventListener("click", () => { if (!texts.length) return; if (!confirm("配置したテキストをすべて削除しますか？")) return; textLayer.clearLayers(); texts=[]; textEditPanel.hidden=true; });
+  if (saveTextEdit) saveTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; const text=textEditContent.value.trim(); if (!text) return alert("テキストを入力してください。"); Object.assign(selectedTextItem.data,{text,color:textEditColor.value,backgroundEnabled:textEditBackgroundEnabled.checked,backgroundColor:textEditBackgroundColor.value,fontFamily:textEditFontFamily.value,fontSize:Number(textEditFontSize.value),bold:textEditBold.checked}); selectedTextItem.marker.setIcon(createTextIcon(selectedTextItem.data)); textEditPanel.hidden=true; selectedTextItem=null; });
+  if (deleteTextEdit) deleteTextEdit.addEventListener("click", () => { if (!selectedTextItem) return; textLayer.removeLayer(selectedTextItem.marker); texts=texts.filter(x=>x!==selectedTextItem); textEditPanel.hidden=true; selectedTextItem=null; });
+  if (closeTextEdit) closeTextEdit.addEventListener("click", () => { textEditPanel.hidden=true; selectedTextItem=null; });
+
   colorPresets.forEach(btn => {
     btn.addEventListener("click", () => {
       colorPresets.forEach(b => b.classList.remove("active"));
@@ -5364,6 +5446,13 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
  
+    if (drawSettings.type === "text") {
+      const value = (textContentInput?.value || "").trim();
+      if (!value) { alert("配置するテキストを入力してください。"); return; }
+      addTextItem({ text:value, lat:e.latlng.lat, lng:e.latlng.lng, color:textColorInput.value, backgroundEnabled:textBackgroundEnabled.checked, backgroundColor:textBackgroundColorInput.value, fontFamily:textFontFamilyInput.value, fontSize:Number(textFontSizeInput.value), bold:textBoldInput.checked });
+      return;
+    }
+
     if (drawSettings.type === "line") return handleLineDrawing(e.latlng);
     if (drawSettings.type === "rectangle") return handleRectangleDrawing(e.latlng);
     if (drawSettings.type === "circle") return handleCircleDrawing(e.latlng);
@@ -5839,6 +5928,7 @@ window.addEventListener("DOMContentLoaded", () => {
       ],
       pins: serializePins(),
       drawings: serializeDrawings(),
+      texts: serializeTexts(),
       tracks: serializeTracks(),
       measurements: serializeMeasurements(),
       activityHistory: activityHistory.map(item => ({ ...item }))
@@ -6057,6 +6147,8 @@ window.addEventListener("DOMContentLoaded", () => {
       (Array.isArray(data.drawings) ? data.drawings : []).forEach(item => createShapeFromData(item));
     });
 
+    runSection("texts", () => { restoreTexts(Array.isArray(data.texts) ? data.texts : []); });
+
     runSection("tracks", () => {
       restoreTracks(Array.isArray(data.tracks) ? data.tracks : []);
     });
@@ -6102,6 +6194,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       pins: Array.isArray(data?.pins) ? data.pins.length : 0,
       drawings: Array.isArray(data?.drawings) ? data.drawings.length : 0,
+      texts: Array.isArray(data?.texts) ? data.texts.length : 0,
       measurements: Array.isArray(data?.measurements) ? data.measurements.length : 0,
       tracks: Array.isArray(data?.tracks) ? data.tracks.length : 0,
       activityHistory: Array.isArray(data?.activityHistory) ? data.activityHistory.length : 0
@@ -6112,6 +6205,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return {
       pins: Array.isArray(pins) ? pins.length : 0,
       drawings: Array.isArray(drawings) ? drawings.length : 0,
+      texts: Array.isArray(texts) ? texts.length : 0,
       measurements: Array.isArray(measurements) ? measurements.length : 0,
       tracks: Array.isArray(tracks) ? tracks.length : 0,
       activityHistory: Array.isArray(activityHistory) ? activityHistory.length : 0

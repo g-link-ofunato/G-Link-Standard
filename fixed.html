@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1405">
-  <link rel="stylesheet" href="license-auth.css?v=Build1405" />
+  <link rel="stylesheet" href="fixed.css?v=Build1424">
+  <link rel="stylesheet" href="license-auth.css?v=Build1424" />
 </head>
  
 <body>
@@ -108,6 +108,7 @@
             <option value="circle">円</option>
             <option value="arrow">矢印</option>
             <option value="freehand">フリーハンド</option>
+            <option value="text">テキスト</option>
           </select>
         </div>
  
@@ -157,6 +158,39 @@
           </select>
         </div>
  
+
+        <div id="textToolSettings" class="textToolSettings" hidden>
+          <div class="editBlock">
+            <label for="textContentInput">テキスト</label>
+            <textarea id="textContentInput" rows="3" maxlength="200" placeholder="例：第1前進指揮所"></textarea>
+          </div>
+          <div class="editBlock">
+            <label>文字色</label>
+            <input id="textColorInput" type="color" value="#e60000">
+          </div>
+          <div class="editBlock">
+            <label>背景色</label>
+            <div class="textBackgroundRow"><input id="textBackgroundEnabled" type="checkbox" checked><span>背景を表示</span><input id="textBackgroundColorInput" type="color" value="#ffffff"></div>
+          </div>
+          <div class="editBlock">
+            <label for="textFontFamilyInput">フォント</label>
+            <select id="textFontFamilyInput">
+              <option value="sans-serif">ゴシック体</option>
+              <option value="serif">明朝体</option>
+              <option value="rounded">丸ゴシック体</option>
+            </select>
+          </div>
+          <div class="editBlock">
+            <label>文字サイズ：<span id="textFontSizeValue">28</span>px</label>
+            <input id="textFontSizeInput" type="range" min="12" max="72" step="1" value="28">
+          </div>
+          <div class="editBlock">
+            <label class="textBoldRow"><input id="textBoldInput" type="checkbox" checked><span>太字</span></label>
+          </div>
+          <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。</div>
+          <button id="clearTextsBtn" class="dangerButton" type="button">テキストを全削除</button>
+        </div>
+
         <div class="editBlock">
           <label>管理</label>
           <button id="clearDrawingsBtn" class="dangerButton">図形を全削除</button>
@@ -613,6 +647,18 @@
     </div>
   </div>
  
+
+  <div id="textEditPanel" class="textEditPanel" hidden>
+    <h3>テキスト編集</h3>
+    <label>テキスト<textarea id="textEditContent" rows="3" maxlength="200"></textarea></label>
+    <label>文字色<input id="textEditColor" type="color"></label>
+    <label>背景色<div class="textBackgroundRow"><input id="textEditBackgroundEnabled" type="checkbox"><span>背景を表示</span><input id="textEditBackgroundColor" type="color"></div></label>
+    <label>フォント<select id="textEditFontFamily"><option value="sans-serif">ゴシック体</option><option value="serif">明朝体</option><option value="rounded">丸ゴシック体</option></select></label>
+    <label>文字サイズ：<span id="textEditFontSizeValue">28</span>px<input id="textEditFontSize" type="range" min="12" max="72" step="1"></label>
+    <label class="textBoldRow"><input id="textEditBold" type="checkbox"><span>太字</span></label>
+    <div class="buttonRow"><button id="saveTextEdit" type="button">保存</button><button id="deleteTextEdit" type="button" class="dangerButton">削除</button><button id="closeTextEdit" type="button">閉じる</button></div>
+  </div>
+
   <!-- ★追加：図形編集パネル -->
   <div id="shapeEditPanel">
     <h3>図形編集</h3>
@@ -657,8 +703,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1405"></script>
+  <script src="fixed.js?v=Build1424"></script>
  
-  <script src="license-auth.js?v=Build1405"></script>
+  <script src="license-auth.js?v=Build1424"></script>
 </body>
 </html>

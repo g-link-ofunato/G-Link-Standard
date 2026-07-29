@@ -732,6 +732,13 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
  
+    (Array.isArray(saveCenterData.texts) ? saveCenterData.texts : []).forEach(item => {
+      if (!item || typeof item.lat !== "number" || typeof item.lng !== "number" || !item.text) return;
+      const bg = item.backgroundEnabled === false ? "transparent" : (item.backgroundColor || "#ffffff");
+      const family = item.fontFamily === "serif" ? '"Yu Mincho",serif' : (item.fontFamily === "rounded" ? '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif' : '"Yu Gothic",sans-serif');
+      L.marker([item.lat,item.lng], { icon:L.divIcon({ className:"mapTextIcon", html:`<div class="mapTextLabel" style="color:${escapeHtml(item.color||'#e60000')};background:${escapeHtml(bg)};font-family:${family};font-size:${Number(item.fontSize||28)}px;font-weight:${item.bold===false?400:700};">${escapeHtml(item.text).replace(/\n/g,'<br>')}</div>`, iconSize:[1,1], iconAnchor:[0,0] }) }).addTo(previewFeatureLayer);
+    });
+
     (Array.isArray(saveCenterData.pins) ? saveCenterData.pins : []).forEach((pin, index) => {
       if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
       const color = pin.completed ? pinColors.completed : (pinColors[pin.type] || "#e60000");
@@ -1274,6 +1281,7 @@ window.addEventListener("DOMContentLoaded", () => {
       g: data.gridLineSettings || {},
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
+      y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false]),
       x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
       a: (data.activityHistory || []).map(compactHistory)

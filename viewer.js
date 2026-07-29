@@ -365,6 +365,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       gridLineSettings: data.g || {},
       pins: (data.p || []).map(expandPin).filter(Boolean),
       drawings: (data.d || []).map(expandDrawing).filter(Boolean),
+      texts: (data.y || []).map(v => ({text:v?.[0]||"",lat:Number(v?.[1]),lng:Number(v?.[2]),color:v?.[3]||"#e60000",backgroundEnabled:v?.[4]!==false,backgroundColor:v?.[5]||"#ffffff",fontFamily:v?.[6]||"sans-serif",fontSize:Number(v?.[7]||28),bold:v?.[8]!==false})).filter(v=>v.text&&Number.isFinite(v.lat)&&Number.isFinite(v.lng)),
       tracks: (data.x || []).map(expandTrack).filter(Boolean),
       measurements: (data.m || []).map(expandMeasurement).filter(Boolean),
       activityHistory: (data.a || []).map(expandHistory).filter(Boolean)
@@ -541,6 +542,17 @@ window.addEventListener("DOMContentLoaded", async () => {
         else layer = L.polyline(points, opt);
       }
       if (layer) group.addLayer(layer);
+    });
+  }
+
+  function renderTexts(map, data) {
+    const group = L.layerGroup().addTo(map);
+    (data.texts || []).forEach(item => {
+      if (!item || !item.text || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+      const bg = item.backgroundEnabled === false ? "transparent" : (item.backgroundColor || "#ffffff");
+      const family = item.fontFamily === "serif" ? '"Yu Mincho",serif' : (item.fontFamily === "rounded" ? '"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif' : '"Yu Gothic",sans-serif');
+      const html = `<div class="mapTextLabel" style="color:${escapeHtml(item.color||'#e60000')};background:${escapeHtml(bg)};font-family:${family};font-size:${Number(item.fontSize||28)}px;font-weight:${item.bold===false?400:700};">${escapeHtml(item.text).replace(/\n/g,'<br>')}</div>`;
+      group.addLayer(L.marker([item.lat,item.lng], { interactive:false, icon:L.divIcon({className:"mapTextIcon",html,iconSize:[1,1],iconAnchor:[0,0]}) }));
     });
   }
 
@@ -910,6 +922,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   renderTracks(map, data);
   renderDrawings(map, data);
+  renderTexts(map, data);
   renderMeasurements(map, data);
   setupViewerInteraction(map, data, bounds);
   diag("パネル状態", true, `検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);
