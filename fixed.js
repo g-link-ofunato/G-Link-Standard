@@ -454,7 +454,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1821: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1835: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -494,7 +494,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1821:
+  // Version2026.07.29 Build1835:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -4475,26 +4475,68 @@ window.addEventListener("DOMContentLoaded", () => {
       .join("");
   }
 
+  function getNormalizedTextVisuals(data) {
+    return {
+      background: data.backgroundEnabled === false ? "transparent" : (data.backgroundColor || "#ffffff"),
+      border: data.backgroundEnabled === false ? "1px dashed rgba(35,95,180,.72)" : "1px solid rgba(0,0,0,.22)",
+      orientation: data.orientation === "vertical" ? "vertical" : "horizontal",
+      width: Math.max(60, Math.min(900, Number(data.boxWidth || 240))),
+      height: Math.max(30, Math.min(600, Number(data.boxHeight || 80))),
+      fontSize: Math.max(12, Math.min(96, Number(data.fontSize || 28))),
+      fontWeight: data.bold === false ? "400" : "700",
+      color: data.color || "#e60000",
+      fontFamily: normalizeTextFontFamily(data.fontFamily)
+    };
+  }
+
   function createTextIcon(data, selected = false) {
-    const bg = data.backgroundEnabled === false ? "transparent" : (data.backgroundColor || "#ffffff");
-    const border = data.backgroundEnabled === false ? "1px dashed rgba(35,95,180,.72)" : "1px solid rgba(0,0,0,.22)";
-    const orientation = data.orientation === "vertical" ? "vertical" : "horizontal";
-    const width = Math.max(60, Math.min(900, Number(data.boxWidth || 240)));
-    const height = Math.max(30, Math.min(600, Number(data.boxHeight || 80)));
-    const fontSize = Math.max(12, Math.min(96, Number(data.fontSize || 28)));
-    const writing = orientation === "vertical"
+    const visual = getNormalizedTextVisuals(data);
+    const writing = visual.orientation === "vertical"
       ? "writing-mode:vertical-rl;text-orientation:upright;white-space:pre-wrap;"
       : "writing-mode:horizontal-tb;text-orientation:mixed;white-space:pre-wrap;";
     const selectedClass = selected ? " is-selected" : "";
     const handles = selected ? createTextResizeHandles() : "";
-    const textStyle = `color:${escapeTextHtml(data.color || '#e60000')};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px!important;font-weight:${data.bold === false ? 400 : 700};${writing}`;
-    const html = `<div class="mapTextLabel${selectedClass}" style="background:${escapeTextHtml(bg)};border:${border};width:${width}px;height:${height}px;"><span class="mapTextContent" style="${textStyle}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</span>${handles}</div>`;
+    const textStyle = `color:${escapeTextHtml(visual.color)};font-family:${visual.fontFamily};font-size:var(--map-text-font-size)!important;font-weight:${visual.fontWeight};${writing}`;
+    const html = `<div class="mapTextLabel${selectedClass}" style="--map-text-font-size:${visual.fontSize}px;background:${escapeTextHtml(visual.background)};border:${visual.border};width:${visual.width}px;height:${visual.height}px;"><span class="mapTextContent" style="${textStyle}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</span>${handles}</div>`;
     return L.divIcon({
       className: "mapTextIcon",
       html,
-      iconSize: [width, height],
-      iconAnchor: [width / 2, height / 2]
+      iconSize: [visual.width, visual.height],
+      iconAnchor: [visual.width / 2, visual.height / 2]
     });
+  }
+
+  function applyTextStylesToRenderedElement(item) {
+    const markerElement = item?.marker?.getElement?.();
+    if (!markerElement || !item?.data) return false;
+    const labelElement = markerElement.querySelector(".mapTextLabel");
+    const contentElement = markerElement.querySelector(".mapTextContent");
+    if (!labelElement || !contentElement) return false;
+
+    const visual = getNormalizedTextVisuals(item.data);
+    labelElement.style.setProperty("--map-text-font-size", `${visual.fontSize}px`);
+    labelElement.style.width = `${visual.width}px`;
+    labelElement.style.height = `${visual.height}px`;
+    labelElement.style.background = visual.background;
+    labelElement.style.border = visual.border;
+
+    contentElement.style.setProperty("font-size", `${visual.fontSize}px`, "important");
+    contentElement.style.setProperty("line-height", "1.25", "important");
+    contentElement.style.color = visual.color;
+    contentElement.style.fontFamily = visual.fontFamily;
+    contentElement.style.fontWeight = visual.fontWeight;
+    contentElement.style.writingMode = visual.orientation === "vertical" ? "vertical-rl" : "horizontal-tb";
+    contentElement.style.textOrientation = visual.orientation === "vertical" ? "upright" : "mixed";
+    contentElement.style.whiteSpace = "pre-wrap";
+
+    // ブラウザまたは既存CSSの影響で値が上書きされた場合も、実測値を確認して再適用する。
+    const computedSize = Number.parseFloat(window.getComputedStyle(contentElement).fontSize);
+    if (!Number.isFinite(computedSize) || Math.abs(computedSize - visual.fontSize) > 0.1) {
+      labelElement.style.setProperty("font-size", `${visual.fontSize}px`, "important");
+      contentElement.style.setProperty("font-size", `${visual.fontSize}px`, "important");
+    }
+    contentElement.dataset.appliedFontSize = String(visual.fontSize);
+    return true;
   }
 
   function syncTextEditControlsFromData(data) {
@@ -4598,7 +4640,10 @@ window.addEventListener("DOMContentLoaded", () => {
     const ll = item.marker.getLatLng();
     item.marker.setIcon(createTextIcon(item.data, selected));
     item.marker.setLatLng(ll);
-    requestAnimationFrame(() => bindTextResizeHandles(item));
+    requestAnimationFrame(() => {
+      applyTextStylesToRenderedElement(item);
+      bindTextResizeHandles(item);
+    });
   }
 
   let textEditSnapshot = null;
@@ -4616,6 +4661,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!selectedTextItem) return;
     Object.assign(selectedTextItem.data, readTextEditControls());
     refreshTextMarker(selectedTextItem, true);
+    // range操作中も、再生成後の実DOMへ直接書式を反映する。
+    requestAnimationFrame(() => applyTextStylesToRenderedElement(selectedTextItem));
   }
 
   function closeTextEditor({ revert = false } = {}) {
@@ -4700,17 +4747,23 @@ window.addEventListener("DOMContentLoaded", () => {
   if (textBoxWidthInput) textBoxWidthInput.addEventListener("input", () => { textBoxWidthValue.textContent = textBoxWidthInput.value; });
   if (textBoxHeightInput) textBoxHeightInput.addEventListener("input", () => { textBoxHeightValue.textContent = textBoxHeightInput.value; });
 
-  [textEditContent, textEditColor, textEditBackgroundEnabled, textEditBackgroundColor, textEditFontFamily, textEditFontSize, textEditBold, textEditOrientation, textEditBoxWidth, textEditBoxHeight]
+  const handleTextEditControlChange = () => {
+    textEditFontSizeValue.textContent = textEditFontSize.value;
+    textEditBoxWidthValue.textContent = textEditBoxWidth.value;
+    textEditBoxHeightValue.textContent = textEditBoxHeight.value;
+    applyTextEditPreview();
+  };
+
+  [textEditContent, textEditColor, textEditBackgroundColor, textEditFontSize, textEditBoxWidth, textEditBoxHeight]
     .filter(Boolean)
     .forEach(control => {
-      const eventName = (control.tagName === "SELECT" || control.type === "checkbox") ? "change" : "input";
-      control.addEventListener(eventName, () => {
-        textEditFontSizeValue.textContent = textEditFontSize.value;
-        textEditBoxWidthValue.textContent = textEditBoxWidth.value;
-        textEditBoxHeightValue.textContent = textEditBoxHeight.value;
-        applyTextEditPreview();
-      });
+      control.addEventListener("input", handleTextEditControlChange);
+      control.addEventListener("change", handleTextEditControlChange);
     });
+
+  [textEditBackgroundEnabled, textEditFontFamily, textEditBold, textEditOrientation]
+    .filter(Boolean)
+    .forEach(control => control.addEventListener("change", handleTextEditControlChange));
 
   if (clearTextsBtn) clearTextsBtn.addEventListener("click", () => { if (!texts.length) return; if (!confirm("配置したテキストをすべて削除しますか？")) return; textLayer.clearLayers(); texts=[]; applyTextLayerFilter(); selectedTextItem=null; textEditSnapshot=null; textEditPanel.hidden=true; });
   if (saveTextEdit) saveTextEdit.addEventListener("click", () => {
