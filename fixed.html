@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1810">
-  <link rel="stylesheet" href="license-auth.css?v=Build1810" />
+  <link rel="stylesheet" href="fixed.css?v=Build1821">
+  <link rel="stylesheet" href="license-auth.css?v=Build1821" />
 </head>
  
 <body>
@@ -199,10 +199,10 @@
             <input id="textBoxWidthInput" type="range" min="60" max="900" step="10" value="240">
           </div>
           <div class="editBlock">
-            <label>枠の高さ：<span id="textBoxHeightValue">80</span>px</label>
+            <label>枠の縦幅：<span id="textBoxHeightValue">80</span>px</label>
             <input id="textBoxHeightInput" type="range" min="30" max="600" step="10" value="80">
           </div>
-          <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。選択後は枠の四隅をドラッグして大きさを変更できます。</div>
+          <div class="textToolHelp">設定後、地図上をクリックして配置します。配置後はドラッグで移動、クリックで再編集できます。選択後は枠の四隅・四辺中央をドラッグして横幅・縦幅を変更できます。</div>
           <button id="clearTextsBtn" class="dangerButton" type="button">テキストを全削除</button>
         </div>
 
@@ -665,7 +665,7 @@
  
 
   <div id="textEditPanel" class="textEditPanel" hidden>
-    <h3>テキスト編集</h3><p class="textToolHelp">内容・書式は操作と同時に地図へ反映されます。選択枠の四隅をドラッグすると、枠を任意の大きさに変更できます。</p>
+    <h3>テキスト編集</h3><p class="textToolHelp">内容・書式は操作と同時に地図へ反映されます。選択枠の四隅・四辺中央をドラッグすると、枠の横幅・縦幅を任意に変更できます。</p>
     <label>テキスト<textarea id="textEditContent" rows="3" maxlength="200"></textarea></label>
     <label>文字色<input id="textEditColor" type="color"></label>
     <label>背景色<div class="textBackgroundRow"><input id="textEditBackgroundEnabled" type="checkbox"><span>背景を表示</span><input id="textEditBackgroundColor" type="color"></div></label>
@@ -674,7 +674,7 @@
     <label class="textBoldRow"><input id="textEditBold" type="checkbox"><span>太字</span></label>
     <label>文字方向<select id="textEditOrientation"><option value="horizontal">横</option><option value="vertical">縦</option></select></label>
     <label>枠の横幅：<span id="textEditBoxWidthValue">240</span>px<input id="textEditBoxWidth" type="range" min="60" max="900" step="10"></label>
-    <label>枠の高さ：<span id="textEditBoxHeightValue">80</span>px<input id="textEditBoxHeight" type="range" min="30" max="600" step="10"></label>
+    <label>枠の縦幅：<span id="textEditBoxHeightValue">80</span>px<input id="textEditBoxHeight" type="range" min="30" max="600" step="10"></label>
     <div class="buttonRow"><button id="saveTextEdit" type="button">確定</button><button id="deleteTextEdit" type="button" class="dangerButton">削除</button><button id="closeTextEdit" type="button">閉じる</button></div>
   </div>
 
@@ -722,8 +722,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1810"></script>
+  <script src="fixed.js?v=Build1821"></script>
  
-  <script src="license-auth.js?v=Build1810"></script>
+  <script src="license-auth.js?v=Build1821"></script>
 </body>
 </html>

@@ -454,7 +454,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1810: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1821: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -494,7 +494,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1810:
+  // Version2026.07.29 Build1821:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1294,6 +1294,7 @@ window.addEventListener("DOMContentLoaded", () => {
     drawSettings.type = "none";
     drawType.value = "none";
     resetDrawingState();
+    syncTextToolVisibility();
     updateDrawStatus();
   }
  
@@ -4469,7 +4470,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function createTextResizeHandles() {
-    return ["nw", "ne", "sw", "se"]
+    return ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
       .map(dir => `<span class="mapTextResizeHandle mapTextResizeHandle-${dir}" data-resize-dir="${dir}" aria-hidden="true"></span>`)
       .join("");
   }
@@ -4486,7 +4487,8 @@ window.addEventListener("DOMContentLoaded", () => {
       : "writing-mode:horizontal-tb;text-orientation:mixed;white-space:pre-wrap;";
     const selectedClass = selected ? " is-selected" : "";
     const handles = selected ? createTextResizeHandles() : "";
-    const html = `<div class="mapTextLabel${selectedClass}" style="color:${escapeTextHtml(data.color || '#e60000')};background:${escapeTextHtml(bg)};border:${border};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px;font-weight:${data.bold === false ? 400 : 700};width:${width}px;height:${height}px;${writing}"><span class="mapTextContent">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</span>${handles}</div>`;
+    const textStyle = `color:${escapeTextHtml(data.color || '#e60000')};font-family:${normalizeTextFontFamily(data.fontFamily)};font-size:${fontSize}px!important;font-weight:${data.bold === false ? 400 : 700};${writing}`;
+    const html = `<div class="mapTextLabel${selectedClass}" style="background:${escapeTextHtml(bg)};border:${border};width:${width}px;height:${height}px;"><span class="mapTextContent" style="${textStyle}">${escapeTextHtml(data.text).replace(/\n/g,'<br>')}</span>${handles}</div>`;
     return L.divIcon({
       className: "mapTextIcon",
       html,
@@ -4549,14 +4551,20 @@ window.addEventListener("DOMContentLoaded", () => {
         const onMove = moveEvent => {
           const dx = moveEvent.clientX - startX;
           const dy = moveEvent.clientY - startY;
-          const horizontalSign = dir.includes("e") ? 1 : -1;
-          const verticalSign = dir.includes("s") ? 1 : -1;
-          const newWidth = Math.max(60, Math.min(900, startWidth + dx * horizontalSign));
-          const newHeight = Math.max(30, Math.min(600, startHeight + dy * verticalSign));
+          const changesWidth = dir.includes("e") || dir.includes("w");
+          const changesHeight = dir.includes("n") || dir.includes("s");
+          const horizontalSign = dir.includes("e") ? 1 : (dir.includes("w") ? -1 : 0);
+          const verticalSign = dir.includes("s") ? 1 : (dir.includes("n") ? -1 : 0);
+          const newWidth = changesWidth
+            ? Math.max(60, Math.min(900, startWidth + dx * horizontalSign))
+            : startWidth;
+          const newHeight = changesHeight
+            ? Math.max(30, Math.min(600, startHeight + dy * verticalSign))
+            : startHeight;
           const widthDelta = newWidth - startWidth;
           const heightDelta = newHeight - startHeight;
-          const centerShiftX = widthDelta * horizontalSign / 2;
-          const centerShiftY = heightDelta * verticalSign / 2;
+          const centerShiftX = changesWidth ? widthDelta * horizontalSign / 2 : 0;
+          const centerShiftY = changesHeight ? heightDelta * verticalSign / 2 : 0;
           item.data.boxWidth = Math.round(newWidth);
           item.data.boxHeight = Math.round(newHeight);
           item.marker.setLatLng(map.containerPointToLatLng(L.point(startPoint.x + centerShiftX, startPoint.y + centerShiftY)));
