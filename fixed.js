@@ -442,7 +442,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1424: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1632: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -481,7 +481,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1424:
+  // Version2026.07.29 Build1632:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -4390,8 +4390,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
  
-    if (textToolSettings) textToolSettings.hidden = drawSettings.type !== "text";
-
     if (drawSettings.type === "polyline") {
       if (e.originalEvent) {
         e.originalEvent.preventDefault();
@@ -4502,9 +4500,15 @@ window.addEventListener("DOMContentLoaded", () => {
       `${typeLabel}・色${drawSettings.color}・太さ${drawSettings.weight}・${styleLabel}・透明度${Math.round(drawSettings.opacity * 100)}%・${fillLabel}`;
   }
  
+  function syncTextToolVisibility() {
+    if (!textToolSettings) return;
+    textToolSettings.hidden = drawSettings.type !== "text";
+  }
+
   drawType.addEventListener("change", () => {
     drawSettings.type = drawType.value;
     resetDrawingState();
+    syncTextToolVisibility();
  
     if (drawSettings.type === "polyline") {
       map.doubleClickZoom.disable();
@@ -4514,6 +4518,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
     updateDrawStatus();
   });
+
+  syncTextToolVisibility();
  
   if (textFontSizeInput) textFontSizeInput.addEventListener("input", () => { textFontSizeValue.textContent = textFontSizeInput.value; });
   if (textEditFontSize) textEditFontSize.addEventListener("input", () => { textEditFontSizeValue.textContent = textEditFontSize.value; });
