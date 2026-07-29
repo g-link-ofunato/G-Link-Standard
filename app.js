@@ -373,55 +373,138 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
  
+  function normalizePlaceSearchText(value) {
+    return String(value || "").normalize("NFKC").toLowerCase().replace(/[\s　・,，.。\-ー―‐]/g, "");
+  }
+
+  function placeSearchScore(keyword, label) {
+    const q = normalizePlaceSearchText(keyword);
+    const t = normalizePlaceSearchText(label);
+    if (!q || !t) return 0;
+    if (t === q) return 1000;
+    if (t.startsWith(q)) return 800 - Math.min(200, t.length - q.length);
+    if (t.includes(q)) return 600 - Math.min(200, t.length - q.length);
+    const parts = String(keyword).normalize("NFKC").split(/[\s　]+/).filter(Boolean);
+    return parts.reduce((score, part) => score + (t.includes(normalizePlaceSearchText(part)) ? 80 : 0), 0);
+  }
+
+  async function fetchPlaceCandidates(keyword) {
+    const candidates = [];
+
+    // 施設・建物名称に強いOpenStreetMap名称検索を優先する。
+    try {
+      const osmUrl = "https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=jp&limit=5&addressdetails=1&accept-language=ja&q=" + encodeURIComponent(keyword);
+      const response = await fetch(osmUrl, { headers: { "Accept": "application/json" } });
+      if (response.ok) {
+        const rows = await response.json();
+        (Array.isArray(rows) ? rows : []).forEach(row => {
+          const lat = Number(row.lat);
+          const lng = Number(row.lon);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          candidates.push({
+            lat, lng,
+            label: row.display_name || row.name || keyword,
+            source: "OpenStreetMap"
+          });
+        });
+      }
+    } catch (error) {
+      console.warn("OpenStreetMap名称検索に失敗しました。", error);
+    }
+
+    // 住所・地名検索は従来の国土地理院検索も併用する。
+    try {
+      const gsiUrl = "https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(keyword);
+      const response = await fetch(gsiUrl);
+      if (response.ok) {
+        const rows = await response.json();
+        (Array.isArray(rows) ? rows : []).slice(0, 5).forEach(row => {
+          const coordinates = row?.geometry?.coordinates;
+          const lng = Number(coordinates?.[0]);
+          const lat = Number(coordinates?.[1]);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          candidates.push({
+            lat, lng,
+            label: row?.properties?.title || keyword,
+            source: "国土地理院"
+          });
+        });
+      }
+    } catch (error) {
+      console.warn("国土地理院住所検索に失敗しました。", error);
+    }
+
+    const unique = [];
+    const seen = new Set();
+    candidates
+      .sort((a, b) => placeSearchScore(keyword, b.label) - placeSearchScore(keyword, a.label))
+      .forEach(item => {
+        const key = `${item.lat.toFixed(5)},${item.lng.toFixed(5)}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        unique.push(item);
+      });
+    return unique.slice(0, 8);
+  }
+
+  function selectPlaceCandidate(keyword, candidates) {
+    if (candidates.length === 1) return candidates[0];
+    const lines = candidates.map((item, index) => `${index + 1}：${item.label}\n　検索元：${item.source}`);
+    const answer = prompt(
+      `「${keyword}」の検索候補です。\n移動する候補番号を入力してください。\n\n${lines.join("\n\n")}`,
+      "1"
+    );
+    if (answer === null) return null;
+    const index = Number(String(answer).trim()) - 1;
+    if (!Number.isInteger(index) || !candidates[index]) {
+      alert("候補番号が正しくありません。地図は移動していません。");
+      return null;
+    }
+    return candidates[index];
+  }
+
   async function searchLocation() {
     const keyword = searchBox.value.trim();
-    lastSearchMode = "住所・名称検索のみ";
+    lastSearchMode = "名称・住所検索（候補選択）";
     lastSearchKeyword = keyword;
     lastSearchResult = "検索開始";
     updateDiagnostic();
- 
+
     if (!keyword) {
       lastSearchResult = "未入力";
       updateDiagnostic();
       alert("検索する地名・施設名・住所を入力してください。");
       return;
     }
- 
+
     try {
-      const url =
-        "https://msearch.gsi.go.jp/address-search/AddressSearch?q=" +
-        encodeURIComponent(keyword);
- 
-      const response = await fetch(url);
-      const results = await response.json();
- 
-      if (!results || results.length === 0) {
+      const candidates = await fetchPlaceCandidates(keyword);
+      if (candidates.length === 0) {
         lastSearchResult = "該当なし";
         updateDiagnostic();
-        alert("検索結果が見つかりませんでした。");
+        alert("検索結果が見つかりませんでした。住所を詳しく入力するか、座標検索を使用してください。");
         return;
       }
- 
-      const result = results[0];
-      const lng = result.geometry.coordinates[0];
-      const lat = result.geometry.coordinates[1];
- 
-      map.setView([lat, lng], 15);
- 
-      if (searchMarker) {
-        map.removeLayer(searchMarker);
-      }
- 
-      searchMarker = L.marker([lat, lng]).addTo(map);
-      searchMarker.bindPopup(result.properties.title || keyword).openPopup();
 
-      lastSearchResult = result.properties.title || "検索成功";
+      const result = selectPlaceCandidate(keyword, candidates);
+      if (!result) {
+        lastSearchResult = "候補選択を中止";
+        updateDiagnostic();
+        return;
+      }
+
+      map.setView([result.lat, result.lng], 16);
+
+      if (searchMarker) map.removeLayer(searchMarker);
+      searchMarker = L.marker([result.lat, result.lng]).addTo(map);
+      searchMarker.bindPopup(`${result.label}<br><small>検索元：${result.source}</small>`).openPopup();
+
+      lastSearchResult = `${result.label}（${result.source}）`;
       updateDiagnostic();
- 
     } catch (error) {
       lastSearchResult = "エラー";
       updateDiagnostic();
-      alert("検索中にエラーが発生しました。");
+      alert("検索中にエラーが発生しました。通信状況を確認してください。");
       console.error(error);
     }
   }

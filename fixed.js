@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.22 Build1922: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.29 Build1405: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -456,7 +456,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.22 Build1922:
+  // Version2026.07.29 Build1405:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -4649,54 +4649,119 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
 
+  function normalizeAddressSearchText(value) {
+    return String(value || "").normalize("NFKC").toLowerCase().replace(/[\s　・,，.。\-ー―‐]/g, "");
+  }
+
+  function addressSearchScore(keyword, label) {
+    const q = normalizeAddressSearchText(keyword);
+    const t = normalizeAddressSearchText(label);
+    if (!q || !t) return 0;
+    if (t === q) return 1000;
+    if (t.startsWith(q)) return 800 - Math.min(200, t.length - q.length);
+    if (t.includes(q)) return 600 - Math.min(200, t.length - q.length);
+    return String(keyword).normalize("NFKC").split(/[\s　]+/).filter(Boolean)
+      .reduce((score, part) => score + (t.includes(normalizeAddressSearchText(part)) ? 80 : 0), 0);
+  }
+
+  async function fetchAddressCandidates(keyword) {
+    const candidates = [];
+    try {
+      const osmUrl = "https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=jp&limit=5&addressdetails=1&accept-language=ja&q=" + encodeURIComponent(keyword);
+      const response = await fetch(osmUrl, { headers: { "Accept": "application/json" } });
+      if (response.ok) {
+        const rows = await response.json();
+        (Array.isArray(rows) ? rows : []).forEach(row => {
+          const lat = Number(row.lat);
+          const lng = Number(row.lon);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            candidates.push({ lat, lng, label: row.display_name || row.name || keyword, source: "OpenStreetMap" });
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("OpenStreetMap名称検索に失敗しました。", error);
+    }
+
+    try {
+      const gsiUrl = "https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(keyword);
+      const response = await fetch(gsiUrl);
+      if (response.ok) {
+        const rows = await response.json();
+        (Array.isArray(rows) ? rows : []).slice(0, 5).forEach(row => {
+          const coordinates = row?.geometry?.coordinates;
+          const lng = Number(coordinates?.[0]);
+          const lat = Number(coordinates?.[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            candidates.push({ lat, lng, label: row?.properties?.title || keyword, source: "国土地理院" });
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("国土地理院住所検索に失敗しました。", error);
+    }
+
+    const unique = [];
+    const seen = new Set();
+    candidates
+      .sort((a, b) => addressSearchScore(keyword, b.label) - addressSearchScore(keyword, a.label))
+      .forEach(item => {
+        const key = `${item.lat.toFixed(5)},${item.lng.toFixed(5)}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        unique.push(item);
+      });
+    return unique.slice(0, 8);
+  }
+
+  function chooseAddressCandidate(keyword, candidates) {
+    if (candidates.length === 1) return candidates[0];
+    const lines = candidates.map((item, index) => `${index + 1}：${item.label}\n　検索元：${item.source}`);
+    const answer = prompt(`「${keyword}」の検索候補です。\n移動する候補番号を入力してください。\n\n${lines.join("\n\n")}`, "1");
+    if (answer === null) return null;
+    const index = Number(String(answer).trim()) - 1;
+    if (!Number.isInteger(index) || !candidates[index]) {
+      alert("候補番号が正しくありません。地図は移動していません。");
+      return null;
+    }
+    return candidates[index];
+  }
+
   async function searchAddress() {
     const value = addressSearchInput ? addressSearchInput.value.trim() : "";
 
     if (!value) {
-      alert("住所を入力してください。");
+      alert("地名・施設名・住所を入力してください。");
       return;
     }
 
     try {
-      const url = "https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(value);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("address search failed");
-      const results = await response.json();
-      const first = Array.isArray(results) ? results[0] : null;
-      const coordinates = first && first.geometry && first.geometry.coordinates;
-
-      if (!Array.isArray(coordinates) || coordinates.length < 2) {
-        alert("該当する住所が見つかりませんでした。");
+      const candidates = await fetchAddressCandidates(value);
+      if (candidates.length === 0) {
+        alert("検索結果が見つかりませんでした。住所を詳しく入力するか、座標検索を使用してください。");
         return;
       }
 
-      const lng = Number(coordinates[0]);
-      const lat = Number(coordinates[1]);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        alert("住所検索結果の座標を取得できませんでした。");
-        return;
-      }
-
-      const latlng = L.latLng(lat, lng);
+      const selected = chooseAddressCandidate(value, candidates);
+      if (!selected) return;
+      const latlng = L.latLng(selected.lat, selected.lng);
 
       if (fixedBounds && !fixedBounds.contains(latlng)) {
-        const result = confirm("この住所は確定範囲外です。移動しますか？");
+        const result = confirm("選択した場所は確定範囲外です。移動しますか？");
         if (!result) return;
       }
 
       map.setView(latlng, Math.max(map.getZoom(), 16), { animate: true });
-
-      const label = first.properties && first.properties.title ? first.properties.title : value;
       createBlinkMarker(
         latlng,
         coordSearchLayer,
         "blue",
-        `住所検索<br>${escapeHtml(label)}<br>緯度：${formatCoordinateValue(lat, "lat")}<br>経度：${formatCoordinateValue(lng, "lng")}`,
+        `名称・住所検索<br>${escapeHtml(selected.label)}<br>検索元：${escapeHtml(selected.source)}<br>緯度：${formatCoordinateValue(selected.lat, "lat")}<br>経度：${formatCoordinateValue(selected.lng, "lng")}`,
         7000
       );
     } catch (error) {
-      console.warn("住所検索に失敗しました。", error);
-      alert("住所検索に失敗しました。通信状況を確認してください。");
+      console.warn("名称・住所検索に失敗しました。", error);
+      alert("名称・住所検索に失敗しました。通信状況を確認してください。");
     }
   }
   
