@@ -427,13 +427,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     return pinLabels[type] ? type : "fire";
   }
 
-  function createPinIcon(type, completed, number) {
+  function createPinIcon(type, completed, number, units = "") {
     const color = completed ? pinColors.completed : (pinColors[normalizePinType(type)] || pinColors.fire);
+    const borderColor = completed ? "#000000" : (String(units || "").trim() ? "#ec4899" : "#ffffff");
     const label = String(number || "");
     const fontSize = label.length >= 3 ? 9 : (label.length >= 2 ? 10 : 12);
     return L.divIcon({
       className: "numberedPinIcon",
-      html: `<div class="numberedPinMarker" style="background:${color};font-size:${fontSize}px;"><span>${escapeHtml(label)}</span></div>`,
+      html: `<div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;"><span>${escapeHtml(label)}</span></div>`,
       iconSize: [26, 26],
       iconAnchor: [13, 13],
       popupAnchor: [0, -14]
@@ -980,7 +981,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   (data.pins || []).forEach((pin, index) => {
     if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
     const marker = L.marker([pin.lat, pin.lng], {
-      icon: createPinIcon(pin.type, pin.completed, index + 1)
+      icon: createPinIcon(pin.type, pin.completed, index + 1, pin.units)
     }).addTo(map);
     marker.bindPopup(pinPopup(pin, index + 1));
   });

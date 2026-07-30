@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1733: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1811: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -466,6 +466,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pinRescue: true,
     pinEmergency: true,
     pinOther: true,
+    pinUnassigned: true,
     pinActive: true,
     pinCompleted: true,
     drawings: true,
@@ -499,7 +500,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1733:
+  // Version2026.07.30 Build1811:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -544,6 +545,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pinRescue: document.getElementById("layerPinRescueVisible"),
     pinEmergency: document.getElementById("layerPinEmergencyVisible"),
     pinOther: document.getElementById("layerPinOtherVisible"),
+    pinUnassigned: document.getElementById("layerPinUnassignedVisible"),
     pinActive: document.getElementById("layerPinActiveVisible"),
     pinCompleted: document.getElementById("layerPinCompletedVisible"),
     drawings: document.getElementById("layerDrawingsVisible"),
@@ -583,6 +585,7 @@ window.addEventListener("DOMContentLoaded", () => {
     rescue: document.getElementById("layerPinRescueCount"),
     emergency: document.getElementById("layerPinEmergencyCount"),
     other: document.getElementById("layerPinOtherCount"),
+    unassigned: document.getElementById("layerPinUnassignedCount"),
     active: document.getElementById("layerPinActiveCount"),
     completed: document.getElementById("layerPinCompletedCount")
   };
@@ -613,19 +616,22 @@ window.addEventListener("DOMContentLoaded", () => {
       emergency: layerVisibility.pinEmergency !== false,
       other: layerVisibility.pinOther !== false
     }[type];
-    const statusVisible = data.completed
-      ? layerVisibility.pinCompleted !== false
-      : layerVisibility.pinActive !== false;
+    const status = getPinActivityStatus(data);
+    const statusVisible = {
+      unassigned: layerVisibility.pinUnassigned !== false,
+      active: layerVisibility.pinActive !== false,
+      completed: layerVisibility.pinCompleted !== false
+    }[status];
     return typeVisible && statusVisible;
   }
 
   function updatePinLayerCounts() {
-    const counts = { all: 0, fire: 0, rescue: 0, emergency: 0, other: 0, active: 0, completed: 0 };
+    const counts = { all: 0, fire: 0, rescue: 0, emergency: 0, other: 0, unassigned: 0, active: 0, completed: 0 };
     pins.forEach(pin => {
       if (!pin || !pin.data) return;
       counts.all += 1;
       counts[normalizePinType(pin.data.type)] += 1;
-      counts[pin.data.completed ? "completed" : "active"] += 1;
+      counts[getPinActivityStatus(pin.data)] += 1;
     });
     Object.entries(layerPinCountElements).forEach(([key, element]) => {
       if (element) element.textContent = String(counts[key] || 0);
@@ -1786,7 +1792,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.07.30 Build1733:
+    // Version2026.07.30 Build1811:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -2071,6 +2077,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
         const normalizedType = normalizePinType(pin.data.type);
         const fill = pin.data.completed ? pinColors.completed : (pinColors[normalizedType] || pinColors.fire);
+        const borderColor = getPinStatusBorderColor(pin.data);
         const number = String(index + 1);
         const fontSize = number.length >= 3 ? 9 : (number.length >= 2 ? 10 : 12);
  
@@ -2088,7 +2095,7 @@ window.addEventListener("DOMContentLoaded", () => {
         ctx.save();
         ctx.beginPath();
         ctx.arc(p.x, p.y, 11.5, 0, Math.PI * 2);
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = 3;
         ctx.stroke();
  
@@ -5279,16 +5286,30 @@ window.addEventListener("DOMContentLoaded", () => {
     return String(pins.length + 1);
   }
  
-  function createIcon(type, completed = false, number = "") {
+  function getPinActivityStatus(data) {
+    if (data?.completed) return "completed";
+    return String(data?.units || "").trim() ? "active" : "unassigned";
+  }
+
+  function getPinStatusBorderColor(data) {
+    const status = getPinActivityStatus(data);
+    if (status === "completed") return "#000000";
+    if (status === "active") return "#ec4899";
+    return "#ffffff";
+  }
+
+  function createIcon(type, completed = false, number = "", units = "") {
     const normalizedType = normalizePinType(type);
+    const data = { type: normalizedType, completed, units };
     const color = completed ? pinColors.completed : (pinColors[normalizedType] || pinColors.fire);
+    const borderColor = getPinStatusBorderColor(data);
     const label = String(number || "");
     const fontSize = label.length >= 3 ? 9 : (label.length >= 2 ? 10 : 12);
  
     return L.divIcon({
       className: completed ? "numberedPinIcon completedPinIcon" : "numberedPinIcon",
       html: `
-        <div class="numberedPinMarker" style="background:${color};font-size:${fontSize}px;">
+        <div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;">
           ${escapeHtml(label)}
         </div>
       `,
@@ -5328,7 +5349,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function refreshPin(pin) {
     if (!pin) return;
-    pin.setIcon(createIcon(pin.data.type, pin.data.completed, getPinDisplayNumber(pin)));
+    pin.setIcon(createIcon(pin.data.type, pin.data.completed, getPinDisplayNumber(pin), pin.data.units));
     pin.unbindPopup();
     pin.unbindTooltip();
     pin.bindTooltip(makePopup(pin.data), {
@@ -5764,7 +5785,7 @@ window.addEventListener("DOMContentLoaded", () => {
       completedLabel: ""
     };
  
-    const marker = L.marker(latlng, { icon: createIcon(data.type, data.completed, pins.length + 1), draggable: true, keyboard: false }).addTo(pinLayer);
+    const marker = L.marker(latlng, { icon: createIcon(data.type, data.completed, pins.length + 1, data.units), draggable: true, keyboard: false }).addTo(pinLayer);
     marker.data = data;
     refreshPin(marker);
  
@@ -6353,7 +6374,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function createPinFromData(data) {
     if (!data || typeof data.lat !== "number" || typeof data.lng !== "number") return null;
-    const marker = L.marker([data.lat, data.lng], { icon: createIcon(data.type, data.completed, pins.length + 1), draggable: true, keyboard: false }).addTo(pinLayer);
+    const marker = L.marker([data.lat, data.lng], { icon: createIcon(data.type, data.completed, pins.length + 1, data.units), draggable: true, keyboard: false }).addTo(pinLayer);
     marker.data = { ...data };
     refreshPin(marker);
     bindPinInteraction(marker);
@@ -7102,7 +7123,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.07.30 Build1733: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.07.30 Build1811: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",

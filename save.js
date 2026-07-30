@@ -756,12 +756,13 @@ window.addEventListener("DOMContentLoaded", () => {
     (Array.isArray(saveCenterData.pins) ? saveCenterData.pins : []).forEach((pin, index) => {
       if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
       const color = pin.completed ? pinColors.completed : (pinColors[pin.type] || "#e60000");
+      const borderColor = pin.completed ? "#000000" : (String(pin.units || "").trim() ? "#ec4899" : "#ffffff");
       const number = String(index + 1);
       const fontSize = number.length >= 3 ? 9 : (number.length >= 2 ? 10 : 12);
       L.marker([pin.lat, pin.lng], {
         icon: L.divIcon({
           className: pin.completed ? "previewNumberedPin completed" : "previewNumberedPin",
-          html: `<div style="background-color:${escapeHtml(color)};font-size:${fontSize}px;">${escapeHtml(number)}</div>`,
+          html: `<div style="background-color:${escapeHtml(color)};border-color:${escapeHtml(borderColor)};font-size:${fontSize}px;">${escapeHtml(number)}</div>`,
           iconSize: [26, 26],
           iconAnchor: [13, 13]
         })
