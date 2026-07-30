@@ -436,7 +436,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function createPinIcon(type, completed, number, units = "") {
     const color = completed ? pinColors.completed : (pinColors[normalizePinType(type)] || pinColors.fire);
-    const borderColor = completed ? "#000000" : (String(units || "").trim() ? "#ec4899" : "#ffffff");
+    const borderColor = "#ffffff";
     const label = String(number || "");
     const fontSize = label.length >= 3 ? 9 : (label.length >= 2 ? 10 : 12);
     const statusClass = completed

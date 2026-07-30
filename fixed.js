@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1912: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1922: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -500,7 +500,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1912:
+  // Version2026.07.30 Build1922:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1792,7 +1792,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.07.30 Build1912:
+    // Version2026.07.30 Build1922:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -5299,9 +5299,6 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function getPinStatusBorderColor(data) {
-    const status = getPinActivityStatus(data);
-    if (status === "completed") return "#000000";
-    if (status === "active") return "#ec4899";
     return "#ffffff";
   }
 
@@ -7134,7 +7131,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.07.30 Build1912: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.07.30 Build1922: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",
