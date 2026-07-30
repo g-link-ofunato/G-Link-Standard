@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1331: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1404: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -499,7 +499,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1331:
+  // Version2026.07.30 Build1404:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1782,20 +1782,46 @@ window.addEventListener("DOMContentLoaded", () => {
  
     const info = getGridInfo();
     if (!info) return null;
+
+    // Version2026.07.30 Build1404:
+    // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
+    // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
+    // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
+    const overlayGeometryState = {
+      display: overlay.style.display,
+      visibility: overlay.style.visibility
+    };
+    let overlayGeometryRestored = false;
+    const restoreOverlayGeometryState = () => {
+      if (overlayGeometryRestored) return;
+      overlayGeometryRestored = true;
+      overlay.style.display = overlayGeometryState.display;
+      overlay.style.visibility = overlayGeometryState.visibility;
+    };
+    overlay.style.display = "";
+    overlay.style.visibility = "hidden";
  
     // 現在の地図サイズ・グリッドを最新化してから取得する。
     try {
       map.invalidateSize(false);
       drawGridLines();
       drawGridOverlay();
+      // drawGridOverlay側で表示状態を戻す場合があるため、範囲取得用の状態を再保証する。
+      overlay.style.display = "";
+      overlay.style.visibility = "hidden";
     } catch (error) {
+      restoreOverlayGeometryState();
       console.warn("グリッド図の更新に失敗しました。", error);
+      return null;
     }
  
     await new Promise(resolve => setTimeout(resolve, 250));
  
     const edgeCells = Array.from(overlay.querySelectorAll(".edgeCell"));
-    if (!edgeCells.length) return null;
+    if (!edgeCells.length) {
+      restoreOverlayGeometryState();
+      return null;
+    }
  
     function getCropRect() {
       const targetRect = target.getBoundingClientRect();
@@ -2162,6 +2188,16 @@ window.addEventListener("DOMContentLoaded", () => {
       shapeList.forEach(shape => {
         if (!shape || !shape.meta) return;
         const meta = shape.meta;
+        const type = meta.type || "polyline";
+        const visibilityKey = {
+          line: "drawingLine",
+          polyline: "drawingPolyline",
+          rectangle: "drawingRectangle",
+          circle: "drawingCircle",
+          arrow: "drawingArrow",
+          freehand: "drawingFreehand"
+        }[type] || "drawingPolyline";
+        if (layerVisibility[visibilityKey] === false) return;
         ctx.save();
         applyCanvasLineStyle(ctx, meta, "#0066ff");
  
@@ -2216,6 +2252,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!Array.isArray(trackList) || !trackList.length) return;
 
       trackList.forEach(item => {
+        if (!item || item.visible === false) return;
         const points = getCanvasPoints(item.points || [], crop);
         if (points.length < 2) return;
 
@@ -2276,6 +2313,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     const crop = getCropRect();
+    restoreOverlayGeometryState();
     if (!crop) return null;
  
     let restore = null;
@@ -2319,6 +2357,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
       return cropCanvas.toDataURL("image/png");
     } catch (error) {
+      restoreOverlayGeometryState();
       if (typeof restore === "function") restore();
       console.warn("保存センター用のグリッド図PNGを作成できませんでした。", error);
       return null;
