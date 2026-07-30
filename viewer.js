@@ -18,13 +18,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     fire: "#e60000",
     rescue: "#ff7a00",
     emergency: "#0066ff",
+    other: "#16a34a",
     completed: "#000000"
   };
 
   const pinLabels = {
     fire: "火災",
     rescue: "救助",
-    emergency: "救急"
+    emergency: "救急",
+    other: "その他"
   };
 
   const viewerDiag = {
@@ -618,6 +620,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       [pinColors.fire, "火災"],
       [pinColors.rescue, "救助"],
       [pinColors.emergency, "救急"],
+      [pinColors.other, "その他"],
       [pinColors.completed, "活動完了"]
     ];
     legend.innerHTML = `<strong>凡例</strong>${rows.map(([color, label]) => `<div class="legendRow"><span class="legendDot" style="background:${color}"></span>${escapeHtml(label)}</div>`).join("")}`;

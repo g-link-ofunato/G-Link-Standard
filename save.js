@@ -684,6 +684,7 @@ window.addEventListener("DOMContentLoaded", () => {
       fire: "#e60000",
       rescue: "#ff7a00",
       emergency: "#0066ff",
+      other: "#16a34a",
       completed: "#000000"
     };
  
@@ -825,14 +826,15 @@ window.addEventListener("DOMContentLoaded", () => {
       { label: "火災", color: "#e60000" },
       { label: "救助", color: "#ff7a00" },
       { label: "救急", color: "#0066ff" },
+      { label: "その他", color: "#16a34a" },
       { label: "活動完了", color: "#000000" }
     ];
  
-    const allowedTypes = new Set(["fire", "rescue", "emergency", "completed"]);
+    const allowedTypes = new Set(["fire", "rescue", "emergency", "other", "completed"]);
     const sourceLegend = Array.isArray(saveCenterData.pinLegend) && saveCenterData.pinLegend.length
       ? saveCenterData.pinLegend
       : fallback;
-    const legend = sourceLegend.filter(item => allowedTypes.has(item.type) || ["火災", "救助", "救急", "活動完了"].includes(item.label));
+    const legend = sourceLegend.filter(item => allowedTypes.has(item.type) || ["火災", "救助", "救急", "その他", "活動完了"].includes(item.label));
  
     legendPreviewList.innerHTML = (legend.length ? legend : fallback).map(item => {
       const color = item.color || "#111111";

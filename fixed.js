@@ -458,13 +458,14 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.29 Build1851: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1331: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
     pinFire: true,
     pinRescue: true,
     pinEmergency: true,
+    pinOther: true,
     pinActive: true,
     pinCompleted: true,
     drawings: true,
@@ -498,7 +499,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.29 Build1851:
+  // Version2026.07.30 Build1331:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -542,6 +543,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pinFire: document.getElementById("layerPinFireVisible"),
     pinRescue: document.getElementById("layerPinRescueVisible"),
     pinEmergency: document.getElementById("layerPinEmergencyVisible"),
+    pinOther: document.getElementById("layerPinOtherVisible"),
     pinActive: document.getElementById("layerPinActiveVisible"),
     pinCompleted: document.getElementById("layerPinCompletedVisible"),
     drawings: document.getElementById("layerDrawingsVisible"),
@@ -580,6 +582,7 @@ window.addEventListener("DOMContentLoaded", () => {
     fire: document.getElementById("layerPinFireCount"),
     rescue: document.getElementById("layerPinRescueCount"),
     emergency: document.getElementById("layerPinEmergencyCount"),
+    other: document.getElementById("layerPinOtherCount"),
     active: document.getElementById("layerPinActiveCount"),
     completed: document.getElementById("layerPinCompletedCount")
   };
@@ -607,7 +610,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const typeVisible = {
       fire: layerVisibility.pinFire !== false,
       rescue: layerVisibility.pinRescue !== false,
-      emergency: layerVisibility.pinEmergency !== false
+      emergency: layerVisibility.pinEmergency !== false,
+      other: layerVisibility.pinOther !== false
     }[type];
     const statusVisible = data.completed
       ? layerVisibility.pinCompleted !== false
@@ -616,7 +620,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function updatePinLayerCounts() {
-    const counts = { all: 0, fire: 0, rescue: 0, emergency: 0, active: 0, completed: 0 };
+    const counts = { all: 0, fire: 0, rescue: 0, emergency: 0, other: 0, active: 0, completed: 0 };
     pins.forEach(pin => {
       if (!pin || !pin.data) return;
       counts.all += 1;
@@ -5204,13 +5208,15 @@ window.addEventListener("DOMContentLoaded", () => {
     fire: "#e60000",
     rescue: "#ff7a00",
     emergency: "#0066ff",
+    other: "#16a34a",
     completed: "#000000"
   };
  
   const pinLabels = {
     fire: "火災",
     rescue: "救助",
-    emergency: "救急"
+    emergency: "救急",
+    other: "その他"
   };
  
   function normalizePinType(type) {
@@ -5649,6 +5655,51 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
  
+  function updatePinPositionAfterDrag(pin) {
+    if (!pin || !pin.data) return;
+    const latlng = pin.getLatLng();
+    pin.data.lat = latlng.lat;
+    pin.data.lng = latlng.lng;
+    pin.data.gridNo = getGridNumber(latlng);
+
+    const historyItem = activityHistory.find(item => item && item.id === pin.data.id);
+    if (historyItem) {
+      historyItem.lat = latlng.lat;
+      historyItem.lng = latlng.lng;
+      historyItem.gridNo = pin.data.gridNo;
+      renderActivityHistory();
+    }
+
+    if (selectedPin === pin && editPanel.style.display !== "none") {
+      updatePinLatLngField(pin.data);
+      gridNo.value = pin.data.gridNo || "";
+    }
+
+    refreshPin(pin);
+  }
+
+  function bindPinInteraction(marker) {
+    if (!marker) return;
+    let dragged = false;
+    marker.on("dragstart", () => {
+      dragged = true;
+      marker.closeTooltip();
+      hidePinContextMenu();
+    });
+    marker.on("dragend", () => {
+      updatePinPositionAfterDrag(marker);
+      window.setTimeout(() => { dragged = false; }, 0);
+    });
+    marker.on("click", () => {
+      if (dragged) return;
+      if (!marker.data.completed) openEditPanel(marker);
+    });
+    marker.on("contextmenu", e => {
+      if (e.originalEvent) e.originalEvent.preventDefault();
+      showPinContextMenu(marker, e.originalEvent);
+    });
+  }
+
   function addPin(latlng) {
     const awarenessTimestamp = Date.now();
  
@@ -5671,18 +5722,11 @@ window.addEventListener("DOMContentLoaded", () => {
       completedLabel: ""
     };
  
-    const marker = L.marker(latlng, { icon: createIcon(data.type, data.completed, pins.length + 1) }).addTo(pinLayer);
+    const marker = L.marker(latlng, { icon: createIcon(data.type, data.completed, pins.length + 1), draggable: true, keyboard: false }).addTo(pinLayer);
     marker.data = data;
     refreshPin(marker);
  
-    marker.on("click", () => {
-      if (!marker.data.completed) openEditPanel(marker);
-    });
- 
-    marker.on("contextmenu", e => {
-      if (e.originalEvent) e.originalEvent.preventDefault();
-      showPinContextMenu(marker, e.originalEvent);
-    });
+    bindPinInteraction(marker);
  
     pins.push(marker);
     applyPinLayerFilter();
@@ -6266,16 +6310,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function createPinFromData(data) {
     if (!data || typeof data.lat !== "number" || typeof data.lng !== "number") return null;
-    const marker = L.marker([data.lat, data.lng], { icon: createIcon(data.type, data.completed, pins.length + 1) }).addTo(pinLayer);
+    const marker = L.marker([data.lat, data.lng], { icon: createIcon(data.type, data.completed, pins.length + 1), draggable: true, keyboard: false }).addTo(pinLayer);
     marker.data = { ...data };
     refreshPin(marker);
-    marker.on("click", () => {
-      if (!marker.data.completed) openEditPanel(marker);
-    });
-    marker.on("contextmenu", e => {
-      if (e.originalEvent) e.originalEvent.preventDefault();
-      showPinContextMenu(marker, e.originalEvent);
-    });
+    bindPinInteraction(marker);
     pins.push(marker);
     applyPinLayerFilter();
     return marker;
