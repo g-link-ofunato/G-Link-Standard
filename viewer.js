@@ -365,6 +365,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       gridSize: data.s?.[4] || 0,
       bounds,
       gridLineSettings: data.g || {},
+      hazardSettings: data.hz || null,
       pins: (data.p || []).map(expandPin).filter(Boolean),
       drawings: (data.d || []).map(expandDrawing).filter(Boolean),
       texts: (data.y || []).map(v => ({text:v?.[0]||"",lat:Number(v?.[1]),lng:Number(v?.[2]),color:v?.[3]||"#e60000",backgroundEnabled:v?.[4]!==false,backgroundColor:v?.[5]||"#ffffff",fontFamily:v?.[6]||"sans-serif",fontSize:Number(v?.[7]||28),bold:v?.[8]!==false,orientation:v?.[9]==="vertical"?"vertical":"horizontal",boxWidth:Number(v?.[10]||240),boxHeight:Number(v?.[11]||80),backgroundOpacity:Number.isFinite(Number(v?.[12]))?Math.max(0,Math.min(1,Number(v[12]))):1})).filter(v=>v.text&&Number.isFinite(v.lat)&&Number.isFinite(v.lng)),
@@ -589,6 +590,53 @@ window.addEventListener("DOMContentLoaded", async () => {
       layer.bindPopup(`計測図形：${escapeHtml(item.name || "名称未設定")}<br>面積：${Number(item.areaM2 || 0).toLocaleString()}㎡ / ${Number(item.areaHa || 0).toFixed(3)}ha`);
       group.addLayer(layer);
     });
+  }
+
+
+  function renderViewerHazards(map, data) {
+    const settings = data?.hazardSettings;
+    if (!settings || !settings.layers) return;
+    if (!map.getPane("viewerHazardPane")) {
+      map.createPane("viewerHazardPane");
+      map.getPane("viewerHazardPane").style.zIndex = "350";
+      map.getPane("viewerHazardPane").style.pointerEvents = "none";
+    }
+    const defs = {
+      flood: ["洪水浸水想定区域", "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png"],
+      inlandFlood: ["内水浸水想定区域", "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png"],
+      debrisFlow: ["土石流", "https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png"],
+      steepSlope: ["急傾斜地の崩壊", "https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png"],
+      landslide: ["地すべり", "https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png"],
+      tsunami: ["津波浸水想定", "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png"]
+    };
+    const opacity = Number.isFinite(Number(settings.opacity)) ? Math.max(0.1, Math.min(1, Number(settings.opacity))) : 0.6;
+    const active = [];
+    Object.entries(defs).forEach(([key, def]) => {
+      if (settings.layers[key] !== true) return;
+      active.push(key);
+      L.tileLayer(def[1], { pane: "viewerHazardPane", minZoom: 2, maxNativeZoom: 17, maxZoom: 20, opacity, crossOrigin: true, errorTileUrl: "" }).addTo(map);
+    });
+    if (!active.length) return;
+    const source = document.getElementById("viewerHazardAttribution");
+    if (source) source.hidden = false;
+    if (settings.legendVisible === false) return;
+    const closed = new Set(Array.isArray(settings.closedLegends) ? settings.closedLegends : []);
+    const dock = document.getElementById("viewerHazardLegendDock");
+    if (!dock) return;
+    const hasFlood = active.includes("flood") || active.includes("inlandFlood");
+    const hasLandslide = active.includes("debrisFlow") || active.includes("steepSlope") || active.includes("landslide");
+    const hasTsunami = active.includes("tsunami");
+    const floodLegend = `<section class="viewerHazardLegend"><b>浸水深</b><span class="vh20">20m以上</span><span class="vh10">10～20m</span><span class="vh5">5～10m</span><span class="vh3">3～5m</span><span class="vh05">0.5～3m</span><span class="vh0">0～0.5m</span></section>`;
+    const landslideLegend = `<section class="viewerHazardLegend"><b>土砂災害</b>${active.includes("debrisFlow")?'<span class="vhs1">土石流</span>':''}${active.includes("steepSlope")?'<span class="vhs2">急傾斜地</span>':''}${active.includes("landslide")?'<span class="vhs3">地すべり</span>':''}</section>`;
+    dock.innerHTML = `${hasFlood && !closed.has("flood") ? floodLegend : ""}${hasLandslide && !closed.has("landslide") ? landslideLegend : ""}${hasTsunami && !closed.has("tsunami") ? floodLegend.replace("浸水深","津波 浸水深") : ""}`;
+    dock.hidden = !dock.innerHTML;
+    const pos = settings.legendPosition;
+    if (pos && Number.isFinite(Number(pos.left)) && Number.isFinite(Number(pos.top))) {
+      dock.style.left = `${Math.max(0, Number(pos.left))}px`;
+      dock.style.top = `${Math.max(0, Number(pos.top))}px`;
+      dock.style.right = "auto";
+      dock.style.bottom = "auto";
+    }
   }
 
   function renderGrid(map, bounds, gridSize, settings = {}) {
@@ -926,6 +974,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     map.fitBounds(bounds, { padding: [10, 10] });
   }
 
+  renderViewerHazards(map, data);
   renderGrid(map, bounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {});
 
   (data.pins || []).forEach((pin, index) => {

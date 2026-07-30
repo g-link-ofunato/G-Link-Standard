@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1720">
-  <link rel="stylesheet" href="license-auth.css?v=Build1720" />
+  <link rel="stylesheet" href="fixed.css?v=Build1733">
+  <link rel="stylesheet" href="license-auth.css?v=Build1733" />
 </head>
  
 <body>
@@ -352,8 +352,21 @@
         <h3>ハザード</h3>
         <p class="hazardIntro">ハザードマップポータルサイトの公開タイルを地図へ重ねて表示します。</p>
         <div class="hazardCategoryGrid" role="group" aria-label="ハザード選択">
-          <button id="hazardFloodBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">🌊</span><strong>洪水・内水</strong><small>洪水浸水想定・内水浸水想定</small></button>
-          <button id="hazardLandslideBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">⛰</span><strong>土砂災害</strong><small>土石流・急傾斜地・地すべり</small></button>
+          <div class="hazardCategoryBlock">
+            <button id="hazardFloodBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">🌊</span><strong>洪水・内水</strong><small>まとめて表示／非表示</small></button>
+            <div class="hazardDetailList" aria-label="洪水・内水の詳細選択">
+              <label><input id="hazardFloodDetail" type="checkbox"> 洪水浸水想定区域</label>
+              <label><input id="hazardInlandDetail" type="checkbox"> 内水浸水想定区域</label>
+            </div>
+          </div>
+          <div class="hazardCategoryBlock">
+            <button id="hazardLandslideBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">⛰</span><strong>土砂災害</strong><small>まとめて表示／非表示</small></button>
+            <div class="hazardDetailList" aria-label="土砂災害の詳細選択">
+              <label><input id="hazardDebrisDetail" type="checkbox"> 土石流</label>
+              <label><input id="hazardSlopeDetail" type="checkbox"> 急傾斜地の崩壊</label>
+              <label><input id="hazardLandslideDetail" type="checkbox"> 地すべり</label>
+            </div>
+          </div>
           <button id="hazardTsunamiBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">🌊</span><strong>津波</strong><small>津波浸水想定</small></button>
         </div>
         <div class="hazardOpacityBlock">
@@ -779,8 +792,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1720"></script>
+  <script src="fixed.js?v=Build1733"></script>
  
-  <script src="license-auth.js?v=Build1720"></script>
+  <script src="license-auth.js?v=Build1733"></script>
 </body>
 </html>

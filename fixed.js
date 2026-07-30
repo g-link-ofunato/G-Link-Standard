@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1720: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1733: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -499,7 +499,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1720:
+  // Version2026.07.30 Build1733:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1442,6 +1442,7 @@ window.addEventListener("DOMContentLoaded", () => {
       h: [data.header?.dateTime || "", data.header?.disasterName || "", data.header?.createdUnit || ""],
       s: [compactBounds(bounds), compactPoint(center), data.session?.zoom || 13, data.mapType || data.session?.mapType || "pale", data.gridSize || data.session?.gridSize || 0],
       g: data.gridLineSettings || {},
+      hz: data.hazardSettings || null,
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),
       y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80),Number.isFinite(Number(item.backgroundOpacity))?Math.max(0,Math.min(1,Number(item.backgroundOpacity))):1]),
@@ -1509,6 +1510,7 @@ window.addEventListener("DOMContentLoaded", () => {
       gridSize: currentGridSize,
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
+      hazardSettings: typeof getHazardSettings === "function" ? getHazardSettings() : null,
       pins: serializePins().map(stripAttachmentForViewer),
       drawings: serializeDrawings(),
       texts: serializeTexts(),
@@ -1784,7 +1786,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.07.30 Build1720:
+    // Version2026.07.30 Build1733:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -6269,6 +6271,7 @@ window.addEventListener("DOMContentLoaded", () => {
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
       layerVisibility: { ...layerVisibility },
+      hazardSettings: typeof getHazardSettings === "function" ? getHazardSettings() : null,
       pinLegend: [
         ...Object.keys(pinLabels).map(key => ({
           type: key,
@@ -6517,6 +6520,10 @@ window.addEventListener("DOMContentLoaded", () => {
     runSection("activityHistory", () => {
       activityHistory = Array.isArray(data.activityHistory) ? data.activityHistory.map(item => ({ ...item })) : [];
       renderActivityHistory();
+    });
+
+    runSection("hazard", () => {
+      if (data.hazardSettings && typeof applyHazardSettings === "function") applyHazardSettings(data.hazardSettings);
     });
 
     runSection("ui/final-view", () => {
@@ -7095,30 +7102,33 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.07.30 Build1720: ハザード機能 第1段階
+  // Version2026.07.30 Build1733: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
+      label: "洪水・内水",
       button: document.getElementById("hazardFloodBtn"),
       legend: document.getElementById("hazardFloodLegend"),
       layers: [
-        { name: "洪水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
-        { name: "内水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+        { key: "flood", checkbox: document.getElementById("hazardFloodDetail"), name: "洪水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { key: "inlandFlood", checkbox: document.getElementById("hazardInlandDetail"), name: "内水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
       ]
     },
     landslide: {
+      label: "土砂災害",
       button: document.getElementById("hazardLandslideBtn"),
       legend: document.getElementById("hazardLandslideLegend"),
       layers: [
-        { name: "土石流", url: "https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
-        { name: "急傾斜地の崩壊", url: "https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
-        { name: "地すべり", url: "https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+        { key: "debrisFlow", checkbox: document.getElementById("hazardDebrisDetail"), name: "土石流", url: "https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { key: "steepSlope", checkbox: document.getElementById("hazardSlopeDetail"), name: "急傾斜地の崩壊", url: "https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { key: "landslide", checkbox: document.getElementById("hazardLandslideDetail"), name: "地すべり", url: "https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
       ]
     },
     tsunami: {
+      label: "津波",
       button: document.getElementById("hazardTsunamiBtn"),
       legend: document.getElementById("hazardTsunamiLegend"),
       layers: [
-        { name: "津波浸水想定", url: "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+        { key: "tsunami", checkbox: null, name: "津波浸水想定", url: "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
       ]
     }
   };
@@ -7127,8 +7137,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const hazardLegendVisible = document.getElementById("hazardLegendVisible");
   const hazardStatusText = document.getElementById("hazardStatusText");
   const hazardMapAttribution = document.getElementById("hazardMapAttribution");
+  const hazardLegendDock = document.getElementById("hazardLegendDock");
   const hazardLayerInstances = {};
-  const activeHazards = new Set();
+  const activeHazardLayers = new Set();
   const closedHazardLegends = new Set();
 
   if (!map.getPane("hazardPane")) {
@@ -7137,54 +7148,113 @@ window.addEventListener("DOMContentLoaded", () => {
     map.getPane("hazardPane").style.pointerEvents = "none";
   }
 
-  Object.entries(hazardConfig).forEach(([key, config]) => {
-    hazardLayerInstances[key] = config.layers.map(item => L.tileLayer(item.url, {
-      pane: "hazardPane",
-      minZoom: item.minZoom,
-      maxNativeZoom: item.maxZoom,
-      maxZoom: 20,
-      opacity: Number(hazardOpacityRange?.value || 60) / 100,
-      crossOrigin: true,
-      errorTileUrl: ""
-    }));
+  Object.values(hazardConfig).forEach(config => {
+    config.layers.forEach(item => {
+      hazardLayerInstances[item.key] = L.tileLayer(item.url, {
+        pane: "hazardPane",
+        minZoom: item.minZoom,
+        maxNativeZoom: item.maxZoom,
+        maxZoom: 20,
+        opacity: Number(hazardOpacityRange?.value || 60) / 100,
+        crossOrigin: true,
+        errorTileUrl: ""
+      });
+    });
   });
 
+  function isHazardCategoryActive(config) {
+    return config.layers.some(item => activeHazardLayers.has(item.key));
+  }
+
+  function isHazardCategoryFullyActive(config) {
+    return config.layers.every(item => activeHazardLayers.has(item.key));
+  }
+
   function updateHazardUi() {
-    Object.entries(hazardConfig).forEach(([key, config]) => {
-      const active = activeHazards.has(key);
+    Object.values(hazardConfig).forEach(config => {
+      const active = isHazardCategoryActive(config);
+      const full = isHazardCategoryFullyActive(config);
       if (config.button) {
         config.button.classList.toggle("is-active", active);
-        config.button.setAttribute("aria-pressed", active ? "true" : "false");
+        config.button.classList.toggle("is-partial", active && !full);
+        config.button.setAttribute("aria-pressed", full ? "true" : "false");
       }
+      config.layers.forEach(item => {
+        if (item.checkbox) item.checkbox.checked = activeHazardLayers.has(item.key);
+      });
       if (config.legend) {
-        config.legend.hidden = !(active && hazardLegendVisible?.checked && !closedHazardLegends.has(key));
+        config.legend.hidden = !(active && hazardLegendVisible?.checked && !closedHazardLegends.has(Object.keys(hazardConfig).find(key => hazardConfig[key] === config)));
       }
     });
     const labels = [];
-    if (activeHazards.has("flood")) labels.push("洪水・内水");
-    if (activeHazards.has("landslide")) labels.push("土砂災害");
-    if (activeHazards.has("tsunami")) labels.push("津波");
+    Object.values(hazardConfig).forEach(config => {
+      const selected = config.layers.filter(item => activeHazardLayers.has(item.key)).map(item => item.name);
+      if (selected.length) labels.push(selected.join("・"));
+    });
     if (hazardStatusText) hazardStatusText.textContent = labels.length ? `表示中：${labels.join("、")}` : "ハザードは選択されていません。";
     if (hazardMapAttribution) hazardMapAttribution.hidden = labels.length === 0;
   }
 
-  function setHazardActive(key, shouldActivate) {
-    const instances = hazardLayerInstances[key] || [];
+  function setHazardLayerActive(layerKey, shouldActivate, options = {}) {
+    const layer = hazardLayerInstances[layerKey];
+    if (!layer) return;
     if (shouldActivate) {
-      activeHazards.add(key);
-      closedHazardLegends.delete(key);
-      instances.forEach(layer => { if (!map.hasLayer(layer)) layer.addTo(map); });
+      activeHazardLayers.add(layerKey);
+      if (!map.hasLayer(layer)) layer.addTo(map);
     } else {
-      activeHazards.delete(key);
-      instances.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+      activeHazardLayers.delete(layerKey);
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+    }
+    if (!options.skipUi) updateHazardUi();
+  }
+
+  function setHazardCategoryActive(categoryKey, shouldActivate) {
+    const config = hazardConfig[categoryKey];
+    if (!config) return;
+    if (shouldActivate) closedHazardLegends.delete(categoryKey);
+    config.layers.forEach(item => setHazardLayerActive(item.key, shouldActivate, { skipUi: true }));
+    updateHazardUi();
+  }
+
+  function getHazardSettings() {
+    const dockRect = hazardLegendDock?.getBoundingClientRect();
+    const mapRect = document.getElementById("map")?.getBoundingClientRect();
+    return {
+      layers: Object.fromEntries(Object.keys(hazardLayerInstances).map(key => [key, activeHazardLayers.has(key)])),
+      opacity: Math.max(0.1, Math.min(1, Number(hazardOpacityRange?.value || 60) / 100)),
+      legendVisible: !!hazardLegendVisible?.checked,
+      closedLegends: Array.from(closedHazardLegends),
+      legendPosition: (dockRect && mapRect) ? { left: Math.round(dockRect.left - mapRect.left), top: Math.round(dockRect.top - mapRect.top) } : null
+    };
+  }
+
+  function applyHazardSettings(settings = {}) {
+    const layerSettings = settings.layers || settings;
+    Object.keys(hazardLayerInstances).forEach(key => setHazardLayerActive(key, layerSettings?.[key] === true, { skipUi: true }));
+    const opacity = Number.isFinite(Number(settings.opacity)) ? Math.max(0.1, Math.min(1, Number(settings.opacity))) : 0.6;
+    if (hazardOpacityRange) hazardOpacityRange.value = String(Math.round(opacity * 100));
+    if (hazardOpacityValue) hazardOpacityValue.textContent = String(Math.round(opacity * 100));
+    Object.values(hazardLayerInstances).forEach(layer => layer.setOpacity(opacity));
+    if (hazardLegendVisible) hazardLegendVisible.checked = settings.legendVisible !== false;
+    closedHazardLegends.clear();
+    (Array.isArray(settings.closedLegends) ? settings.closedLegends : []).forEach(key => closedHazardLegends.add(key));
+    if (hazardLegendDock && settings.legendPosition && Number.isFinite(Number(settings.legendPosition.left)) && Number.isFinite(Number(settings.legendPosition.top))) {
+      hazardLegendDock.style.left = `${Math.max(0, Number(settings.legendPosition.left))}px`;
+      hazardLegendDock.style.top = `${Math.max(0, Number(settings.legendPosition.top))}px`;
+      hazardLegendDock.style.right = "auto";
+      hazardLegendDock.style.bottom = "auto";
     }
     updateHazardUi();
   }
 
-  Object.entries(hazardConfig).forEach(([key, config]) => {
-    config.button?.addEventListener("click", () => setHazardActive(key, !activeHazards.has(key)));
+  Object.entries(hazardConfig).forEach(([categoryKey, config]) => {
+    config.button?.addEventListener("click", () => setHazardCategoryActive(categoryKey, !isHazardCategoryFullyActive(config)));
+    config.layers.forEach(item => item.checkbox?.addEventListener("change", () => {
+      if (item.checkbox.checked) closedHazardLegends.delete(categoryKey);
+      setHazardLayerActive(item.key, item.checkbox.checked);
+    }));
     config.legend?.querySelector(".hazardLegendClose")?.addEventListener("click", () => {
-      closedHazardLegends.add(key);
+      closedHazardLegends.add(categoryKey);
       updateHazardUi();
     });
   });
@@ -7192,12 +7262,43 @@ window.addEventListener("DOMContentLoaded", () => {
   hazardOpacityRange?.addEventListener("input", () => {
     const opacity = Number(hazardOpacityRange.value) / 100;
     if (hazardOpacityValue) hazardOpacityValue.textContent = String(hazardOpacityRange.value);
-    Object.values(hazardLayerInstances).flat().forEach(layer => layer.setOpacity(opacity));
+    Object.values(hazardLayerInstances).forEach(layer => layer.setOpacity(opacity));
   });
   hazardLegendVisible?.addEventListener("change", () => {
     if (hazardLegendVisible.checked) closedHazardLegends.clear();
     updateHazardUi();
   });
+
+  if (hazardLegendDock) {
+    hazardLegendDock.classList.add("is-draggable");
+    let dragState = null;
+    hazardLegendDock.addEventListener("pointerdown", event => {
+      if (event.target.closest("button")) return;
+      const rect = hazardLegendDock.getBoundingClientRect();
+      const mapRect = document.getElementById("map")?.getBoundingClientRect();
+      if (!mapRect) return;
+      dragState = { dx: event.clientX - rect.left, dy: event.clientY - rect.top, mapRect };
+      hazardLegendDock.classList.add("is-dragging");
+      hazardLegendDock.setPointerCapture?.(event.pointerId);
+    });
+    hazardLegendDock.addEventListener("pointermove", event => {
+      if (!dragState) return;
+      const maxLeft = Math.max(0, dragState.mapRect.width - hazardLegendDock.offsetWidth);
+      const maxTop = Math.max(0, dragState.mapRect.height - hazardLegendDock.offsetHeight);
+      const left = Math.max(0, Math.min(maxLeft, event.clientX - dragState.mapRect.left - dragState.dx));
+      const top = Math.max(0, Math.min(maxTop, event.clientY - dragState.mapRect.top - dragState.dy));
+      hazardLegendDock.style.left = `${Math.round(left)}px`;
+      hazardLegendDock.style.top = `${Math.round(top)}px`;
+      hazardLegendDock.style.right = "auto";
+      hazardLegendDock.style.bottom = "auto";
+    });
+    const finishDrag = () => { dragState = null; hazardLegendDock.classList.remove("is-dragging"); };
+    hazardLegendDock.addEventListener("pointerup", finishDrag);
+    hazardLegendDock.addEventListener("pointercancel", finishDrag);
+  }
+
+  window.gLinkGetHazardSettings = getHazardSettings;
+  window.gLinkApplyHazardSettings = applyHazardSettings;
   updateHazardUi();
 
   console.log("固定表示モード：G-Link Standard Version1.6 Build026.0-RESTORE-COMPLETE");
