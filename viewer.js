@@ -432,8 +432,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     const borderColor = completed ? "#000000" : (String(units || "").trim() ? "#ec4899" : "#ffffff");
     const label = String(number || "");
     const fontSize = label.length >= 3 ? 9 : (label.length >= 2 ? 10 : 12);
+    const statusClass = completed
+      ? "pinStatusCompleted"
+      : (String(units || "").trim() ? "pinStatusActive" : "pinStatusUnassigned");
     return L.divIcon({
-      className: "numberedPinIcon",
+      className: `numberedPinIcon ${statusClass}`,
       html: `<div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;"><span>${escapeHtml(label)}</span></div>`,
       iconSize: [26, 26],
       iconAnchor: [13, 13],
