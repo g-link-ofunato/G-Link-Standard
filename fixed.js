@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1902: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1912: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -500,7 +500,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1902:
+  // Version2026.07.30 Build1912:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1792,7 +1792,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.07.30 Build1902:
+    // Version2026.07.30 Build1912:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -5267,6 +5267,13 @@ window.addEventListener("DOMContentLoaded", () => {
     emergency: "救急",
     other: "その他"
   };
+
+  const pinGlowRgb = {
+    fire: "230,0,0",
+    rescue: "255,122,0",
+    emergency: "0,102,255",
+    other: "22,163,74"
+  };
  
   function normalizePinType(type) {
     return pinLabels[type] ? type : "fire";
@@ -5313,7 +5320,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return L.divIcon({
       className: `numberedPinIcon ${completed ? "completedPinIcon " : ""}${statusClass}`.trim(),
       html: `
-        <div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;">
+        <div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;--pin-glow-rgb:${pinGlowRgb[normalizedType] || pinGlowRgb.fire};">
           ${escapeHtml(label)}
         </div>
       `,
@@ -7127,7 +7134,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.07.30 Build1902: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.07.30 Build1912: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",

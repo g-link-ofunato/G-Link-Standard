@@ -29,6 +29,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     other: "その他"
   };
 
+  const pinGlowRgb = {
+    fire: "230,0,0",
+    rescue: "255,122,0",
+    emergency: "0,102,255",
+    other: "22,163,74"
+  };
+
   const viewerDiag = {
     steps: [],
     error: ""
@@ -437,7 +444,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       : (String(units || "").trim() ? "pinStatusActive" : "pinStatusUnassigned");
     return L.divIcon({
       className: `numberedPinIcon ${statusClass}`,
-      html: `<div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;"><span>${escapeHtml(label)}</span></div>`,
+      html: `<div class="numberedPinMarker" style="background:${color};border-color:${borderColor};font-size:${fontSize}px;--pin-glow-rgb:${pinGlowRgb[normalizePinType(type)] || pinGlowRgb.fire};"><span>${escapeHtml(label)}</span></div>`,
       iconSize: [26, 26],
       iconAnchor: [13, 13],
       popupAnchor: [0, -14]
