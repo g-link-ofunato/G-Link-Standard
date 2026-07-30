@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1404">
-  <link rel="stylesheet" href="license-auth.css?v=Build1404" />
+  <link rel="stylesheet" href="fixed.css?v=Build1720">
+  <link rel="stylesheet" href="license-auth.css?v=Build1720" />
 </head>
  
 <body>
@@ -43,6 +43,7 @@
     <button class="toolBtn" data-panel="editToolPanel"><span>✏</span><small>編集</small></button>
     <button class="toolBtn" data-panel="measurePanel"><span>📐</span><small>計測</small></button>
     <button class="toolBtn" data-panel="trackPanel"><span>🛰</span><small>軌跡</small></button>
+    <button class="toolBtn" data-panel="hazardPanel"><span>⚠</span><small>ハザード</small></button>
     <button class="toolBtn" data-panel="layerPanel"><span>🗂</span><small>レイヤ</small></button>
     <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動履歴</small></button>
     <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
@@ -346,6 +347,25 @@
       </div>
 
 
+
+      <div class="panelContent" id="hazardPanel">
+        <h3>ハザード</h3>
+        <p class="hazardIntro">ハザードマップポータルサイトの公開タイルを地図へ重ねて表示します。</p>
+        <div class="hazardCategoryGrid" role="group" aria-label="ハザード選択">
+          <button id="hazardFloodBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">🌊</span><strong>洪水・内水</strong><small>洪水浸水想定・内水浸水想定</small></button>
+          <button id="hazardLandslideBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">⛰</span><strong>土砂災害</strong><small>土石流・急傾斜地・地すべり</small></button>
+          <button id="hazardTsunamiBtn" class="hazardCategoryBtn" type="button" aria-pressed="false"><span class="hazardCategoryIcon">🌊</span><strong>津波</strong><small>津波浸水想定</small></button>
+        </div>
+        <div class="hazardOpacityBlock">
+          <label for="hazardOpacityRange">ハザード透明度：<span id="hazardOpacityValue">60</span>%</label>
+          <input id="hazardOpacityRange" type="range" min="10" max="100" step="5" value="60">
+        </div>
+        <label class="hazardLegendToggle"><input id="hazardLegendVisible" type="checkbox" checked> 凡例バナーを表示</label>
+        <div id="hazardStatusText" class="hazardStatusText">ハザードは選択されていません。</div>
+        <div class="hazardNotice">対象地域に公開データがない場合は、選択しても着色されません。詳細は各自治体のハザードマップも確認してください。</div>
+        <a class="hazardSourceLink" href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener noreferrer">出典：ハザードマップポータルサイト</a>
+      </div>
+
       <div class="panelContent" id="layerPanel">
         <h3>レイヤ</h3>
         <p class="layerIntro">チェックを外すと一時的に非表示になります。データは削除されません。</p>
@@ -542,6 +562,35 @@
  
   <div id="mapContainer">
     <div id="map"></div>
+    <div id="hazardLegendDock" class="hazardLegendDock" aria-live="polite">
+      <section id="hazardFloodLegend" class="hazardLegendBanner" hidden>
+        <div class="hazardLegendHeader"><span>洪水・内水　浸水深</span><button class="hazardLegendClose" type="button" aria-label="洪水・内水凡例を閉じる">×</button></div>
+        <div class="depthLegendRow depth20"><strong>20m～</strong></div>
+        <div class="depthLegendRow depth10"><strong>10～20m</strong></div>
+        <div class="depthLegendRow depth5"><strong>5～10m</strong><small>2階の屋根以上が浸水する</small></div>
+        <div class="depthLegendRow depth3"><strong>3～5m</strong><small>2階部分まで浸水する程度</small></div>
+        <div class="depthLegendRow depth05"><strong>0.5～3m</strong><small>1階天井まで浸水する程度</small></div>
+        <div class="depthLegendRow depth0"><strong>0～0.5m</strong><small>大人の膝までつかる程度</small></div>
+      </section>
+      <section id="hazardLandslideLegend" class="hazardLegendBanner landslideLegend" hidden>
+        <div class="hazardLegendHeader"><span>土砂災害</span><button class="hazardLegendClose" type="button" aria-label="土砂災害凡例を閉じる">×</button></div>
+        <div class="hazardLegendItem"><i class="hazardSwatch sedimentSpecial"></i><span>土砂災害特別警戒区域</span></div>
+        <div class="hazardLegendItem"><i class="hazardSwatch sedimentWarning"></i><span>土砂災害警戒区域（土石流）</span></div>
+        <div class="hazardLegendItem"><i class="hazardSwatch slopeWarning"></i><span>急傾斜地の崩壊</span></div>
+        <div class="hazardLegendItem"><i class="hazardSwatch landslideWarning"></i><span>地すべり</span></div>
+      </section>
+      <section id="hazardTsunamiLegend" class="hazardLegendBanner" hidden>
+        <div class="hazardLegendHeader"><span>津波　浸水深</span><button class="hazardLegendClose" type="button" aria-label="津波凡例を閉じる">×</button></div>
+        <div class="depthLegendRow depth20"><strong>20m～</strong></div>
+        <div class="depthLegendRow depth10"><strong>10～20m</strong></div>
+        <div class="depthLegendRow depth5"><strong>5～10m</strong></div>
+        <div class="depthLegendRow depth3"><strong>3～5m</strong></div>
+        <div class="depthLegendRow depth05"><strong>0.5～3m</strong></div>
+        <div class="depthLegendRow depth0"><strong>0～0.5m</strong></div>
+      </section>
+    </div>
+    <div id="hazardMapAttribution" class="hazardMapAttribution" hidden>出典：ハザードマップポータルサイト</div>
+
     <div id="gridOverlay"></div>
  
  
@@ -730,8 +779,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1404"></script>
+  <script src="fixed.js?v=Build1720"></script>
  
-  <script src="license-auth.js?v=Build1404"></script>
+  <script src="license-auth.js?v=Build1720"></script>
 </body>
 </html>

@@ -458,7 +458,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.07.30 Build1404: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.07.30 Build1720: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -499,7 +499,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.07.30 Build1404:
+  // Version2026.07.30 Build1720:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1214,6 +1214,7 @@ window.addEventListener("DOMContentLoaded", () => {
     editToolPanel: "編集",
     measurePanel: "計測",
     trackPanel: "軌跡",
+    hazardPanel: "ハザード",
     layerPanel: "レイヤ",
     historyPanel: "活動履歴",
     settingPanel: "設定",
@@ -1783,7 +1784,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.07.30 Build1404:
+    // Version2026.07.30 Build1720:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -7091,6 +7092,113 @@ window.addEventListener("DOMContentLoaded", () => {
   window.setTimeout(adjustHeaderFieldsNoWrap, 0);
   window.setTimeout(adjustHeaderFieldsNoWrap, 250);
   window.setTimeout(adjustHeaderFieldsNoWrap, 1000);
+
+
+
+  // Version2026.07.30 Build1720: ハザード機能 第1段階
+  const hazardConfig = {
+    flood: {
+      button: document.getElementById("hazardFloodBtn"),
+      legend: document.getElementById("hazardFloodLegend"),
+      layers: [
+        { name: "洪水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { name: "内水浸水想定区域", url: "https://disaportaldata.gsi.go.jp/raster/02_naisui_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+      ]
+    },
+    landslide: {
+      button: document.getElementById("hazardLandslideBtn"),
+      legend: document.getElementById("hazardLandslideLegend"),
+      layers: [
+        { name: "土石流", url: "https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { name: "急傾斜地の崩壊", url: "https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 },
+        { name: "地すべり", url: "https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+      ]
+    },
+    tsunami: {
+      button: document.getElementById("hazardTsunamiBtn"),
+      legend: document.getElementById("hazardTsunamiLegend"),
+      layers: [
+        { name: "津波浸水想定", url: "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png", minZoom: 2, maxZoom: 17 }
+      ]
+    }
+  };
+  const hazardOpacityRange = document.getElementById("hazardOpacityRange");
+  const hazardOpacityValue = document.getElementById("hazardOpacityValue");
+  const hazardLegendVisible = document.getElementById("hazardLegendVisible");
+  const hazardStatusText = document.getElementById("hazardStatusText");
+  const hazardMapAttribution = document.getElementById("hazardMapAttribution");
+  const hazardLayerInstances = {};
+  const activeHazards = new Set();
+  const closedHazardLegends = new Set();
+
+  if (!map.getPane("hazardPane")) {
+    map.createPane("hazardPane");
+    map.getPane("hazardPane").style.zIndex = "350";
+    map.getPane("hazardPane").style.pointerEvents = "none";
+  }
+
+  Object.entries(hazardConfig).forEach(([key, config]) => {
+    hazardLayerInstances[key] = config.layers.map(item => L.tileLayer(item.url, {
+      pane: "hazardPane",
+      minZoom: item.minZoom,
+      maxNativeZoom: item.maxZoom,
+      maxZoom: 20,
+      opacity: Number(hazardOpacityRange?.value || 60) / 100,
+      crossOrigin: true,
+      errorTileUrl: ""
+    }));
+  });
+
+  function updateHazardUi() {
+    Object.entries(hazardConfig).forEach(([key, config]) => {
+      const active = activeHazards.has(key);
+      if (config.button) {
+        config.button.classList.toggle("is-active", active);
+        config.button.setAttribute("aria-pressed", active ? "true" : "false");
+      }
+      if (config.legend) {
+        config.legend.hidden = !(active && hazardLegendVisible?.checked && !closedHazardLegends.has(key));
+      }
+    });
+    const labels = [];
+    if (activeHazards.has("flood")) labels.push("洪水・内水");
+    if (activeHazards.has("landslide")) labels.push("土砂災害");
+    if (activeHazards.has("tsunami")) labels.push("津波");
+    if (hazardStatusText) hazardStatusText.textContent = labels.length ? `表示中：${labels.join("、")}` : "ハザードは選択されていません。";
+    if (hazardMapAttribution) hazardMapAttribution.hidden = labels.length === 0;
+  }
+
+  function setHazardActive(key, shouldActivate) {
+    const instances = hazardLayerInstances[key] || [];
+    if (shouldActivate) {
+      activeHazards.add(key);
+      closedHazardLegends.delete(key);
+      instances.forEach(layer => { if (!map.hasLayer(layer)) layer.addTo(map); });
+    } else {
+      activeHazards.delete(key);
+      instances.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+    }
+    updateHazardUi();
+  }
+
+  Object.entries(hazardConfig).forEach(([key, config]) => {
+    config.button?.addEventListener("click", () => setHazardActive(key, !activeHazards.has(key)));
+    config.legend?.querySelector(".hazardLegendClose")?.addEventListener("click", () => {
+      closedHazardLegends.add(key);
+      updateHazardUi();
+    });
+  });
+
+  hazardOpacityRange?.addEventListener("input", () => {
+    const opacity = Number(hazardOpacityRange.value) / 100;
+    if (hazardOpacityValue) hazardOpacityValue.textContent = String(hazardOpacityRange.value);
+    Object.values(hazardLayerInstances).flat().forEach(layer => layer.setOpacity(opacity));
+  });
+  hazardLegendVisible?.addEventListener("change", () => {
+    if (hazardLegendVisible.checked) closedHazardLegends.clear();
+    updateHazardUi();
+  });
+  updateHazardUi();
 
   console.log("固定表示モード：G-Link Standard Version1.6 Build026.0-RESTORE-COMPLETE");
   console.log(session);
