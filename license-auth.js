@@ -1,10 +1,11 @@
 (() => {
   'use strict';
-  const BUILD='Build1357';
+  const BUILD='Build1412';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const INACTIVITY_LIMIT_MS=24*60*60*1000;
-  const ACTIVITY_SYNC_INTERVAL_MS=5*60*1000;
+  const HEARTBEAT_INTERVAL_MS=60*1000;
+  const ACTIVITY_SYNC_INTERVAL_MS=60*1000;
   const ACTIVITY_STORAGE_INTERVAL_MS=30*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
   const SESSION_KEY='gLink_standardAuthSession';
@@ -36,22 +37,33 @@
     try{
       const response=await api('/api/app/auth/activity',{method:'POST',headers:{Authorization:`Bearer ${state.token}`},body:'{}'});
       const data=await parseResponse(response);
-      if(currentState){currentState.expiresAt=data.sessionExpiresAt||currentState.expiresAt;persistState(currentState);}
+      if(currentState){
+        currentState.expiresAt=data.sessionExpiresAt||currentState.expiresAt;
+        currentState.lastActivityAt=new Date().toISOString();
+        lastActivityStoredAt=Date.now();
+        persistState(currentState);
+      }
     }catch(error){
       if(error.status===401){clearState();showLogin(inactivityMessage());}
     }finally{activitySyncInFlight=false;}
   }
   function markActivity(){
     if(!currentState||currentState.offline)return;
-    const now=Date.now();currentState.lastActivityAt=new Date(now).toISOString();
-    if(now-lastActivityStoredAt>=ACTIVITY_STORAGE_INTERVAL_MS){lastActivityStoredAt=now;persistState(currentState);}
     syncActivity(false);
+  }
+  function heartbeat(){
+    if(!currentState||currentState.offline)return;
+    if(isInactive(currentState)){expireForInactivity();return;}
+    syncActivity(true);
   }
   function bindActivityMonitor(){
     if(activityBound)return;activityBound=true;
     ['pointerdown','keydown','input','change','touchstart'].forEach(name=>document.addEventListener(name,markActivity,{capture:true,passive:true}));
-    window.addEventListener('pagehide',()=>{if(currentState){currentState.lastActivityAt=new Date().toISOString();persistState(currentState);syncActivity(true);}});
-    activityTimer=setInterval(()=>{if(currentState&&isInactive(currentState))expireForInactivity();},60000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
+    window.addEventListener('online',heartbeat);
+    window.addEventListener('pagehide',()=>{if(currentState)syncActivity(true);});
+    activityTimer=setInterval(heartbeat,HEARTBEAT_INTERVAL_MS);
+    heartbeat();
   }
   function api(path,options={}){
     const controller=new AbortController();
@@ -116,7 +128,7 @@
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
   function canOffline(state){const t=Date.parse(state?.lastValidatedAt||'');return Boolean(state?.token&&Number.isFinite(t)&&Date.now()-t<=OFFLINE_GRACE_MS&&state?.organization?.standard);}
   function activate(state,offline=false){currentState={...state,offline};try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};bindActivityMonitor();window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
-  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:state.lastActivityAt||new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
+  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
   async function login(event){
     event.preventDefault();
     const button=gate.querySelector('#glinkAuthSubmit');
@@ -170,6 +182,6 @@
   async function logout(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}location.reload();}
   function decodeTransfer(value){try{let b=value.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const binary=atob(b);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));}catch(e){return null;}}
   function readTransfer(){const match=location.hash.match(/(?:^#|&)glinkAuthTransfer=([^&]+)/);if(!match)return null;const state=decodeTransfer(decodeURIComponent(match[1]));history.replaceState(null,'',location.pathname+location.search);return state;}
-  async function boot(){hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState(transfer,Boolean(transfer.remember));try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}if(isInactive(state)){clearState();showLogin(inactivityMessage());return;}state.lastActivityAt=new Date().toISOString();saveState(state,state.remember);await validate(state);}
+  async function boot(){hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState(transfer,Boolean(transfer.remember));try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}if(isInactive(state)){clearState();showLogin(inactivityMessage());return;}await validate(state);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
