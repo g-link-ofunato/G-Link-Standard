@@ -248,6 +248,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const liveShareOutput = document.getElementById("liveShareOutput");
   const liveShareStateBadge = document.getElementById("liveShareStateBadge");
   const liveShareUpdatedAt = document.getElementById("liveShareUpdatedAt");
+  const liveAutoSendRow = document.getElementById("liveAutoSendRow");
+  const liveAutoSendCheckbox = document.getElementById("liveAutoSendCheckbox");
+  const liveShareMetrics = document.getElementById("liveShareMetrics");
+  const liveLastSentAt = document.getElementById("liveLastSentAt");
+  const liveLastReceivedAt = document.getElementById("liveLastReceivedAt");
+  const liveViewerCount = document.getElementById("liveViewerCount");
   const saveShareQrBtn = document.getElementById("saveShareQrBtn");
   const openViewerBtn = document.getElementById("openViewerBtn");
   const shareQrCode = document.getElementById("shareQrCode");
@@ -1550,6 +1556,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const LIVE_SHARE_STORAGE_KEY = "gLinkLiveShareState";
   let liveShareState = null;
   let liveShareRequestInFlight = false;
+  const LIVE_AUTO_SEND_KEY = "gLinkLiveAutoSend";
+  let liveAutoSendTimer = null;
+  let liveChangeMonitorTimer = null;
+  let liveStatusPollTimer = null;
+  let lastObservedLiveSignature = "";
+  let lastSentLiveSignature = "";
 
   function readStandardAuthState() {
     for (const [store, key] of [[sessionStorage, "gLink_standardAuthSession"], [localStorage, "gLink_standardAuthRemembered"]]) {
@@ -1601,16 +1613,84 @@ window.addEventListener("DOMContentLoaded", () => {
     return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
   }
 
+  function isLiveAutoSendEnabled() {
+    return !liveAutoSendCheckbox || liveAutoSendCheckbox.checked;
+  }
+
+  function setLiveBadge(kind, text) {
+    if (!liveShareStateBadge) return;
+    liveShareStateBadge.classList.remove("isActive","isStopped","isSending","isError");
+    liveShareStateBadge.classList.add(kind === "sending" ? "isSending" : kind === "error" ? "isError" : kind === "active" ? "isActive" : "isStopped");
+    liveShareStateBadge.textContent = text || (kind === "active" ? "接続中" : kind === "sending" ? "送信中" : kind === "error" ? "通信エラー" : "停止中");
+  }
+
+  function createLivePayloadSnapshot() {
+    const payload = compactViewerData(buildViewerShareData());
+    return {payload, signature:JSON.stringify(payload)};
+  }
+
+  function clearLiveAutoSendTimer() {
+    if (liveAutoSendTimer) clearTimeout(liveAutoSendTimer);
+    liveAutoSendTimer = null;
+  }
+
+  function scheduleLiveAutoSend(snapshot) {
+    clearLiveAutoSendTimer();
+    if (!liveShareState?.shareId || !isLiveAutoSendEnabled()) return;
+    liveAutoSendTimer = setTimeout(() => updateLiveShare({automatic:true, snapshot}), 3000);
+  }
+
+  function monitorLiveShareChanges() {
+    if (!liveShareState?.shareId || !isLiveAutoSendEnabled() || liveShareRequestInFlight) return;
+    try {
+      const snapshot = createLivePayloadSnapshot();
+      if (!lastObservedLiveSignature) lastObservedLiveSignature = snapshot.signature;
+      if (snapshot.signature !== lastObservedLiveSignature) {
+        lastObservedLiveSignature = snapshot.signature;
+        scheduleLiveAutoSend(snapshot);
+      }
+    } catch (error) {
+      console.warn("ライブ共有の変更検知に失敗しました。", error);
+    }
+  }
+
+  async function refreshLiveShareMetrics() {
+    if (!liveShareState?.shareId) return;
+    try {
+      const data = await callLiveShareApi("/api/app/live-share/status", {shareId:liveShareState.shareId});
+      if (liveViewerCount) liveViewerCount.textContent = `${Number(data.viewerCount || 0)}台`;
+      if (liveLastReceivedAt) liveLastReceivedAt.textContent = data.lastReceivedAt ? formatLiveTime(data.lastReceivedAt) : "-";
+    } catch (error) {
+      console.warn("ライブ共有状況の取得に失敗しました。", error);
+    }
+  }
+
+  function startLiveShareBackgroundTasks() {
+    if (!liveChangeMonitorTimer) liveChangeMonitorTimer = setInterval(monitorLiveShareChanges, 1000);
+    if (liveStatusPollTimer) clearInterval(liveStatusPollTimer);
+    liveStatusPollTimer = setInterval(refreshLiveShareMetrics, 15000);
+    refreshLiveShareMetrics();
+  }
+
+  function stopLiveShareBackgroundTasks() {
+    clearLiveAutoSendTimer();
+    if (liveChangeMonitorTimer) clearInterval(liveChangeMonitorTimer);
+    if (liveStatusPollTimer) clearInterval(liveStatusPollTimer);
+    liveChangeMonitorTimer = null;
+    liveStatusPollTimer = null;
+    lastObservedLiveSignature = "";
+    lastSentLiveSignature = "";
+  }
+
   function renderLiveShareState() {
     const active = Boolean(liveShareState?.shareId && liveShareState?.active !== false);
-    if (liveShareStateBadge) {
-      liveShareStateBadge.textContent = active ? "ライブ共有中" : "停止中";
-      liveShareStateBadge.classList.toggle("isActive", active);
-      liveShareStateBadge.classList.toggle("isStopped", !active);
-    }
+    setLiveBadge(active ? "active" : "stopped", active ? "接続中" : "停止中");
     if (liveShareUpdatedAt) {
       liveShareUpdatedAt.textContent = active ? `最終送信：${formatLiveTime(liveShareState.updatedAt)}` : "ライブ共有は開始されていません。";
     }
+    if (liveAutoSendRow) liveAutoSendRow.hidden = !active;
+    if (liveShareMetrics) liveShareMetrics.hidden = !active;
+    if (liveLastSentAt) liveLastSentAt.textContent = active && liveShareState.updatedAt ? formatLiveTime(liveShareState.updatedAt) : "-";
     if (startLiveShareBtn) startLiveShareBtn.hidden = active;
     if (updateLiveShareBtn) updateLiveShareBtn.hidden = !active;
     if (stopLiveShareBtn) stopLiveShareBtn.hidden = !active;
@@ -1655,6 +1735,10 @@ window.addEventListener("DOMContentLoaded", () => {
       const data = await callLiveShareApi("/api/app/live-share/start", {payload});
       const viewerUrl = makeLiveViewerUrl(data.shareId);
       saveLiveShareState({shareId:data.shareId, viewerUrl, updatedAt:data.updatedAt, expiresAt:data.expiresAt, active:true});
+      const initialSnapshot = createLivePayloadSnapshot();
+      lastObservedLiveSignature = initialSnapshot.signature;
+      lastSentLiveSignature = initialSnapshot.signature;
+      startLiveShareBackgroundTasks();
       setShareStatus("ライブ共有を開始しました。URLとQRコードは以後そのまま使用できます。", false);
     } catch (error) {
       console.error("ライブ共有開始に失敗しました。", error);
@@ -1665,22 +1749,31 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function updateLiveShare() {
+  async function updateLiveShare(options = {}) {
     if (!liveShareState?.shareId || liveShareRequestInFlight) return;
+    const automatic = Boolean(options.automatic);
     liveShareRequestInFlight = true;
     if (updateLiveShareBtn) updateLiveShareBtn.disabled = true;
-    setShareStatus("最新情報を送信しています。", false);
+    setLiveBadge("sending", automatic ? "自動送信中" : "送信中");
+    if (!automatic) setShareStatus("最新情報を送信しています。", false);
     try {
-      const payload = compactViewerData(buildViewerShareData());
+      const snapshot = options.snapshot || createLivePayloadSnapshot();
+      const payload = snapshot.payload;
       const data = await callLiveShareApi("/api/app/live-share/update", {shareId:liveShareState.shareId, payload});
       saveLiveShareState({...liveShareState, updatedAt:data.updatedAt, expiresAt:data.expiresAt, active:true});
-      setShareStatus("最新情報を送信しました。Viewerは同じURLで最新状態を取得できます。", false);
+      lastSentLiveSignature = snapshot.signature;
+      lastObservedLiveSignature = snapshot.signature;
+      if (liveLastSentAt) liveLastSentAt.textContent = formatLiveTime(data.updatedAt);
+      if (!automatic) setShareStatus("最新情報を送信しました。Viewerは同じURLで最新状態を取得できます。", false);
+      refreshLiveShareMetrics();
     } catch (error) {
       console.error("ライブ共有更新に失敗しました。", error);
       if (error.status === 404) saveLiveShareState(null);
+      setLiveBadge("error", "通信エラー");
       setShareStatus(error.message || "最新情報の送信に失敗しました。", true);
     } finally {
       liveShareRequestInFlight = false;
+      if (liveShareState?.shareId) setLiveBadge("active", "接続中");
       if (updateLiveShareBtn) updateLiveShareBtn.disabled = false;
     }
   }
@@ -1692,6 +1785,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (stopLiveShareBtn) stopLiveShareBtn.disabled = true;
     try {
       await callLiveShareApi("/api/app/live-share/stop", {shareId:liveShareState.shareId});
+      stopLiveShareBackgroundTasks();
       saveLiveShareState(null);
       setShareStatus("ライブ共有を停止しました。", false);
     } catch (error) {
@@ -1879,7 +1973,30 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupSharePanelEvents() {
+    try {
+      const savedAuto = localStorage.getItem(LIVE_AUTO_SEND_KEY);
+      if (liveAutoSendCheckbox) liveAutoSendCheckbox.checked = savedAuto !== "false";
+    } catch (error) {}
     loadLiveShareState();
+    if (liveShareState?.shareId) {
+      try {
+        const snapshot = createLivePayloadSnapshot();
+        lastObservedLiveSignature = snapshot.signature;
+        lastSentLiveSignature = snapshot.signature;
+      } catch (error) {}
+      startLiveShareBackgroundTasks();
+    }
+    if (liveAutoSendCheckbox) liveAutoSendCheckbox.addEventListener("change", () => {
+      try { localStorage.setItem(LIVE_AUTO_SEND_KEY, String(liveAutoSendCheckbox.checked)); } catch (error) {}
+      clearLiveAutoSendTimer();
+      if (liveAutoSendCheckbox.checked) {
+        lastObservedLiveSignature = "";
+        monitorLiveShareChanges();
+        setShareStatus("自動送信を有効にしました。", false);
+      } else {
+        setShareStatus("自動送信を停止しました。今すぐ送信を使用してください。", false);
+      }
+    });
     if (startLiveShareBtn) startLiveShareBtn.addEventListener("click", startLiveShare);
     if (updateLiveShareBtn) updateLiveShareBtn.addEventListener("click", updateLiveShare);
     if (stopLiveShareBtn) stopLiveShareBtn.addEventListener("click", stopLiveShare);

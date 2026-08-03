@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1738">
-  <link rel="stylesheet" href="license-auth.css?v=Build1738" />
+  <link rel="stylesheet" href="fixed.css?v=Build1830">
+  <link rel="stylesheet" href="license-auth.css?v=Build1830" />
 </head>
  
 <body>
@@ -563,8 +563,17 @@
             <span id="liveShareStateBadge" class="liveShareStateBadge isStopped">停止中</span>
             <span id="liveShareUpdatedAt" class="liveShareUpdatedAt">ライブ共有は開始されていません。</span>
           </div>
+          <label id="liveAutoSendRow" class="liveAutoSendRow" hidden>
+            <input id="liveAutoSendCheckbox" type="checkbox" checked>
+            <span><strong>自動送信</strong><small>最後の編集から3秒後に送信</small></span>
+          </label>
+          <div id="liveShareMetrics" class="liveShareMetrics" hidden>
+            <div><span>最終送信</span><strong id="liveLastSentAt">-</strong></div>
+            <div><span>最終受信</span><strong id="liveLastReceivedAt">-</strong></div>
+            <div><span>Viewer接続数</span><strong id="liveViewerCount">0台</strong></div>
+          </div>
           <button id="startLiveShareBtn" type="button" class="primaryButton liveShareStartBtn">ライブ共有を開始</button>
-          <button id="updateLiveShareBtn" type="button" class="secondaryButton liveShareUpdateBtn" hidden>最新情報を送信</button>
+          <button id="updateLiveShareBtn" type="button" class="secondaryButton liveShareUpdateBtn" hidden>今すぐ送信</button>
           <button id="stopLiveShareBtn" type="button" class="secondaryButton liveShareStopBtn" hidden>ライブ共有を停止</button>
           <div id="shareCopyStatus" class="shareCopyStatus" aria-live="polite"></div>
         </div>
@@ -821,8 +830,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1738"></script>
+  <script src="fixed.js?v=Build1830"></script>
  
-  <script src="license-auth.js?v=Build1738"></script>
+  <script src="license-auth.js?v=Build1830"></script>
 </body>
 </html>

@@ -392,6 +392,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!response.ok) throw new Error(body.message || `ライブ共有データを取得できません（HTTP ${response.status}）`);
     diag("ライブ共有取得", true, `更新=${body.updatedAt || "-"}`);
     window.__gLinkLiveShareMeta = {shareId:id, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
+    sendLiveViewerHeartbeat();
     return expandCompactViewerData(body.payload);
   }
 
@@ -991,6 +992,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const autoRefreshSelect = document.getElementById("viewerAutoRefreshSelect");
   const liveStatus = document.getElementById("viewerLiveStatus");
   const LIVE_INTERVAL_KEY = "gLinkViewerLiveInterval";
+  const LIVE_VIEWER_ID_KEY = "gLinkLiveViewerId";
 
   let currentData = null;
   let currentBounds = null;
@@ -1001,6 +1003,32 @@ window.addEventListener("DOMContentLoaded", async () => {
   let liveRequestInFlight = false;
   let lastLiveUpdatedAt = "";
   let statusHideTimer = null;
+  let liveHeartbeatTimer = null;
+
+  function getLiveViewerId() {
+    try {
+      let id = sessionStorage.getItem(LIVE_VIEWER_ID_KEY);
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, "");
+        sessionStorage.setItem(LIVE_VIEWER_ID_KEY, id);
+      }
+      return id;
+    } catch (error) {
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+  }
+
+  async function sendLiveViewerHeartbeat() {
+    if (!liveId || document.hidden) return;
+    try {
+      await fetch(`https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(liveId)}/heartbeat`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({viewerId:getLiveViewerId()}), cache:"no-store", keepalive:true
+      });
+    } catch (error) {
+      console.warn("Viewer接続通知に失敗しました。", error);
+    }
+  }
 
   function formatLiveClock(value) {
     const d = new Date(value || "");
@@ -1170,8 +1198,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     lastLiveUpdatedAt = window.__gLinkLiveShareMeta?.updatedAt || "";
     updateLiveMeta(window.__gLinkLiveShareMeta || {}, false);
     scheduleLiveRefresh();
+    sendLiveViewerHeartbeat();
+    liveHeartbeatTimer = setInterval(sendLiveViewerHeartbeat, 30000);
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshLiveData();
+      if (!document.hidden) { refreshLiveData(); sendLiveViewerHeartbeat(); }
     });
     window.addEventListener("online", () => refreshLiveData({force:true}));
   }
