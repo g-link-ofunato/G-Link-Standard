@@ -893,13 +893,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
     historyPreviewRows.innerHTML = list.slice(0, 20).map((item, index) => {
       const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
+      const coordinateParts = coordinateText === "-" ? ["-"] : coordinateText.split(/,\s*/);
+      const coordinateHtml = coordinateParts.length >= 2
+        ? `${escapeHtml(coordinateParts[0])}<br>${escapeHtml(coordinateParts.slice(1).join(", "))}`
+        : escapeHtml(coordinateText);
       const stateClass = `activityState-${item.status}`;
       return `<tr>
         <td class="${stateClass}">${escapeHtml(getHistoryPinNo(item, index))}</td>
         <td class="${stateClass}">${escapeHtml(item.statusLabel)}</td>
         <td>${escapeHtml(item.typeLabel || item.type || "-")}</td>
         <td>${escapeHtml(item.gridNo || "-")}</td>
-        <td>${escapeHtml(coordinateText)}</td>
+        <td>${coordinateHtml}</td>
         <td>${escapeHtml(item.awarenessLabel || "-")}</td>
         <td>${escapeHtml(item.completedLabel || "-")}</td>
         <td>${escapeHtml(item.incidentNo || "-")}</td>
