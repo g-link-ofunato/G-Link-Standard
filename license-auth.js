@@ -1,18 +1,58 @@
 (() => {
   'use strict';
-  const BUILD='Build1922';
+  const BUILD='Build1357';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
+  const INACTIVITY_LIMIT_MS=24*60*60*1000;
+  const ACTIVITY_SYNC_INTERVAL_MS=5*60*1000;
+  const ACTIVITY_STORAGE_INTERVAL_MS=30*1000;
   const LOCAL_KEY='gLink_standardAuthRemembered';
   const SESSION_KEY='gLink_standardAuthSession';
   const ONBOARDED_KEY='gLink_organizationPasswordConfigured';
   const REMEMBER_PREF_KEY='gLink_standardRememberLogin';
   const LOCATION_PREF_KEY='gLink_standardRecordLocation';
   let gate=null,statusBar=null,currentState=null;
+  let activityBound=false,activityTimer=null,lastActivitySyncAt=0,lastActivityStoredAt=0,activitySyncInFlight=false;
 
   function readState(){for(const store of [sessionStorage,localStorage]){try{const raw=store.getItem(store===localStorage?LOCAL_KEY:SESSION_KEY);if(raw)return {...JSON.parse(raw),storage:store===localStorage?'local':'session'};}catch(e){}}return null;}
-  function saveState(state,remember){clearState();const payload=JSON.stringify({...state,remember:Boolean(remember)});(remember?localStorage:sessionStorage).setItem(remember?LOCAL_KEY:SESSION_KEY,payload);currentState={...state,remember:Boolean(remember),storage:remember?'local':'session'};}
-  function clearState(){try{localStorage.removeItem(LOCAL_KEY);}catch(e){}try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}currentState=null;}
+  function persistState(state){
+    if(!state)return;
+    const remember=Boolean(state.remember);
+    const payload=JSON.stringify({...state,remember});
+    try{(remember?localStorage:sessionStorage).setItem(remember?LOCAL_KEY:SESSION_KEY,payload);}catch(e){}
+  }
+  function saveState(state,remember){clearState(false);currentState={...state,remember:Boolean(remember),storage:remember?'local':'session'};persistState(currentState);}
+  function clearState(stopMonitoring=true){try{localStorage.removeItem(LOCAL_KEY);}catch(e){}try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}currentState=null;if(stopMonitoring&&activityTimer){clearInterval(activityTimer);activityTimer=null;}}
+  function lastActivityTime(state){const value=Date.parse(state?.lastActivityAt||'');return Number.isFinite(value)?value:0;}
+  function isInactive(state){const last=lastActivityTime(state);return Boolean(last&&Date.now()-last>=INACTIVITY_LIMIT_MS);}
+  function inactivityMessage(){return '24時間利用がなかったため、自動ログアウトしました。再度ログインしてください。';}
+  async function expireForInactivity(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}showLogin(inactivityMessage());}
+  async function syncActivity(force=false){
+    const state=currentState;
+    if(!state?.token||state.offline||activitySyncInFlight)return;
+    const now=Date.now();
+    if(!force&&now-lastActivitySyncAt<ACTIVITY_SYNC_INTERVAL_MS)return;
+    lastActivitySyncAt=now;activitySyncInFlight=true;
+    try{
+      const response=await api('/api/app/auth/activity',{method:'POST',headers:{Authorization:`Bearer ${state.token}`},body:'{}'});
+      const data=await parseResponse(response);
+      if(currentState){currentState.expiresAt=data.sessionExpiresAt||currentState.expiresAt;persistState(currentState);}
+    }catch(error){
+      if(error.status===401){clearState();showLogin(inactivityMessage());}
+    }finally{activitySyncInFlight=false;}
+  }
+  function markActivity(){
+    if(!currentState||currentState.offline)return;
+    const now=Date.now();currentState.lastActivityAt=new Date(now).toISOString();
+    if(now-lastActivityStoredAt>=ACTIVITY_STORAGE_INTERVAL_MS){lastActivityStoredAt=now;persistState(currentState);}
+    syncActivity(false);
+  }
+  function bindActivityMonitor(){
+    if(activityBound)return;activityBound=true;
+    ['pointerdown','keydown','input','change','touchstart'].forEach(name=>document.addEventListener(name,markActivity,{capture:true,passive:true}));
+    window.addEventListener('pagehide',()=>{if(currentState){currentState.lastActivityAt=new Date().toISOString();persistState(currentState);syncActivity(true);}});
+    activityTimer=setInterval(()=>{if(currentState&&isInactive(currentState))expireForInactivity();},60000);
+  }
   function api(path,options={}){
     const controller=new AbortController();
     const timeoutMs=Number(options.timeoutMs||15000);
@@ -75,8 +115,8 @@
   function escapeHtml(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
   function canOffline(state){const t=Date.parse(state?.lastValidatedAt||'');return Boolean(state?.token&&Number.isFinite(t)&&Date.now()-t<=OFFLINE_GRACE_MS&&state?.organization?.standard);}
-  function activate(state,offline=false){currentState=state;try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
-  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
+  function activate(state,offline=false){currentState={...state,offline};try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};bindActivityMonitor();window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
+  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:state.lastActivityAt||new Date().toISOString()};saveState(next,state.remember);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
   async function login(event){
     event.preventDefault();
     const button=gate.querySelector('#glinkAuthSubmit');
@@ -116,7 +156,7 @@
 
       message('認証情報を保存しています。',true);
       if(!data.token||!data.organization)throw new Error('Portal応答にログイン情報がありません。');
-      const state={token:data.token,expiresAt:data.expiresAt,lastValidatedAt:new Date().toISOString(),organization:data.organization,remember};
+      const state={token:data.token,expiresAt:data.expiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString(),organization:data.organization,remember};
       saveState(state,remember);
       message('認証に成功しました。',true);
       activate(state,false);
@@ -130,6 +170,6 @@
   async function logout(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}location.reload();}
   function decodeTransfer(value){try{let b=value.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const binary=atob(b);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));}catch(e){return null;}}
   function readTransfer(){const match=location.hash.match(/(?:^#|&)glinkAuthTransfer=([^&]+)/);if(!match)return null;const state=decodeTransfer(decodeURIComponent(match[1]));history.replaceState(null,'',location.pathname+location.search);return state;}
-  async function boot(){hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState(transfer,Boolean(transfer.remember));try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}await validate(state);}
+  async function boot(){hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState(transfer,Boolean(transfer.remember));try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}if(isInactive(state)){clearState();showLogin(inactivityMessage());return;}state.lastActivityAt=new Date().toISOString();saveState(state,state.remember);await validate(state);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
