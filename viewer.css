@@ -673,21 +673,21 @@ body {
   }
 }
 
-/* Version2026.08.03 Build1548: Viewerテキスト表示 */
+/* Version2026.08.03 Build1712: Viewerテキスト表示 */
 .mapTextIcon{background:transparent!important;border:none!important}.mapTextLabel{display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;line-height:1.25;padding:4px 7px;border-radius:4px;border:1px solid rgba(0,0,0,.22);box-shadow:0 1px 4px rgba(0,0,0,.25);overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box}
 
-/* Version2026.08.03 Build1548: Viewerハザード復元 */
+/* Version2026.08.03 Build1712: Viewerハザード復元 */
 .viewerHazardLegendDock{position:absolute;right:14px;bottom:48px;z-index:890;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .viewerHazardLegend{width:190px;background:#fff;border:1px solid rgba(0,0,0,.28);border-radius:7px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.28);font-size:11px}
 .viewerHazardLegend b{display:block;padding:7px 9px;background:#1f2937;color:#fff}
 .viewerHazardLegend span{display:block;padding:5px 8px;color:#111827}.vh20{background:#220b4b;color:#fff!important}.vh10{background:#5b2a86;color:#fff!important}.vh5{background:#b34b8c;color:#fff!important}.vh3{background:#f26b8a}.vh05{background:#f6a3b4}.vh0{background:#f9d2da}.vhs1{background:#f5c242}.vhs2{background:#ef8354}.vhs3{background:#8ecae6}
 .viewerHazardAttribution{position:absolute;left:58px;bottom:4px;z-index:891;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.88);font-size:10px;color:#334155}
 
-/* Version2026.08.03 Build1548: ピン外枠へ活動状態を反映 */
+/* Version2026.08.03 Build1712: ピン外枠へ活動状態を反映 */
 .completedPinIcon .numberedPinMarker{background:#000!important;border-color:#fff!important;}
 
 
-/* Version2026.08.03 Build1548: 未対応・活動中ピンの一方向光彩（Viewer） */
+/* Version2026.08.03 Build1712: 未対応・活動中ピンの一方向光彩（Viewer） */
 @keyframes glinkUnassignedPinGlow {
   0% { border-color:#fff; box-shadow:0 0 4px 1px rgba(255,255,255,.98),0 0 10px 3px rgba(255,255,255,.76),0 1px 5px rgba(0,0,0,.45); }
   100% { border-color:#fff; box-shadow:0 0 18px 8px rgba(255,255,255,0),0 0 54px 24px rgba(255,255,255,0),0 1px 5px rgba(0,0,0,.45); }

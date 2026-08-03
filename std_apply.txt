@@ -1,0 +1,4 @@
+Version2026.08.03 Build1712
+第1段階はライブ共有基盤の調査・設計とPortal側API追加です。
+Standard側はVersion／Build同期のみで、共有UI・Viewer・保存センターの動作は変更していません。
+Repository直下の同名ファイルへ上書きしてください。
