@@ -242,6 +242,12 @@ window.addEventListener("DOMContentLoaded", () => {
   const shareUrlInput = document.getElementById("shareUrlInput");
   const copyShareUrlBtn = document.getElementById("copyShareUrlBtn");
   const refreshShareQrBtn = document.getElementById("refreshShareQrBtn");
+  const startLiveShareBtn = document.getElementById("startLiveShareBtn");
+  const updateLiveShareBtn = document.getElementById("updateLiveShareBtn");
+  const stopLiveShareBtn = document.getElementById("stopLiveShareBtn");
+  const liveShareOutput = document.getElementById("liveShareOutput");
+  const liveShareStateBadge = document.getElementById("liveShareStateBadge");
+  const liveShareUpdatedAt = document.getElementById("liveShareUpdatedAt");
   const saveShareQrBtn = document.getElementById("saveShareQrBtn");
   const openViewerBtn = document.getElementById("openViewerBtn");
   const shareQrCode = document.getElementById("shareQrCode");
@@ -459,7 +465,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.08.03 Build1712: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.08.03 Build1730: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -501,7 +507,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.08.03 Build1712:
+  // Version2026.08.03 Build1730:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1444,7 +1450,7 @@ window.addEventListener("DOMContentLoaded", () => {
       v: "1.6",
       b: "Build023.7",
       t: data.sharedAt || new Date().toISOString(),
-      n: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
+      n: "現場閲覧モードは閲覧専用です。ライブ共有URLでは最新情報を取得できます。",
       c: data.coordinateType || "dms",
       h: [data.header?.dateTime || "", data.header?.disasterName || "", data.header?.createdUnit || ""],
       s: [compactBounds(bounds), compactPoint(center), data.session?.zoom || 13, data.mapType || data.session?.mapType || "pale", data.gridSize || data.session?.gridSize || 0],
@@ -1501,7 +1507,7 @@ window.addEventListener("DOMContentLoaded", () => {
       build: "Build023.9",
       viewerMode: true,
       sharedAt: new Date().toISOString(),
-      notice: "現場閲覧モードは閲覧専用です。リアルタイム同期は行いません。",
+      notice: "現場閲覧モードは閲覧専用です。ライブ共有URLでは最新情報を取得できます。",
       coordinateType,
       header: saveSharedHeader(getCurrentHeaderFromScreen()),
       session: {
@@ -1539,6 +1545,163 @@ window.addEventListener("DOMContentLoaded", () => {
       console.warn("Viewer用データの一時保存に失敗しました。", error);
     }
     return `${getViewerBaseUrl()}#${encoded.mode}=${encoded.value}`;
+  }
+
+  const LIVE_SHARE_STORAGE_KEY = "gLinkLiveShareState";
+  let liveShareState = null;
+  let liveShareRequestInFlight = false;
+
+  function readStandardAuthState() {
+    for (const [store, key] of [[sessionStorage, "gLink_standardAuthSession"], [localStorage, "gLink_standardAuthRemembered"]]) {
+      try {
+        const raw = store.getItem(key);
+        if (raw) return JSON.parse(raw);
+      } catch (error) {}
+    }
+    return null;
+  }
+
+  function getLiveApiBase() {
+    return window.GLinkLicense?.portalBase || "https://g-link-portal.pages.dev";
+  }
+
+  function makeLiveViewerUrl(shareId) {
+    try {
+      const url = new URL(getViewerBaseUrl());
+      url.searchParams.set("live", shareId);
+      url.hash = "";
+      return url.toString();
+    } catch (error) {
+      return `viewer.html?live=${encodeURIComponent(shareId)}`;
+    }
+  }
+
+  function saveLiveShareState(state) {
+    liveShareState = state || null;
+    try {
+      if (state) localStorage.setItem(LIVE_SHARE_STORAGE_KEY, JSON.stringify(state));
+      else localStorage.removeItem(LIVE_SHARE_STORAGE_KEY);
+    } catch (error) {}
+    renderLiveShareState();
+  }
+
+  function loadLiveShareState() {
+    try {
+      const raw = localStorage.getItem(LIVE_SHARE_STORAGE_KEY);
+      if (raw) liveShareState = JSON.parse(raw);
+    } catch (error) {
+      liveShareState = null;
+    }
+    renderLiveShareState();
+  }
+
+  function formatLiveTime(value) {
+    const d = new Date(value || "");
+    if (Number.isNaN(d.getTime())) return "-";
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  }
+
+  function renderLiveShareState() {
+    const active = Boolean(liveShareState?.shareId && liveShareState?.active !== false);
+    if (liveShareStateBadge) {
+      liveShareStateBadge.textContent = active ? "ライブ共有中" : "停止中";
+      liveShareStateBadge.classList.toggle("isActive", active);
+      liveShareStateBadge.classList.toggle("isStopped", !active);
+    }
+    if (liveShareUpdatedAt) {
+      liveShareUpdatedAt.textContent = active ? `最終送信：${formatLiveTime(liveShareState.updatedAt)}` : "ライブ共有は開始されていません。";
+    }
+    if (startLiveShareBtn) startLiveShareBtn.hidden = active;
+    if (updateLiveShareBtn) updateLiveShareBtn.hidden = !active;
+    if (stopLiveShareBtn) stopLiveShareBtn.hidden = !active;
+    if (liveShareOutput) liveShareOutput.hidden = !active;
+    if (active) {
+      const url = liveShareState.viewerUrl || makeLiveViewerUrl(liveShareState.shareId);
+      if (shareUrlInput) shareUrlInput.value = url;
+      renderShareQr(url);
+    } else {
+      if (shareUrlInput) shareUrlInput.value = "";
+      if (shareQrCode) shareQrCode.innerHTML = "";
+    }
+  }
+
+  async function callLiveShareApi(path, body) {
+    const auth = readStandardAuthState();
+    if (!auth?.token) throw new Error("利用機関の認証情報を確認できません。再ログインしてください。");
+    const response = await fetch(`${getLiveApiBase()}${path}`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json", "Authorization":`Bearer ${auth.token}`},
+      body: JSON.stringify(body || {}),
+      cache: "no-store"
+    });
+    let data = {};
+    try { data = await response.json(); } catch (error) {}
+    if (!response.ok) {
+      const error = new Error(data.message || `ライブ共有APIエラー（HTTP ${response.status}）`);
+      error.status = response.status;
+      error.data = data;
+      throw error;
+    }
+    return data;
+  }
+
+  async function startLiveShare() {
+    if (liveShareRequestInFlight) return;
+    liveShareRequestInFlight = true;
+    if (startLiveShareBtn) startLiveShareBtn.disabled = true;
+    setShareStatus("ライブ共有を開始しています。", false);
+    try {
+      const payload = compactViewerData(buildViewerShareData());
+      const data = await callLiveShareApi("/api/app/live-share/start", {payload});
+      const viewerUrl = makeLiveViewerUrl(data.shareId);
+      saveLiveShareState({shareId:data.shareId, viewerUrl, updatedAt:data.updatedAt, expiresAt:data.expiresAt, active:true});
+      setShareStatus("ライブ共有を開始しました。URLとQRコードは以後そのまま使用できます。", false);
+    } catch (error) {
+      console.error("ライブ共有開始に失敗しました。", error);
+      setShareStatus(error.message || "ライブ共有の開始に失敗しました。", true);
+    } finally {
+      liveShareRequestInFlight = false;
+      if (startLiveShareBtn) startLiveShareBtn.disabled = false;
+    }
+  }
+
+  async function updateLiveShare() {
+    if (!liveShareState?.shareId || liveShareRequestInFlight) return;
+    liveShareRequestInFlight = true;
+    if (updateLiveShareBtn) updateLiveShareBtn.disabled = true;
+    setShareStatus("最新情報を送信しています。", false);
+    try {
+      const payload = compactViewerData(buildViewerShareData());
+      const data = await callLiveShareApi("/api/app/live-share/update", {shareId:liveShareState.shareId, payload});
+      saveLiveShareState({...liveShareState, updatedAt:data.updatedAt, expiresAt:data.expiresAt, active:true});
+      setShareStatus("最新情報を送信しました。Viewerは同じURLで最新状態を取得できます。", false);
+    } catch (error) {
+      console.error("ライブ共有更新に失敗しました。", error);
+      if (error.status === 404) saveLiveShareState(null);
+      setShareStatus(error.message || "最新情報の送信に失敗しました。", true);
+    } finally {
+      liveShareRequestInFlight = false;
+      if (updateLiveShareBtn) updateLiveShareBtn.disabled = false;
+    }
+  }
+
+  async function stopLiveShare() {
+    if (!liveShareState?.shareId || liveShareRequestInFlight) return;
+    if (!window.confirm("ライブ共有を停止しますか？停止後は同じURLで閲覧できなくなります。")) return;
+    liveShareRequestInFlight = true;
+    if (stopLiveShareBtn) stopLiveShareBtn.disabled = true;
+    try {
+      await callLiveShareApi("/api/app/live-share/stop", {shareId:liveShareState.shareId});
+      saveLiveShareState(null);
+      setShareStatus("ライブ共有を停止しました。", false);
+    } catch (error) {
+      console.error("ライブ共有停止に失敗しました。", error);
+      if (error.status === 404) saveLiveShareState(null);
+      setShareStatus(error.message || "ライブ共有の停止に失敗しました。", true);
+    } finally {
+      liveShareRequestInFlight = false;
+      if (stopLiveShareBtn) stopLiveShareBtn.disabled = false;
+    }
   }
 
   function setShareStatus(message, isError = false) {
@@ -1583,14 +1746,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   async function updateSharePanel() {
-    if (shareUrlInput) shareUrlInput.value = "共有URLを生成中です...";
-    const url = await getCurrentShareUrl();
-    if (shareUrlInput) {
-      shareUrlInput.value = url;
-    }
-    renderShareQr(url);
-    if (url.length > 2200) {
-      setShareStatus("共有データ量が多いため、QRが読みにくい場合があります。URLコピーでの共有も併用してください。", true);
+    renderLiveShareState();
+    if (!liveShareState?.shareId) {
+      setShareStatus("「ライブ共有を開始」を押すと、固定URLとQRコードを発行します。", false);
     }
   }
 
@@ -1721,6 +1879,10 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupSharePanelEvents() {
+    loadLiveShareState();
+    if (startLiveShareBtn) startLiveShareBtn.addEventListener("click", startLiveShare);
+    if (updateLiveShareBtn) updateLiveShareBtn.addEventListener("click", updateLiveShare);
+    if (stopLiveShareBtn) stopLiveShareBtn.addEventListener("click", stopLiveShare);
     if (copyShareUrlBtn) {
       copyShareUrlBtn.addEventListener("click", copyShareUrl);
     }
@@ -1793,7 +1955,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.08.03 Build1712:
+    // Version2026.08.03 Build1730:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -7232,7 +7394,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.08.03 Build1712: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.08.03 Build1730: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",

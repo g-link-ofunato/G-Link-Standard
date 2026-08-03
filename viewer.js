@@ -382,8 +382,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  async function fetchLiveViewerPayload(shareId) {
+    const id = String(shareId || "").trim();
+    if (!/^[A-Za-z0-9_-]{20,40}$/.test(id)) throw new Error("ライブ共有URLを確認してください。");
+    const endpoint = `https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(id)}?t=${Date.now()}`;
+    const response = await fetch(endpoint, {cache:"no-store", headers:{Accept:"application/json"}});
+    let body = {};
+    try { body = await response.json(); } catch (error) {}
+    if (!response.ok) throw new Error(body.message || `ライブ共有データを取得できません（HTTP ${response.status}）`);
+    diag("ライブ共有取得", true, `更新=${body.updatedAt || "-"}`);
+    window.__gLinkLiveShareMeta = {shareId:id, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
+    return expandCompactViewerData(body.payload);
+  }
+
   async function decodeViewerPayload() {
     try {
+      const liveId = new URLSearchParams(location.search).get("live");
+      if (liveId) return await fetchLiveViewerPayload(liveId);
       const found = getShareValueFromLocation();
       if (found && (found.key === "data" || found.key === "share")) {
         return expandCompactViewerData(decodeJsonBase64Url(found.value));
@@ -966,6 +981,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   diag("共有データ読込完了", true, `ピン${(data.pins || []).length}件 / 履歴${(data.activityHistory || []).length}件`);
+  if (window.__gLinkLiveShareMeta) {
+    const liveStatus = document.getElementById("viewerLiveStatus");
+    if (liveStatus) {
+      const d = new Date(window.__gLinkLiveShareMeta.updatedAt || "");
+      const label = Number.isNaN(d.getTime()) ? "" : `（最終更新 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}）`;
+      liveStatus.textContent = `ライブ共有から最新情報を取得しました${label}`;
+      liveStatus.hidden = false;
+    }
+  }
   // Build022.3：ピン0件・履歴0件でも、地図情報があれば正常な共有データとして表示する。
   // CSSのdisplay指定によりhidden属性が効かない環境もあるため、成功時は明示的にエラー画面を非表示にする。
   hideError();

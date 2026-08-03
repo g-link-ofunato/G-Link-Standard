@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1712">
-  <link rel="stylesheet" href="license-auth.css?v=Build1712" />
+  <link rel="stylesheet" href="fixed.css?v=Build1730">
+  <link rel="stylesheet" href="license-auth.css?v=Build1730" />
 </head>
  
 <body>
@@ -553,37 +553,50 @@
       <div class="panelContent" id="sharePanel">
         <h3>共有</h3>
 
-        <div class="shareNotice">
-          現在の指揮本部モードを閲覧専用ページとして開くURLとQRコードを表示します。<br>
-          無料版では、閲覧専用です。リアルタイム同期・チャット・写真共有は行いません。
+        <div class="shareNotice liveShareNotice">
+          指揮本部モードの最新情報を、固定URLの現場閲覧モードへ共有します。<br>
+          共有IDはシステム内部で管理され、利用者には表示されません。
         </div>
 
-        <div class="shareBlock">
-          <label for="shareUrlInput">閲覧専用URL</label>
-          <div class="shareUrlRow">
-            <input id="shareUrlInput" type="text" readonly>
-            <button id="copyShareUrlBtn" type="button">コピー</button>
+        <div class="shareBlock liveShareControlBlock">
+          <div class="liveShareStateRow">
+            <span id="liveShareStateBadge" class="liveShareStateBadge isStopped">停止中</span>
+            <span id="liveShareUpdatedAt" class="liveShareUpdatedAt">ライブ共有は開始されていません。</span>
           </div>
+          <button id="startLiveShareBtn" type="button" class="primaryButton liveShareStartBtn">ライブ共有を開始</button>
+          <button id="updateLiveShareBtn" type="button" class="secondaryButton liveShareUpdateBtn" hidden>最新情報を送信</button>
+          <button id="stopLiveShareBtn" type="button" class="secondaryButton liveShareStopBtn" hidden>ライブ共有を停止</button>
           <div id="shareCopyStatus" class="shareCopyStatus" aria-live="polite"></div>
         </div>
 
-        <div class="shareBlock">
-          <label>QRコード</label>
-          <div id="shareQrBox" class="shareQrBox">
-            <div id="shareQrCode" class="shareQrCode"></div>
+        <div id="liveShareOutput" class="liveShareOutput" hidden>
+          <div class="shareBlock">
+            <label for="shareUrlInput">ライブ共有URL</label>
+            <div class="shareUrlRow">
+              <input id="shareUrlInput" type="text" readonly>
+              <button id="copyShareUrlBtn" type="button">コピー</button>
+            </div>
           </div>
-          <div class="shareButtonRow">
-            <button id="refreshShareQrBtn" type="button" class="secondaryButton shareRefreshBtn">URL・QRを更新</button>
-            <button id="saveShareQrBtn" type="button" class="secondaryButton shareSaveQrBtn">QR画像を保存</button>
-            <button id="openViewerBtn" type="button" class="secondaryButton shareOpenViewerBtn">Viewerを開く</button>
+
+          <div class="shareBlock">
+            <label>QRコード</label>
+            <div id="shareQrBox" class="shareQrBox">
+              <div id="shareQrCode" class="shareQrCode"></div>
+            </div>
+            <div class="shareButtonRow">
+              <button id="saveShareQrBtn" type="button" class="secondaryButton shareSaveQrBtn">QR画像を保存</button>
+              <button id="openViewerBtn" type="button" class="secondaryButton shareOpenViewerBtn">Viewerを開く</button>
+            </div>
           </div>
         </div>
 
-        <div class="shareHelpBox">
-          このURLやQRコードは、メール・LINE・Teams等に貼り付けて共有できます。<br>
-          「Viewerを開く」で、別タブに閲覧専用ページを表示して確認できます。<br>
-          無料版のViewerは閲覧専用です。編集内容を更新した場合は、共有パネルでURL・QRを更新して再共有してください。
-        </div>
+        <details class="legacyShareDetails">
+          <summary>従来の共有方式について</summary>
+          <div class="shareHelpBox">
+            第2段階ではライブ共有を追加し、従来のスナップショット方式はコード上の互換性確保のため残しています。<br>
+            ライブ共有の動作確認後、旧方式を整理します。
+          </div>
+        </details>
       </div>
  
     </div>
@@ -808,8 +821,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1712"></script>
+  <script src="fixed.js?v=Build1730"></script>
  
-  <script src="license-auth.js?v=Build1712"></script>
+  <script src="license-auth.js?v=Build1730"></script>
 </body>
 </html>
