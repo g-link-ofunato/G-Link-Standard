@@ -1626,7 +1626,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function createLivePayloadSnapshot() {
     const payload = compactViewerData(buildViewerShareData());
-    return {payload, signature:JSON.stringify(payload)};
+    // sharedAt由来の t は送信時刻で毎回変化するため、編集差分の比較対象から除外する。
+    // 実際に送信するpayloadには t を残し、Viewerの最終更新時刻として利用する。
+    const signaturePayload = { ...payload };
+    delete signaturePayload.t;
+    return {payload, signature:JSON.stringify(signaturePayload)};
   }
 
   function clearLiveAutoSendTimer() {
