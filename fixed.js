@@ -216,7 +216,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const gridSearchInput = document.getElementById("gridSearchInput");
   const gridSearchBtn = document.getElementById("gridSearchBtn");
   const fixedGridSizeSelect = document.getElementById("fixedGridSizeSelect");
-  const applyFixedGridSizeBtn = document.getElementById("applyFixedGridSizeBtn");
   const gridLineColor = document.getElementById("gridLineColor");
   const gridLineOpacity = document.getElementById("gridLineOpacity");
   const gridLineOpacityValue = document.getElementById("gridLineOpacityValue");
@@ -460,7 +459,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.08.03 Build1438: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.08.03 Build1502: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -502,7 +501,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.08.03 Build1438:
+  // Version2026.08.03 Build1502:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1794,7 +1793,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.08.03 Build1438:
+    // Version2026.08.03 Build1502:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -2812,15 +2811,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const current = Number(session.gridSize || 0);
     if (requested === current) return;
 
-    const confirmed = confirm(
-      `グリッド幅を ${formatFixedGridSize(current)} から ${formatFixedGridSize(requested)} へ変更しますか？\n` +
-      "地図位置・縮尺・ピン・図形・計測・軌跡・テキストは維持され、ピンと活動履歴のグリッド番号は再計算されます。"
-    );
-    if (!confirmed) {
-      fixedGridSizeSelect.value = String(current);
-      return;
-    }
-
     const preservedCenter = map && map._loaded ? map.getCenter() : null;
     const preservedZoom = map && map._loaded ? map.getZoom() : null;
 
@@ -2896,7 +2886,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!gridLineColor || !gridLineOpacity || !gridLineWeight) return;
 
     if (fixedGridSizeSelect) fixedGridSizeSelect.value = String(Number(session.gridSize || 0));
-    if (applyFixedGridSizeBtn) applyFixedGridSizeBtn.addEventListener("click", applyFixedGridSizeChange);
+    if (fixedGridSizeSelect) fixedGridSizeSelect.addEventListener("change", applyFixedGridSizeChange);
 
     gridLineColor.addEventListener("input", () => {
       gridLineSettings.color = gridLineColor.value;
@@ -7232,7 +7222,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.08.03 Build1438: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.08.03 Build1502: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",

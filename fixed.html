@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1438">
-  <link rel="stylesheet" href="license-auth.css?v=Build1438" />
+  <link rel="stylesheet" href="fixed.css?v=Build1502">
+  <link rel="stylesheet" href="license-auth.css?v=Build1502" />
 </head>
  
 <body>
@@ -473,7 +473,7 @@
         <div id="gridSettingSection" class="settingSubSection active">
           <div class="settingBlock">
             <label for="fixedGridSizeSelect">グリッド幅</label>
-            <select id="fixedGridSizeSelect">
+            <select id="fixedGridSizeSelect" class="settingSelect settingGridWidthSelect">
               <option value="0">なし</option>
               <option value="5">5m</option>
               <option value="10">10m</option>
@@ -484,8 +484,6 @@
               <option value="500">500m</option>
               <option value="1000">1000m</option>
             </select>
-            <button id="applyFixedGridSizeBtn" class="secondaryButton" type="button">グリッド幅を反映</button>
-            <div class="settingHelp">地図位置・縮尺・ピン・図形・計測・軌跡・テキストは維持し、グリッドだけを再生成します。ピンと活動履歴のグリッド番号は自動更新されます。</div>
           </div>
 
           <div class="settingBlock">
@@ -810,8 +808,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1438"></script>
+  <script src="fixed.js?v=Build1502"></script>
  
-  <script src="license-auth.js?v=Build1438"></script>
+  <script src="license-auth.js?v=Build1502"></script>
 </body>
 </html>
