@@ -6,8 +6,8 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1502">
-  <link rel="stylesheet" href="license-auth.css?v=Build1502" />
+  <link rel="stylesheet" href="fixed.css?v=Build1534">
+  <link rel="stylesheet" href="license-auth.css?v=Build1534" />
 </head>
  
 <body>
@@ -45,7 +45,7 @@
     <button class="toolBtn" data-panel="trackPanel"><span>🛰</span><small>軌跡</small></button>
     <button class="toolBtn" data-panel="hazardPanel"><span>⚠</span><small>ハザード</small></button>
     <button class="toolBtn" data-panel="layerPanel"><span>🗂</span><small>レイヤ</small></button>
-    <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動履歴</small></button>
+    <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動一覧</small></button>
     <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
     <button class="toolBtn" data-panel="settingPanel"><span>⚙</span><small>設定</small></button>
     <button class="toolBtn" data-panel="sharePanel"><span>🔗</span><small>共有</small></button>
@@ -452,12 +452,12 @@
       </div>
 
       <div class="panelContent" id="historyPanel">
-        <h3>活動履歴</h3>
+        <h3>活動一覧</h3>
         <div class="historyNote">
-          活動完了した事案を日付ごとに表示します。
+          未対応・活動中・活動完了の全事案を表示します。未対応は出動部隊が未入力の事案です。
         </div>
         <div id="activityHistoryList">
-          <p class="emptyHistory">活動完了した事案はありません。</p>
+          <p class="emptyHistory">活動情報はありません。</p>
         </div>
       </div>
  
@@ -711,7 +711,7 @@
   </div>
  
   <div id="historyEditPanel">
-    <h3>活動履歴編集</h3>
+    <h3>活動情報編集</h3>
  
     <label>種別</label>
     <select id="historyEditType">
@@ -808,8 +808,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1502"></script>
+  <script src="fixed.js?v=Build1534"></script>
  
-  <script src="license-auth.js?v=Build1502"></script>
+  <script src="license-auth.js?v=Build1534"></script>
 </body>
 </html>

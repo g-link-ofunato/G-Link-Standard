@@ -118,6 +118,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const legendPreviewList = document.getElementById("legendPreviewList");
   const measurementPreviewRows = document.getElementById("measurementPreviewRows");
   const historyPreviewRows = document.getElementById("historyPreviewRows");
+  const activityStatusSummary = document.getElementById("activityStatusSummary");
   const pageThumbs = document.querySelectorAll(".pageThumb[data-page]");
   const glinkLoadBtn = document.getElementById("glinkLoadBtn");
   const glinkLoadInput = document.getElementById("glinkLoadInput");
@@ -160,7 +161,7 @@ window.addEventListener("DOMContentLoaded", () => {
     },
     csv: {
       title: "保存センター - CSV出力",
-      lead: "活動履歴・計測図形のうち、チェックしたものをCSV形式で出力します。",
+      lead: "活動一覧・計測図形のうち、チェックしたものをCSV形式で出力します。",
       previewTitle: "CSVプレビュー",
       settingsTitle: "CSV設定",
       saveLabel: "📊 CSVを保存",
@@ -859,17 +860,43 @@ window.addEventListener("DOMContentLoaded", () => {
     }).join("");
   }
  
+  function getActivityStatus(item) {
+    if (item?.completed) return "completed";
+    return String(item?.units || "").trim() ? "active" : "unassigned";
+  }
+
+  function getActivityStatusLabel(item) {
+    return ({ unassigned: "未対応", active: "活動中", completed: "活動完了" })[getActivityStatus(item)] || "未対応";
+  }
+
+  function buildActivityListFromPins() {
+    return (Array.isArray(saveCenterData.pins) ? saveCenterData.pins : []).map((pin, index) => ({
+      ...pin,
+      pinNo: pin.pinNo || pin.number || index + 1,
+      typeLabel: pin.typeLabel || ({ fire: "火災", rescue: "救助", emergency: "救急", other: "その他" })[pin.type] || pin.type || "-",
+      status: getActivityStatus(pin),
+      statusLabel: getActivityStatusLabel(pin)
+    })).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0));
+  }
+
   function reflectHistoryRows() {
-    const list = sortActivityHistoryChronological(saveCenterData.activityHistory);
+    const list = buildActivityListFromPins();
+    const counts = { unassigned: 0, active: 0, completed: 0 };
+    list.forEach(item => { counts[item.status] = (counts[item.status] || 0) + 1; });
+    if (activityStatusSummary) {
+      activityStatusSummary.innerHTML = `<span>未対応：${counts.unassigned}件</span><span>活動中：${counts.active}件</span><span>活動完了：${counts.completed}件</span>`;
+    }
     if (!list.length) {
-      historyPreviewRows.innerHTML = `<tr><td colspan="10">活動履歴はありません。</td></tr>`;
+      historyPreviewRows.innerHTML = `<tr><td colspan="11">活動情報はありません。</td></tr>`;
       return;
     }
- 
+
     historyPreviewRows.innerHTML = list.slice(0, 20).map((item, index) => {
       const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
+      const stateClass = `activityState-${item.status}`;
       return `<tr>
-        <td>${escapeHtml(getHistoryPinNo(item, index))}</td>
+        <td class="${stateClass}">${escapeHtml(getHistoryPinNo(item, index))}</td>
+        <td class="${stateClass}">${escapeHtml(item.statusLabel)}</td>
         <td>${escapeHtml(item.typeLabel || item.type || "-")}</td>
         <td>${escapeHtml(item.gridNo || "-")}</td>
         <td>${escapeHtml(coordinateText)}</td>
@@ -877,7 +904,7 @@ window.addEventListener("DOMContentLoaded", () => {
         <td>${escapeHtml(item.completedLabel || "-")}</td>
         <td>${escapeHtml(item.incidentNo || "-")}</td>
         <td>${escapeHtml(item.summary || "-")}</td>
-        <td>${escapeHtml(item.units || "-")}</td>
+        <td>${escapeHtml(String(item.units || "").trim() || "未入力")}</td>
         <td>${escapeHtml(item.injured ?? 0)}</td>
       </tr>`;
     }).join("");
@@ -977,11 +1004,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const rows = [];
  
     if (csvIncludeHistory.checked) {
-      rows.push(["活動履歴"]);
-      rows.push(["№", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "概要", "出動部隊", "傷病者人数"]);
-      const list = sortActivityHistoryChronological(saveCenterData.activityHistory);
+      rows.push(["活動一覧"]);
+      rows.push(["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "概要", "出動部隊", "傷病者人数"]);
+      const list = buildActivityListFromPins();
       list.forEach((item, index) => rows.push([
         getHistoryPinNo(item, index),
+        item.statusLabel || getActivityStatusLabel(item),
         item.typeLabel || item.type || "",
         item.gridNo || "",
         (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "",

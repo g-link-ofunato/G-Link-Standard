@@ -687,8 +687,15 @@ button { cursor: pointer; }
   width: auto !important;
 }
 
-/* Version2026.08.03 Build1502: 保存センターテキスト表示 */
+/* Version2026.08.03 Build1534: 保存センターテキスト表示 */
 .mapTextIcon{background:transparent!important;border:none!important}.mapTextLabel{display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;line-height:1.25;padding:4px 7px;border-radius:4px;border:1px solid rgba(0,0,0,.22);box-shadow:0 1px 4px rgba(0,0,0,.25);overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box}
 
-/* Version2026.08.03 Build1502: 保存プレビューの活動状態外枠 */
+/* Version2026.08.03 Build1534: 保存プレビューの活動状態外枠 */
 .previewNumberedPin.completed div{background:#000!important;border-color:#fff!important;}
+
+/* 保存センター2ページ目：活動一覧の状態表示 */
+.activityStatusSummary{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 8px;font-weight:700;}
+.activityStatusSummary span{padding:4px 10px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;}
+.activityTable td.activityState-unassigned{background:#ffffff;font-weight:700;}
+.activityTable td.activityState-active{background:#ffe4ec;font-weight:700;}
+.activityTable td.activityState-completed{background:#eeeeee;font-weight:700;}

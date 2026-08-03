@@ -459,7 +459,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.08.03 Build1502: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.08.03 Build1534: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -501,7 +501,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.08.03 Build1502:
+  // Version2026.08.03 Build1534:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1223,7 +1223,7 @@ window.addEventListener("DOMContentLoaded", () => {
     trackPanel: "軌跡",
     hazardPanel: "ハザード",
     layerPanel: "レイヤ",
-    historyPanel: "活動履歴",
+    historyPanel: "活動一覧",
     settingPanel: "設定",
     sharePanel: "共有"
   };
@@ -1793,7 +1793,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.08.03 Build1502:
+    // Version2026.08.03 Build1534:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -5519,10 +5519,18 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function makeHistoryItemFromPin(pin) {
+    const status = getPinActivityStatus(pin.data);
+    const baseTimestamp = status === "completed"
+      ? (pin.data.completedTimestamp || pin.data.awarenessTimestamp || Date.now())
+      : (pin.data.awarenessTimestamp || Date.now());
+    const statusLabels = { unassigned: "未対応", active: "活動中", completed: "活動完了" };
     return {
       id: pin.data.id,
-      dateKey: getDateKeyFromTimestamp(pin.data.completedTimestamp),
-      dateLabel: getDateLabelFromTimestamp(pin.data.completedTimestamp),
+      dateKey: getDateKeyFromTimestamp(baseTimestamp),
+      dateLabel: getDateLabelFromTimestamp(baseTimestamp),
+      status,
+      statusLabel: statusLabels[status] || "未対応",
+      completed: !!pin.data.completed,
       type: normalizePinType(pin.data.type),
       typeLabel: pinLabels[normalizePinType(pin.data.type)] || "火災",
       awarenessTimestamp: pin.data.awarenessTimestamp,
@@ -5556,6 +5564,9 @@ window.addEventListener("DOMContentLoaded", () => {
     item.summary = pin.data.summary;
     item.units = pin.data.units;
     item.injured = pin.data.injured;
+    item.completed = !!pin.data.completed;
+    item.status = getPinActivityStatus(pin.data);
+    item.statusLabel = ({ unassigned: "未対応", active: "活動中", completed: "活動完了" })[item.status] || "未対応";
   }
 
   function getHistoryPinNo(item) {
@@ -5596,62 +5607,59 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function renderActivityHistory() {
     activityHistoryList.innerHTML = "";
- 
-    if (activityHistory.length === 0) {
-      activityHistoryList.innerHTML = `<p class="emptyHistory">活動完了した事案はありません。</p>`;
+
+    const activityItems = pins.map(makeHistoryItemFromPin);
+    if (activityItems.length === 0) {
+      activityHistoryList.innerHTML = `<p class="emptyHistory">活動情報はありません。</p>`;
       return;
     }
- 
-    const grouped = {};
-    activityHistory.forEach(item => {
-      if (!grouped[item.dateKey]) grouped[item.dateKey] = { dateLabel: item.dateLabel, items: [] };
-      grouped[item.dateKey].items.push(item);
-    });
- 
-    Object.keys(grouped).sort().forEach(dateKey => {
-      const group = grouped[dateKey];
-      group.items = sortActivityHistoryChronological(group.items);
- 
+
+    const statusOrder = ["unassigned", "active", "completed"];
+    const statusLabels = { unassigned: "未対応", active: "活動中", completed: "活動完了" };
+    statusOrder.forEach(status => {
+      const items = activityItems
+        .filter(item => item.status === status)
+        .sort((a, b) => Number(a.pinNo || 0) - Number(b.pinNo || 0));
+      if (!items.length) return;
+
       const groupDiv = document.createElement("div");
-      groupDiv.className = "historyDateGroup";
- 
+      groupDiv.className = `historyDateGroup activityStatusGroup status-${status}`;
+
       const headerBtn = document.createElement("button");
       headerBtn.className = "historyDateHeader";
       headerBtn.type = "button";
- 
+
       const titleSpan = document.createElement("span");
       titleSpan.className = "historyDateTitle";
-      titleSpan.textContent = "▼ " + group.dateLabel;
- 
+      titleSpan.textContent = `▼ ${statusLabels[status]}`;
+
       const countSpan = document.createElement("span");
       countSpan.className = "historyDateCount";
-      countSpan.textContent = group.items.length + "件";
- 
+      countSpan.textContent = `${items.length}件`;
+
       headerBtn.appendChild(titleSpan);
       headerBtn.appendChild(countSpan);
- 
+
       const bodyDiv = document.createElement("div");
       bodyDiv.className = "historyDateBody";
- 
       headerBtn.addEventListener("click", () => {
         bodyDiv.classList.toggle("collapsed");
-        titleSpan.textContent = (bodyDiv.classList.contains("collapsed") ? "▶ " : "▼ ") + group.dateLabel;
+        titleSpan.textContent = `${bodyDiv.classList.contains("collapsed") ? "▶" : "▼"} ${statusLabels[status]}`;
       });
- 
-      group.items.forEach(item => {
+
+      items.forEach(item => {
         const div = document.createElement("div");
-        div.className = "historyItem";
+        div.className = `historyItem activityItem status-${item.status}`;
         const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
-        div.innerHTML = `<b>№${getHistoryPinNo(item)}　${item.typeLabel}　${item.gridNo || "-"}</b><div class="historyTime">覚知：${item.awarenessLabel || "-"}<br>完了：${item.completedLabel || "-"}</div><div class="historyMeta">座標：${coordinateText}<br>災害番号：${item.incidentNo || "-"}<br>概要：${item.summary || "-"}<br>出動部隊：${item.units || "-"}<br>傷病者人数：${item.injured || 0}</div>`;
- 
+        div.innerHTML = `<b>№${getHistoryPinNo(item)}　${item.typeLabel}　${item.gridNo || "-"}</b><div class="historyTime">活動状態：${item.statusLabel}<br>覚知：${item.awarenessLabel || "-"}<br>完了：${item.completedLabel || "-"}</div><div class="historyMeta">座標：${coordinateText}<br>災害番号：${item.incidentNo || "-"}<br>概要：${item.summary || "-"}<br>出動部隊：${String(item.units || "").trim() || "未入力"}<br>傷病者人数：${item.injured || 0}</div>`;
         div.addEventListener("click", e => {
           e.stopPropagation();
           showHistoryContextMenu(item, e);
+          cancelHistoryCaseBtn.style.display = item.status === "completed" ? "block" : "none";
         });
- 
         bodyDiv.appendChild(div);
       });
- 
+
       groupDiv.appendChild(headerBtn);
       groupDiv.appendChild(bodyDiv);
       activityHistoryList.appendChild(groupDiv);
@@ -5725,7 +5733,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function saveHistoryEditFunc() {
     const target = editingHistoryItem || selectedHistoryItem;
     if (!target) {
-      alert("編集対象の活動履歴を確認できませんでした。もう一度、活動履歴から編集を開いてください。");
+      alert("編集対象の活動情報を確認できませんでした。もう一度、活動一覧から編集を開いてください。");
       return;
     }
  
@@ -5751,6 +5759,7 @@ window.addEventListener("DOMContentLoaded", () => {
       pin.data.units = target.units;
       pin.data.injured = target.injured;
       refreshPin(pin);
+      updateHistoryItemFromPin(pin);
     }
  
     renderActivityHistory();
@@ -6782,12 +6791,13 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function exportActivityHistoryCsv() {
-    const rows = [["No", "№", "種別", "覚知日時", "完了日時", "グリッド", "座標", "災害番号", "概要", "出動部隊", "傷病者人数"]];
-    sortActivityHistoryChronological(activityHistory).forEach((item, index) => {
+    const rows = [["No", "№", "活動状態", "種別", "覚知日時", "完了日時", "グリッド", "座標", "災害番号", "概要", "出動部隊", "傷病者人数"]];
+    pins.map(makeHistoryItemFromPin).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0)).forEach((item, index) => {
       const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "";
       rows.push([
         index + 1,
         getHistoryPinNo(item),
+        item.statusLabel || "未対応",
         typeLabel(normalizePinType(item.type)),
         item.awarenessLabel || "",
         item.completedLabel || "",
@@ -6799,7 +6809,7 @@ window.addEventListener("DOMContentLoaded", () => {
         item.injured ?? 0
       ]);
     });
-    downloadCsv("G-Link_活動履歴.csv", rows);
+    downloadCsv("G-Link_活動一覧.csv", rows);
   }
  
   function exportMeasurementCsv() {
@@ -7222,7 +7232,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.08.03 Build1502: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.08.03 Build1534: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",

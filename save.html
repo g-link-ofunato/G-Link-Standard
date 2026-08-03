@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 保存センター</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="save.css?v=Build1502">
-  <link rel="stylesheet" href="license-auth.css?v=Build1502" />
+  <link rel="stylesheet" href="save.css?v=Build1534">
+  <link rel="stylesheet" href="license-auth.css?v=Build1534" />
 </head>
 <body>
   <div class="saveApp">
@@ -36,7 +36,7 @@
       <div class="csvGroup">
         <button class="sideMenuItem" data-mode="csv">
           <span class="menuIcon green">CSV</span>
-          <span><strong>CSV出力</strong><small>活動履歴・計測図形</small></span>
+          <span><strong>CSV出力</strong><small>活動一覧・計測図形</small></span>
         </button>
       </div>
     </aside>
@@ -135,11 +135,13 @@
               </section>
  
               <section class="infoSection" data-section="history">
-                <h3>活動履歴</h3>
+                <h3>活動一覧</h3>
+                <div id="activityStatusSummary" class="activityStatusSummary"></div>
                 <table class="infoTable activityTable">
                   <thead>
                     <tr>
                       <th>№</th>
+                      <th>活動状態</th>
                       <th>種別</th>
                       <th>グリッド番号</th>
                       <th>座標</th>
@@ -152,7 +154,7 @@
                     </tr>
                   </thead>
                   <tbody id="historyPreviewRows">
-                    <tr><td colspan="10">活動履歴はありません。</td></tr>
+                    <tr><td colspan="11">活動情報はありません。</td></tr>
                   </tbody>
                 </table>
               </section>
@@ -214,13 +216,13 @@
               <div class="groupTitle">表示項目（2ページ目以降）</div>
               <label><input id="includeLegend" type="checkbox" checked> 凡例</label>
               <label><input id="includeMeasurements" type="checkbox" checked> 計測図形一覧</label>
-              <label><input id="includeHistory" type="checkbox" checked> 活動履歴</label>
+              <label><input id="includeHistory" type="checkbox" checked> 活動一覧</label>
               <label><input id="includeHeaderSection" type="checkbox" checked> ヘッダー情報一覧</label>
             </div>
  
             <div class="checkGroup hidden" id="csvExportOptions">
               <div class="groupTitle">CSV出力対象</div>
-              <label><input id="csvIncludeHistory" type="checkbox" checked> 活動履歴</label>
+              <label><input id="csvIncludeHistory" type="checkbox" checked> 活動一覧</label>
               <label><input id="csvIncludeMeasurements" type="checkbox" checked> 計測図形</label>
             </div>
  
@@ -243,7 +245,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="save.js?v=Build1502"></script>
-  <script src="license-auth.js?v=Build1502"></script>
+  <script src="save.js?v=Build1534"></script>
+  <script src="license-auth.js?v=Build1534"></script>
 </body>
 </html>

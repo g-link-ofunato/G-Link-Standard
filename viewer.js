@@ -696,17 +696,26 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
 
+  function getViewerActivityStatus(pin) {
+    if (pin?.completed) return "completed";
+    return String(pin?.units || "").trim() ? "active" : "unassigned";
+  }
+
+  function getViewerActivityStatusLabel(pin) {
+    return ({ unassigned: "未対応", active: "活動中", completed: "活動完了" })[getViewerActivityStatus(pin)] || "未対応";
+  }
+
   function renderSummary(data) {
     const box = document.getElementById("viewerSummary");
     if (!box) return;
     const pins = Array.isArray(data.pins) ? data.pins : [];
-    const histories = Array.isArray(data.activityHistory) ? data.activityHistory : [];
+    const histories = pins;
     const measurements = Array.isArray(data.measurements) ? data.measurements : [];
     const completed = pins.filter(pin => pin.completed).length;
     box.innerHTML = `
       <div class="summaryBox"><span class="summaryNumber">${pins.length}</span><span class="summaryLabel">ピン</span></div>
       <div class="summaryBox"><span class="summaryNumber">${completed}</span><span class="summaryLabel">完了</span></div>
-      <div class="summaryBox"><span class="summaryNumber">${histories.length}</span><span class="summaryLabel">活動履歴</span></div>
+      <div class="summaryBox"><span class="summaryNumber">${histories.length}</span><span class="summaryLabel">活動一覧</span></div>
       <div class="summaryBox"><span class="summaryNumber">${measurements.length}</span><span class="summaryLabel">計測図形</span></div>
       <div class="summaryBox"><span class="summaryNumber">${escapeHtml(data.session?.zoom || "-")}</span><span class="summaryLabel">ズーム</span></div>
       <div class="summaryBox"><span class="summaryNumber">${escapeHtml(data.session?.mapType || data.mapType || "-")}</span><span class="summaryLabel">地図種類</span></div>
@@ -727,7 +736,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       <tr>
         <td>${escapeHtml(pin.number || pin.pinNo || i + 1)}</td>
         <td>${escapeHtml(pinLabels[normalizePinType(pin.type)] || pin.type || "-")}</td>
-        <td>${pin.completed ? "完了" : "活動中"}</td>
+        <td>${escapeHtml(getViewerActivityStatusLabel(pin))}</td>
         <td>${escapeHtml(pin.gridNo || "-")}</td>
         <td class="viewerCoordinateCell">${escapeHtml(formatLatLng(pin))}</td>
       </tr>`).join("")}</tbody></table>`;
@@ -735,21 +744,27 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function renderHistory(data) {
     const box = document.getElementById("viewerHistory");
-    const rows = Array.isArray(data.activityHistory) ? [...data.activityHistory] : [];
-    rows.sort((a, b) => Number(a.awarenessTimestamp || 0) - Number(b.awarenessTimestamp || 0));
+    const rows = Array.isArray(data.pins) ? [...data.pins] : [];
+    const priority = { unassigned: 0, active: 1, completed: 2 };
+    rows.sort((a, b) => {
+      const statusDiff = priority[getViewerActivityStatus(a)] - priority[getViewerActivityStatus(b)];
+      if (statusDiff) return statusDiff;
+      return Number(a.number || a.pinNo || 0) - Number(b.number || b.pinNo || 0);
+    });
     if (!rows.length) {
       box.className = "viewerHistory emptyText";
-      box.textContent = "活動履歴はありません。";
+      box.textContent = "活動情報はありません。";
       return;
     }
     box.className = "viewerHistory";
-    box.innerHTML = `<table class="historyTable"><thead><tr><th>№</th><th>種別</th><th>覚知</th><th>完了</th><th>内容</th></tr></thead><tbody>${rows.map((item, i) => `
-      <tr>
-        <td>${escapeHtml(item.number || item.pinNumber || i + 1)}</td>
-        <td>${escapeHtml(item.typeLabel || pinLabels[item.type] || item.type || "-")}</td>
+    box.innerHTML = `<table class="historyTable"><thead><tr><th>№</th><th>活動状態</th><th>種別</th><th>覚知</th><th>完了</th><th>内容</th></tr></thead><tbody>${rows.map((item, i) => `
+      <tr class="viewerActivity-${getViewerActivityStatus(item)}">
+        <td>${escapeHtml(item.number || item.pinNo || i + 1)}</td>
+        <td>${escapeHtml(getViewerActivityStatusLabel(item))}</td>
+        <td>${escapeHtml(pinLabels[normalizePinType(item.type)] || item.type || "-")}</td>
         <td>${escapeHtml(item.awarenessLabel || "-")}</td>
         <td>${escapeHtml(item.completedLabel || "-")}</td>
-        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(item.coordinateText || item.coords || formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(item.units || "-")}</td>
+        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(String(item.units || "").trim() || "未入力")}<br>傷病者人数：${escapeHtml(item.injured ?? 0)}</td>
       </tr>`).join("")}</tbody></table>`;
   }
 
