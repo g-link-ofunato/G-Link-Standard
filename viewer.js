@@ -953,26 +953,190 @@ window.addEventListener("DOMContentLoaded", async () => {
     setViewerSearchStatus(`座標検索：${formatViewerCoordinate(latlng, data)} / グリッド：${grid}`);
   }
 
-  function setupViewerInteraction(map, data, bounds) {
+  function setupViewerInteraction(map, getState) {
     const addressBtn = document.getElementById("viewerAddressSearchBtn");
     const coordBtn = document.getElementById("viewerCoordSearchBtn");
     const addressInput = document.getElementById("viewerAddressInput");
     const coordInput = document.getElementById("viewerCoordInput");
     const tapInfo = document.getElementById("viewerTapInfo");
 
-    if (addressBtn) addressBtn.addEventListener("click", () => searchViewerAddress(map, data, bounds));
-    if (coordBtn) coordBtn.addEventListener("click", () => searchViewerCoordinate(map, data, bounds));
-    if (addressInput) addressInput.addEventListener("keydown", e => { if (e.key === "Enter") searchViewerAddress(map, data, bounds); });
-    if (coordInput) coordInput.addEventListener("keydown", e => { if (e.key === "Enter") searchViewerCoordinate(map, data, bounds); });
+    const readState = () => {
+      const state = typeof getState === "function" ? getState() : null;
+      return state || { data:null, bounds:null };
+    };
+    const runAddress = () => { const state=readState(); if(state.data) searchViewerAddress(map,state.data,state.bounds); };
+    const runCoordinate = () => { const state=readState(); if(state.data) searchViewerCoordinate(map,state.data,state.bounds); };
+
+    if (addressBtn) addressBtn.addEventListener("click", runAddress);
+    if (coordBtn) coordBtn.addEventListener("click", runCoordinate);
+    if (addressInput) addressInput.addEventListener("keydown", e => { if (e.key === "Enter") runAddress(); });
+    if (coordInput) coordInput.addEventListener("keydown", e => { if (e.key === "Enter") runCoordinate(); });
 
     map.on("click", event => {
+      const state=readState();
+      if(!state.data) return;
       const latlng = event.latlng;
-      const grid = getViewerGridNumber(latlng, bounds, data.gridSize || data.session?.gridSize);
-      const coord = formatViewerCoordinate(latlng, data);
+      const grid = getViewerGridNumber(latlng, state.bounds, state.data.gridSize || state.data.session?.gridSize);
+      const coord = formatViewerCoordinate(latlng, state.data);
       const html = `<div class="tapPopupText"><b>地点情報</b><br>座標：${escapeHtml(coord)}<br>グリッド番号：${escapeHtml(grid)}</div>`;
       L.popup().setLatLng(latlng).setContent(html).openOn(map);
       if (tapInfo) tapInfo.innerHTML = `座標：${escapeHtml(coord)}<br>グリッド番号：${escapeHtml(grid)}`;
     });
+  }
+
+  const liveId = new URLSearchParams(location.search).get("live");
+  const liveControl = document.getElementById("viewerLiveControl");
+  const liveConnection = document.getElementById("viewerLiveConnection");
+  const liveUpdatedAt = document.getElementById("viewerLiveUpdatedAt");
+  const autoRefreshSelect = document.getElementById("viewerAutoRefreshSelect");
+  const liveStatus = document.getElementById("viewerLiveStatus");
+  const LIVE_INTERVAL_KEY = "gLinkViewerLiveInterval";
+
+  let currentData = null;
+  let currentBounds = null;
+  let map = null;
+  let baseLayer = null;
+  let currentLayerType = "";
+  let liveTimer = null;
+  let liveRequestInFlight = false;
+  let lastLiveUpdatedAt = "";
+  let statusHideTimer = null;
+
+  function formatLiveClock(value) {
+    const d = new Date(value || "");
+    if (Number.isNaN(d.getTime())) return "-";
+    return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  }
+
+  function setLiveConnection(kind, text) {
+    if (!liveConnection) return;
+    liveConnection.classList.remove("isOnline","isUpdating","isOffline");
+    liveConnection.classList.add(kind === "updating" ? "isUpdating" : kind === "offline" ? "isOffline" : "isOnline");
+    liveConnection.textContent = text || (kind === "offline" ? "通信エラー" : kind === "updating" ? "更新中" : "オンライン");
+  }
+
+  function showLiveStatus(message, kind="info", autoHide=true) {
+    if (!liveStatus) return;
+    if (statusHideTimer) clearTimeout(statusHideTimer);
+    liveStatus.textContent = message;
+    liveStatus.classList.toggle("isError", kind === "error");
+    liveStatus.classList.toggle("isInfo", kind !== "error");
+    liveStatus.hidden = false;
+    if (autoHide) statusHideTimer = setTimeout(() => { liveStatus.hidden = true; }, 2600);
+  }
+
+  function updateLiveMeta(meta, changed=false) {
+    const updatedAt = meta?.updatedAt || "";
+    if (liveUpdatedAt) liveUpdatedAt.textContent = `最終更新：${formatLiveClock(updatedAt)}`;
+    setLiveConnection("online", "オンライン");
+    if (changed) showLiveStatus(`最新情報を反映しました（${formatLiveClock(updatedAt)}）`);
+  }
+
+  function ensureBaseLayer(data) {
+    const layerType = data.mapType || data.session?.mapType || "pale";
+    if (baseLayer && currentLayerType === layerType) return;
+    if (baseLayer && map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
+    const layer = mapLayers[layerType] || mapLayers.pale;
+    baseLayer = L.tileLayer(layer.url, {
+      maxZoom: layer.maxZoom,
+      minZoom: 2,
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+      crossOrigin: true
+    }).addTo(map);
+    currentLayerType = layerType;
+  }
+
+  function clearDynamicMapLayers() {
+    if (!map) return;
+    map.closePopup();
+    const keep = new Set([baseLayer]);
+    map.eachLayer(layer => {
+      if (!keep.has(layer)) map.removeLayer(layer);
+    });
+    window.viewerSearchLayer = null;
+  }
+
+  function renderViewerData(data, options={}) {
+    const initial = Boolean(options.initial);
+    const preservedCenter = !initial && map ? map.getCenter() : null;
+    const preservedZoom = !initial && map ? map.getZoom() : null;
+
+    currentData = data;
+    currentBounds = boundsFromData(data);
+
+    renderHeaderInfo(data);
+    renderSummary(data);
+    renderPinsInfo(data);
+    renderHistory(data);
+    renderMeasurementInfo(data);
+    renderLegend(data);
+
+    ensureBaseLayer(data);
+    clearDynamicMapLayers();
+    ensureBaseLayer(data);
+
+    if (currentBounds) {
+      L.rectangle(currentBounds, { color: "#dc2626", weight: 2, fill: false, interactive: false }).addTo(map);
+      if (initial) map.fitBounds(currentBounds, { padding: [10, 10] });
+    }
+
+    renderViewerHazards(map, data);
+    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {});
+
+    (data.pins || []).forEach((pin, index) => {
+      if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
+      const marker = L.marker([pin.lat, pin.lng], {
+        icon: createPinIcon(pin.type, pin.completed, index + 1, pin.units)
+      }).addTo(map);
+      marker.bindPopup(pinPopup(pin, index + 1));
+    });
+
+    renderTracks(map, data);
+    renderDrawings(map, data);
+    renderTexts(map, data);
+    renderMeasurements(map, data);
+
+    if (!initial && preservedCenter && Number.isFinite(preservedZoom)) {
+      map.setView(preservedCenter, preservedZoom, { animate:false });
+    }
+    setTimeout(() => map.invalidateSize(), 60);
+  }
+
+  async function refreshLiveData({force=false}={}) {
+    if (!liveId || liveRequestInFlight || document.hidden) return;
+    liveRequestInFlight = true;
+    setLiveConnection("updating", "更新中");
+    try {
+      const data = await fetchLiveViewerPayload(liveId);
+      const meta = window.__gLinkLiveShareMeta || {};
+      const changed = force || !lastLiveUpdatedAt || meta.updatedAt !== lastLiveUpdatedAt;
+      if (changed) {
+        renderViewerData(data, {initial:false});
+        lastLiveUpdatedAt = meta.updatedAt || new Date().toISOString();
+      }
+      updateLiveMeta(meta, changed && !force);
+    } catch (error) {
+      const message = error?.message || String(error);
+      setLiveConnection("offline", "通信エラー");
+      showLiveStatus(`自動更新に失敗しました：${message}`, "error", false);
+      console.warn("ライブ共有の自動更新に失敗しました。", error);
+    } finally {
+      liveRequestInFlight = false;
+    }
+  }
+
+  function scheduleLiveRefresh() {
+    if (liveTimer) clearInterval(liveTimer);
+    liveTimer = null;
+    if (!liveId || !autoRefreshSelect) return;
+    const seconds = Number(autoRefreshSelect.value || 0);
+    try { localStorage.setItem(LIVE_INTERVAL_KEY, String(seconds)); } catch (error) {}
+    if (seconds <= 0) {
+      setLiveConnection("online", "自動更新OFF");
+      return;
+    }
+    setLiveConnection("online", "オンライン");
+    liveTimer = setInterval(() => refreshLiveData(), seconds * 1000);
   }
 
   const data = await decodeViewerPayload();
@@ -981,70 +1145,39 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   diag("共有データ読込完了", true, `ピン${(data.pins || []).length}件 / 履歴${(data.activityHistory || []).length}件`);
-  if (window.__gLinkLiveShareMeta) {
-    const liveStatus = document.getElementById("viewerLiveStatus");
-    if (liveStatus) {
-      const d = new Date(window.__gLinkLiveShareMeta.updatedAt || "");
-      const label = Number.isNaN(d.getTime()) ? "" : `（最終更新 ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}）`;
-      liveStatus.textContent = `ライブ共有から最新情報を取得しました${label}`;
-      liveStatus.hidden = false;
-    }
-  }
-  // Build022.3：ピン0件・履歴0件でも、地図情報があれば正常な共有データとして表示する。
-  // CSSのdisplay指定によりhidden属性が効かない環境もあるため、成功時は明示的にエラー画面を非表示にする。
   hideError();
 
-  renderHeaderInfo(data);
-  renderSummary(data);
-  renderPinsInfo(data);
-  renderHistory(data);
-  renderMeasurementInfo(data);
-  renderLegend(data);
-
-  const layerType = data.mapType || data.session?.mapType || "pale";
-  const layer = mapLayers[layerType] || mapLayers.pale;
   const center = latLngFromPlain(data.session?.center) || L.latLng(39.0819, 141.7085);
   diag("地図生成開始", true);
-  const map = L.map("viewerMap", {
+  map = L.map("viewerMap", {
     zoomControl: true,
     attributionControl: true
   }).setView(center, Number(data.session?.zoom || 14));
   setupViewerPanels(map);
-
-  L.tileLayer(layer.url, {
-    maxZoom: layer.maxZoom,
-    minZoom: 2,
-    attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
-    crossOrigin: true
-  }).addTo(map);
-
-  const bounds = boundsFromData(data);
-  if (bounds) {
-    L.rectangle(bounds, { color: "#dc2626", weight: 2, fill: false, interactive: false }).addTo(map);
-    map.fitBounds(bounds, { padding: [10, 10] });
-  }
-
-  renderViewerHazards(map, data);
-  renderGrid(map, bounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {});
-
-  (data.pins || []).forEach((pin, index) => {
-    if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
-    const marker = L.marker([pin.lat, pin.lng], {
-      icon: createPinIcon(pin.type, pin.completed, index + 1, pin.units)
-    }).addTo(map);
-    marker.bindPopup(pinPopup(pin, index + 1));
-  });
-
+  setupViewerInteraction(map, () => ({data:currentData, bounds:currentBounds}));
+  renderViewerData(data, {initial:true});
   showSuccessDiagnostic();
 
-  renderTracks(map, data);
-  renderDrawings(map, data);
-  renderTexts(map, data);
-  renderMeasurements(map, data);
-  setupViewerInteraction(map, data, bounds);
+  if (liveId) {
+    if (liveControl) liveControl.hidden = false;
+    const savedInterval = (() => { try { return localStorage.getItem(LIVE_INTERVAL_KEY); } catch (error) { return null; } })();
+    if (autoRefreshSelect && ["0","3","5","10"].includes(savedInterval || "")) autoRefreshSelect.value = savedInterval;
+    if (autoRefreshSelect) autoRefreshSelect.addEventListener("change", () => {
+      scheduleLiveRefresh();
+      const sec = Number(autoRefreshSelect.value || 0);
+      showLiveStatus(sec > 0 ? `自動更新を${sec}秒に設定しました。` : "自動更新を停止しました。");
+    });
+    lastLiveUpdatedAt = window.__gLinkLiveShareMeta?.updatedAt || "";
+    updateLiveMeta(window.__gLinkLiveShareMeta || {}, false);
+    scheduleLiveRefresh();
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshLiveData();
+    });
+    window.addEventListener("online", () => refreshLiveData({force:true}));
+  }
+
   diag("パネル状態", true, `検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);
   diag("地図表示領域", true, `${mapEl ? mapEl.clientWidth : 0}×${mapEl ? mapEl.clientHeight : 0}px`);
   diag("地図表示完了", true);
-
   setTimeout(() => map.invalidateSize(), 100);
 });

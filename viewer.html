@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="viewer.css?v=Build1730">
-  <link rel="stylesheet" href="license-auth.css?v=Build1730" />
+  <link rel="stylesheet" href="viewer.css?v=Build1738">
+  <link rel="stylesheet" href="license-auth.css?v=Build1738" />
 </head>
 <body>
   <header id="viewerHeader">
@@ -15,10 +15,23 @@
       <div class="viewerSubtitle">災害情報共有システム（閲覧専用）</div>
     </div>
     <div class="viewerHeaderActions">
+      <div id="viewerLiveControl" class="viewerLiveControl" hidden>
+        <span id="viewerLiveConnection" class="viewerLiveConnection isOnline">オンライン</span>
+        <label for="viewerAutoRefreshSelect">自動更新</label>
+        <select id="viewerAutoRefreshSelect" aria-label="ライブ共有の自動更新間隔">
+          <option value="0">OFF</option>
+          <option value="3">3秒</option>
+          <option value="5" selected>5秒</option>
+          <option value="10">10秒</option>
+        </select>
+        <span id="viewerLiveUpdatedAt" class="viewerLiveUpdatedAt">最終更新：-</span>
+      </div>
       <button id="viewerSearchToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerSearchPanel" aria-expanded="false">検索</button>
       <button id="viewerInfoToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerInfoPanel" aria-expanded="false">情報</button>
     </div>
   </header>
+
+  <div id="viewerLiveStatus" class="viewerLiveStatus" hidden></div>
 
   <main id="viewerLayout">
     <section id="viewerMapArea">
@@ -90,7 +103,7 @@
 
       <section class="viewerNotice">
         このページは現場閲覧モードです。ピン追加・編集・削除・保存・設定変更はできません。<br>
-        ライブ共有URLで開いた場合は、同じURLを継続して利用できます。第3段階で自動更新間隔を追加します。
+        ライブ共有URLで開いた場合は、同じURLのまま最新情報を自動取得します。自動更新はOFF・3秒・5秒・10秒から選択できます。
       </section>
     </aside>
   </main>
@@ -105,7 +118,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="viewer.js?v=Build1730"></script>
-  <script src="license-auth.js?v=Build1730"></script>
+  <script src="viewer.js?v=Build1738"></script>
+  <script src="license-auth.js?v=Build1738"></script>
 </body>
 </html>
