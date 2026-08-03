@@ -215,6 +215,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
   const gridSearchInput = document.getElementById("gridSearchInput");
   const gridSearchBtn = document.getElementById("gridSearchBtn");
+  const fixedGridSizeSelect = document.getElementById("fixedGridSizeSelect");
+  const applyFixedGridSizeBtn = document.getElementById("applyFixedGridSizeBtn");
   const gridLineColor = document.getElementById("gridLineColor");
   const gridLineOpacity = document.getElementById("gridLineOpacity");
   const gridLineOpacityValue = document.getElementById("gridLineOpacityValue");
@@ -458,7 +460,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let tracks = [];
   let trackSerial = 1;
 
-  // Version2026.08.03 Build1412: 指揮本部モード簡易レイヤ（第2段階）
+  // Version2026.08.03 Build1438: 指揮本部モード簡易レイヤ（第2段階）
   const defaultLayerVisibility = Object.freeze({
     grid: true,
     pins: true,
@@ -500,7 +502,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
-  // Version2026.08.03 Build1412:
+  // Version2026.08.03 Build1438:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
   const originalGridOverlay = gridOverlay;
@@ -1792,7 +1794,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const info = getGridInfo();
     if (!info) return null;
 
-    // Version2026.08.03 Build1412:
+    // Version2026.08.03 Build1438:
     // グリッドレイヤを非表示にすると overlay が display:none となり、外周セルの
     // getBoundingClientRect() が全て0になってプレビュー切り出し範囲を取得できなかった。
     // 保存画像へグリッドを描くかどうかとは分離し、範囲計算中だけDOMをレイアウトへ戻す。
@@ -2744,6 +2746,101 @@ window.addEventListener("DOMContentLoaded", () => {
     if (cursorGridDisplay) cursorGridDisplay.textContent = "";
   }
  
+  const allowedFixedGridSizes = new Set([0, 5, 10, 50, 100, 200, 300, 500, 1000]);
+
+  function formatFixedGridSize(size) {
+    const value = Number(size || 0);
+    return value > 0 ? `${value}m` : "なし";
+  }
+
+  function persistCurrentGridSize() {
+    const payload = JSON.stringify(session);
+    try {
+      sessionStorage.setItem("disasterSession", payload);
+      localStorage.setItem("disasterSession", payload);
+      localStorage.setItem("glinkLastSessionSavedAt", new Date().toISOString());
+    } catch (error) {
+      console.warn("グリッド幅の保存に失敗しました。", error);
+    }
+  }
+
+  function refreshGridDependentData() {
+    pins.forEach(pin => {
+      if (!pin || !pin.data || typeof pin.getLatLng !== "function") return;
+      pin.data.gridNo = getGridNumber(pin.getLatLng());
+      refreshPin(pin);
+    });
+
+    activityHistory.forEach(item => {
+      if (!item) return;
+      const linkedPin = findPinById(item.id);
+      if (linkedPin && linkedPin.data) {
+        item.gridNo = linkedPin.data.gridNo || "";
+        item.lat = linkedPin.data.lat;
+        item.lng = linkedPin.data.lng;
+        return;
+      }
+      const lat = Number(item.lat);
+      const lng = Number(item.lng);
+      item.gridNo = Number.isFinite(lat) && Number.isFinite(lng) ? getGridNumber(L.latLng(lat, lng)) : "";
+    });
+
+    if (selectedPin && selectedPin.data && editPanel && editPanel.style.display !== "none") {
+      gridNo.value = selectedPin.data.gridNo || "";
+    }
+
+    if (editingHistoryItem && historyEditPanel && historyEditPanel.style.display !== "none") {
+      historyEditGridNo.value = editingHistoryItem.gridNo || "";
+    }
+
+    if (lastCursorLatLng) updateCursorInfo(lastCursorLatLng);
+    else if (cursorGridDisplay) cursorGridDisplay.textContent = "";
+
+    refreshAllMeasurementStats();
+    renderActivityHistory();
+  }
+
+  function applyFixedGridSizeChange() {
+    if (!fixedGridSizeSelect) return;
+    const requested = Number(fixedGridSizeSelect.value);
+    if (!allowedFixedGridSizes.has(requested)) {
+      alert("選択したグリッド幅を確認できませんでした。");
+      fixedGridSizeSelect.value = String(Number(session.gridSize || 0));
+      return;
+    }
+
+    const current = Number(session.gridSize || 0);
+    if (requested === current) return;
+
+    const confirmed = confirm(
+      `グリッド幅を ${formatFixedGridSize(current)} から ${formatFixedGridSize(requested)} へ変更しますか？\n` +
+      "地図位置・縮尺・ピン・図形・計測・軌跡・テキストは維持され、ピンと活動履歴のグリッド番号は再計算されます。"
+    );
+    if (!confirmed) {
+      fixedGridSizeSelect.value = String(current);
+      return;
+    }
+
+    const preservedCenter = map && map._loaded ? map.getCenter() : null;
+    const preservedZoom = map && map._loaded ? map.getZoom() : null;
+
+    session.gridSize = requested;
+    persistCurrentGridSize();
+    drawGridLines();
+    drawGridOverlay();
+    refreshGridDependentData();
+    applyLayerVisibility({ persist: false });
+
+    if (preservedCenter && Number.isFinite(preservedZoom)) {
+      map.setView(preservedCenter, preservedZoom, { animate: false });
+    }
+
+    if (gridLineStatusText) {
+      const opacity = Math.round(Number(gridLineSettings.opacity || 0.5) * 100);
+      gridLineStatusText.textContent = `幅 ${formatFixedGridSize(requested)}・色 ${gridLineSettings.color}・濃さ${opacity}%・太さ${gridLineSettings.weight}`;
+    }
+  }
+
   function loadGridLineSettings() {
     try {
       const saved = localStorage.getItem("fireGridLineSettings");
@@ -2769,13 +2866,14 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function updateGridLineSettingControls() {
     if (!gridLineColor || !gridLineOpacity || !gridLineWeight) return;
- 
+
+    if (fixedGridSizeSelect) fixedGridSizeSelect.value = String(Number(session.gridSize || 0));
     gridLineColor.value = gridLineSettings.color;
     gridLineOpacity.value = Math.round(gridLineSettings.opacity * 100);
     gridLineOpacityValue.textContent = gridLineOpacity.value;
     gridLineWeight.value = gridLineSettings.weight;
     gridLineWeightValue.textContent = gridLineSettings.weight;
-    gridLineStatusText.textContent = `色 ${gridLineSettings.color}・濃さ${gridLineOpacity.value}%・太さ${gridLineSettings.weight}`;
+    gridLineStatusText.textContent = `幅 ${formatFixedGridSize(session.gridSize)}・色 ${gridLineSettings.color}・濃さ${gridLineOpacity.value}%・太さ${gridLineSettings.weight}`;
   }
  
   function getGridLineOptions() {
@@ -2796,7 +2894,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function setupGridLineSettingEvents() {
     if (!gridLineColor || !gridLineOpacity || !gridLineWeight) return;
- 
+
+    if (fixedGridSizeSelect) fixedGridSizeSelect.value = String(Number(session.gridSize || 0));
+    if (applyFixedGridSizeBtn) applyFixedGridSizeBtn.addEventListener("click", applyFixedGridSizeChange);
+
     gridLineColor.addEventListener("input", () => {
       gridLineSettings.color = gridLineColor.value;
       applyGridLineSettings();
@@ -7131,7 +7232,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-  // Version2026.08.03 Build1412: ハザード機能 第2段階（詳細分類・.glink保存復元）
+  // Version2026.08.03 Build1438: ハザード機能 第2段階（詳細分類・.glink保存復元）
   const hazardConfig = {
     flood: {
       label: "洪水・内水",
