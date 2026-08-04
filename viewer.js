@@ -382,6 +382,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       gridSize: data.s?.[4] || 0,
       bounds,
       gridLineSettings: data.g || {},
+      gridLabelSettings: data.gl || {},
       layerVisibility: data.l || {},
       hazardSettings: data.hz || null,
       pins: (data.p || []).map(expandPin).filter(Boolean),
@@ -746,7 +747,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (overlay) overlay.innerHTML = "";
   }
 
-  function drawViewerGridLabels(map, info) {
+  function drawViewerGridLabels(map, info, labelSettings = {}) {
     const overlay = document.getElementById("viewerGridOverlay");
     if (!overlay || !info || viewerLayerVisibility.grid === false) return;
     overlay.innerHTML = "";
@@ -760,6 +761,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       const cell = document.createElement("div");
       cell.className = "viewerGridEdgeCell" + (blank ? " isBlank" : "");
       cell.textContent = text || "";
+      cell.style.backgroundColor = labelSettings.backgroundColor || "rgba(220, 38, 38, 0.92)";
+      cell.style.color = labelSettings.color || "rgb(255, 255, 255)";
+      cell.style.borderColor = labelSettings.borderColor || "rgba(255, 255, 255, 0.75)";
+      cell.style.textShadow = labelSettings.textShadow || "rgba(0, 0, 0, 0.45) 0px 1px 2px";
       cell.style.left = `${Math.min(p1.x,p2.x)}px`;
       cell.style.top = `${Math.min(p1.y,p2.y)}px`;
       cell.style.width = `${width}px`;
@@ -785,7 +790,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function renderGrid(map, bounds, gridSize, settings = {}, visible = true) {
+  function renderGrid(map, bounds, gridSize, settings = {}, visible = true, labelSettings = {}) {
     clearViewerGridOverlay();
     const size = Number(gridSize || 0);
     if (!bounds || !size || visible === false || viewerLayerVisibility.grid === false) return;
@@ -802,7 +807,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const gridGroup = L.layerGroup().addTo(map);
     for (let lng=info.westLine;lng<=info.eastLine+info.lngStep/2;lng+=info.lngStep) gridGroup.addLayer(L.polyline([[south,lng],[north,lng]],lineOptions));
     for (let lat=info.southLine;lat<=info.northLine+info.latStep/2;lat+=info.latStep) gridGroup.addLayer(L.polyline([[lat,west],[lat,east]],lineOptions));
-    drawViewerGridLabels(map, info);
+    drawViewerGridLabels(map, info, labelSettings);
   }
 
   function renderLegend(data) {
@@ -1222,12 +1227,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     ensureBaseLayer(data);
 
     if (currentBounds) {
-      L.rectangle(currentBounds, { color: "#dc2626", weight: 2, fill: false, interactive: false }).addTo(map);
       if (initial) map.fitBounds(currentBounds, { padding: [10, 10] });
     }
 
     renderViewerHazards(map, data);
-    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {}, viewerLayerVisibility.grid !== false);
+    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {}, viewerLayerVisibility.grid !== false, data.gridLabelSettings || {});
 
     (data.pins || []).forEach((pin, index) => {
       if (!pinVisibleInViewer(pin) || typeof pin.lat !== "number" || typeof pin.lng !== "number") return;

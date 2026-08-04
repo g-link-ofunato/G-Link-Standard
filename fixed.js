@@ -1448,6 +1448,22 @@ window.addEventListener("DOMContentLoaded", () => {
     ];
   }
 
+  function getGridLabelShareSettings() {
+    const source = gridOverlay?.querySelector?.(".edgeCell:not(.blank)") || document.querySelector(".edgeCell:not(.blank)");
+    let style = null;
+    try {
+      style = source ? window.getComputedStyle(source) : null;
+    } catch (_) {
+      style = null;
+    }
+    return {
+      backgroundColor: style?.backgroundColor || "rgba(220, 38, 38, 0.92)",
+      color: style?.color || "rgb(255, 255, 255)",
+      borderColor: style?.borderColor || "rgba(255, 255, 255, 0.75)",
+      textShadow: style?.textShadow || "rgba(0, 0, 0, 0.45) 0px 1px 2px"
+    };
+  }
+
   function compactViewerData(data) {
     const bounds = data.bounds || data.session?.bounds || null;
     const center = data.session?.center || null;
@@ -1461,6 +1477,7 @@ window.addEventListener("DOMContentLoaded", () => {
       h: [data.header?.dateTime || "", data.header?.disasterName || "", data.header?.createdUnit || ""],
       s: [compactBounds(bounds), compactPoint(center), data.session?.zoom || 13, data.mapType || data.session?.mapType || "pale", data.gridSize || data.session?.gridSize || 0],
       g: data.gridLineSettings || {},
+      gl: data.gridLabelSettings || {},
       l: data.session?.layerVisibility || data.layerVisibility || {},
       hz: data.hazardSettings || null,
       p: (data.pins || []).map(compactPin),
@@ -1530,6 +1547,7 @@ window.addEventListener("DOMContentLoaded", () => {
       gridSize: currentGridSize,
       bounds: savedBounds,
       gridLineSettings: { ...gridLineSettings },
+      gridLabelSettings: getGridLabelShareSettings(),
       hazardSettings: typeof getHazardSettings === "function" ? getHazardSettings() : null,
       pins: serializePins().map(stripAttachmentForViewer),
       drawings: serializeDrawings(),

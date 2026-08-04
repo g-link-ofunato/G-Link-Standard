@@ -3483,7 +3483,7 @@ body {
 .legacyShareDetails summary { cursor:pointer; font-weight:700; }
 
 
-/* Version2026.08.04 Build1432: ライブ共有 第4段階（3秒遅延自動送信） */
+/* Version2026.08.04 Build1445: ライブ共有 第4段階（3秒遅延自動送信） */
 .liveAutoSendRow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;cursor:pointer}
 .liveAutoSendRow[hidden],.liveShareMetrics[hidden]{display:none!important}
 .liveAutoSendRow input{width:18px;height:18px;accent-color:#0f67d8}
