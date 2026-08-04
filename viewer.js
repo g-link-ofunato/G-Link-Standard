@@ -4,6 +4,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const viewerLayerToggleBtn = document.getElementById("viewerLayerToggleBtn");
   const viewerSearchToggleBtn = document.getElementById("viewerSearchToggleBtn");
   const viewerInfoToggleBtn = document.getElementById("viewerInfoToggleBtn");
+  const viewerLocationBtn = document.getElementById("viewerLocationBtn");
   const viewerLayerPanel = document.getElementById("viewerLayerPanel");
   const viewerSearchPanel = document.getElementById("viewerSearchPanel");
   const viewerInfoPanel = document.getElementById("viewerInfoPanel");
@@ -1126,6 +1127,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   let lastLiveUpdatedAt = "";
   let statusHideTimer = null;
   let liveHeartbeatTimer = null;
+  let viewerGpsWatchId = null;
+  let viewerGpsMarker = null;
+  let viewerGpsAccuracyCircle = null;
+  let viewerGpsHasCentered = false;
 
   function getLiveViewerId() {
     try {
@@ -1200,11 +1205,125 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!map) return;
     map.closePopup();
     clearViewerGridOverlay();
-    const keep = new Set([baseLayer]);
+    // GPS現在地はViewer端末固有のため、ライブデータ再描画でも保持する。
+    const keep = new Set([baseLayer, viewerGpsMarker, viewerGpsAccuracyCircle].filter(Boolean));
     map.eachLayer(layer => {
       if (!keep.has(layer)) map.removeLayer(layer);
     });
     window.viewerSearchLayer = null;
+  }
+
+
+  function gpsErrorMessage(error) {
+    if (!window.isSecureContext) return "現在地機能はHTTPS環境でのみ利用できます。";
+    if (!error) return "現在地を取得できませんでした。";
+    if (error.code === 1) return "位置情報の利用が許可されていません。端末またはブラウザの位置情報設定を確認してください。";
+    if (error.code === 2) return "現在地を取得できませんでした。屋外または電波状況の良い場所で再度お試しください。";
+    if (error.code === 3) return "現在地の取得がタイムアウトしました。再度お試しください。";
+    return "現在地を取得できませんでした。";
+  }
+
+  function ensureGpsLayers(latlng, accuracy) {
+    if (!map) return;
+    if (!viewerGpsMarker) {
+      viewerGpsMarker = L.marker(latlng, {
+        interactive:false,
+        zIndexOffset:2000,
+        icon:L.divIcon({
+          className:"viewerGpsIcon",
+          html:'<span class="viewerGpsPulse" aria-hidden="true"></span>',
+          iconSize:[30,30],
+          iconAnchor:[15,15]
+        })
+      }).addTo(map);
+    } else {
+      viewerGpsMarker.setLatLng(latlng);
+      if (!map.hasLayer(viewerGpsMarker)) viewerGpsMarker.addTo(map);
+    }
+
+    const safeAccuracy = Math.max(1, Number(accuracy || 1));
+    if (!viewerGpsAccuracyCircle) {
+      viewerGpsAccuracyCircle = L.circle(latlng, {
+        radius:safeAccuracy,
+        color:"#1687ff",
+        weight:1.5,
+        opacity:.8,
+        fillColor:"#1687ff",
+        fillOpacity:.12,
+        interactive:false
+      }).addTo(map);
+    } else {
+      viewerGpsAccuracyCircle.setLatLng(latlng).setRadius(safeAccuracy);
+      if (!map.hasLayer(viewerGpsAccuracyCircle)) viewerGpsAccuracyCircle.addTo(map);
+    }
+  }
+
+  function handleGpsPosition(position) {
+    const latitude = Number(position?.coords?.latitude);
+    const longitude = Number(position?.coords?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !map) return;
+    const latlng = L.latLng(latitude, longitude);
+    ensureGpsLayers(latlng, position.coords.accuracy);
+
+    // 初回は現在地を中央へ。以降は常時更新し、画面外に出たときだけ中央へ戻す。
+    if (!viewerGpsHasCentered) {
+      map.setView(latlng, Math.max(map.getZoom(), 16), {animate:true});
+      viewerGpsHasCentered = true;
+    } else if (!map.getBounds().pad(-0.12).contains(latlng)) {
+      map.panTo(latlng, {animate:true});
+    }
+
+    if (viewerLocationBtn) {
+      viewerLocationBtn.classList.add("is-tracking");
+      viewerLocationBtn.classList.remove("is-error");
+      viewerLocationBtn.setAttribute("aria-pressed", "true");
+      viewerLocationBtn.textContent = "現在地追従中";
+      viewerLocationBtn.title = `現在地を常時追従中（精度：約${Math.round(Number(position.coords.accuracy || 0))}m）`;
+    }
+  }
+
+  function handleGpsError(error) {
+    const message = gpsErrorMessage(error);
+    if (viewerLocationBtn) {
+      viewerLocationBtn.classList.remove("is-tracking");
+      viewerLocationBtn.classList.add("is-error");
+      viewerLocationBtn.setAttribute("aria-pressed", "false");
+      viewerLocationBtn.textContent = "現在地";
+      viewerLocationBtn.title = message;
+    }
+    showLiveStatus(message, "error", false);
+  }
+
+  function startViewerGpsTracking() {
+    if (!navigator.geolocation) {
+      handleGpsError({code:2});
+      return;
+    }
+    if (viewerGpsWatchId !== null) {
+      const latlng = viewerGpsMarker?.getLatLng?.();
+      if (latlng && map) map.setView(latlng, Math.max(map.getZoom(), 16), {animate:true});
+      return;
+    }
+    if (viewerLocationBtn) {
+      viewerLocationBtn.classList.remove("is-error");
+      viewerLocationBtn.textContent = "現在地取得中";
+      viewerLocationBtn.disabled = true;
+    }
+    viewerGpsWatchId = navigator.geolocation.watchPosition(
+      position => {
+        if (viewerLocationBtn) viewerLocationBtn.disabled = false;
+        handleGpsPosition(position);
+      },
+      error => {
+        if (viewerLocationBtn) viewerLocationBtn.disabled = false;
+        if (viewerGpsWatchId !== null) {
+          navigator.geolocation.clearWatch(viewerGpsWatchId);
+          viewerGpsWatchId = null;
+        }
+        handleGpsError(error);
+      },
+      {enableHighAccuracy:true, maximumAge:3000, timeout:15000}
+    );
   }
 
   function renderViewerData(data, options={}) {
@@ -1309,6 +1428,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }).setView(center, Number(data.session?.zoom || 14));
   setupViewerPanels(map);
   setupViewerLayerControls();
+  if (viewerLocationBtn) viewerLocationBtn.addEventListener("click", startViewerGpsTracking);
   map.on("zoom move resize", () => {
     if (!currentData || viewerLayerVisibility.grid === false) return clearViewerGridOverlay();
     const info = getViewerGridInfo(currentBounds, Number(currentData.gridSize || currentData.session?.gridSize || 0));
@@ -1317,6 +1437,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupViewerInteraction(map, () => ({data:currentData, bounds:currentBounds}));
   renderViewerData(data, {initial:true});
   showSuccessDiagnostic();
+
+  window.addEventListener("pagehide", () => {
+    if (viewerGpsWatchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(viewerGpsWatchId);
+      viewerGpsWatchId = null;
+    }
+  });
 
   if (liveId) {
     if (liveControl) liveControl.hidden = false;
