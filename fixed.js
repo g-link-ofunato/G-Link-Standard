@@ -1461,6 +1461,7 @@ window.addEventListener("DOMContentLoaded", () => {
       h: [data.header?.dateTime || "", data.header?.disasterName || "", data.header?.createdUnit || ""],
       s: [compactBounds(bounds), compactPoint(center), data.session?.zoom || 13, data.mapType || data.session?.mapType || "pale", data.gridSize || data.session?.gridSize || 0],
       g: data.gridLineSettings || {},
+      l: data.session?.layerVisibility || data.layerVisibility || {},
       hz: data.hazardSettings || null,
       p: (data.pins || []).map(compactPin),
       d: (data.drawings || []).map(compactDrawing),

@@ -366,12 +366,14 @@ window.addEventListener("DOMContentLoaded", async () => {
         zoom: data.s?.[2] || 13,
         mapType: data.s?.[3] || "pale",
         gridSize: data.s?.[4] || 0,
-        coordinateType: data.c || "dms"
+        coordinateType: data.c || "dms",
+        layerVisibility: data.l || {}
       },
       mapType: data.s?.[3] || "pale",
       gridSize: data.s?.[4] || 0,
       bounds,
       gridLineSettings: data.g || {},
+      layerVisibility: data.l || {},
       hazardSettings: data.hz || null,
       pins: (data.p || []).map(expandPin).filter(Boolean),
       drawings: (data.d || []).map(expandDrawing).filter(Boolean),
@@ -666,25 +668,27 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function renderGrid(map, bounds, gridSize, settings = {}) {
+  function renderGrid(map, bounds, gridSize, settings = {}, visible = true) {
     const size = Number(gridSize || 0);
-    if (!bounds || !size) return;
+    if (!bounds || !size || visible === false) return;
 
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const centerLat = (sw.lat + ne.lat) / 2;
-    const latStep = size / 111320;
-    const lngStep = size / (111320 * Math.cos(centerLat * Math.PI / 180));
+    const info = getViewerGridInfo(bounds, size);
+    if (!info) return;
     const color = settings.color || "#888888";
     const weight = Number(settings.weight || 1);
     const opacity = Number(settings.opacity ?? 0.5);
+    const south = info.southLine - info.latStep;
+    const north = info.northLine + info.latStep;
+    const west = info.westLine - info.lngStep;
+    const east = info.eastLine + info.lngStep;
+    const lineOptions = { color, weight, opacity, interactive: false };
     const gridGroup = L.layerGroup().addTo(map);
 
-    for (let lng = sw.lng; lng <= ne.lng + lngStep / 2; lng += lngStep) {
-      gridGroup.addLayer(L.polyline([[sw.lat, lng], [ne.lat, lng]], { color, weight, opacity, interactive: false }));
+    for (let lng = info.westLine; lng <= info.eastLine + info.lngStep / 2; lng += info.lngStep) {
+      gridGroup.addLayer(L.polyline([[south, lng], [north, lng]], lineOptions));
     }
-    for (let lat = sw.lat; lat <= ne.lat + latStep / 2; lat += latStep) {
-      gridGroup.addLayer(L.polyline([[lat, sw.lng], [lat, ne.lng]], { color, weight, opacity, interactive: false }));
+    for (let lat = info.southLine; lat <= info.northLine + info.latStep / 2; lat += info.latStep) {
+      gridGroup.addLayer(L.polyline([[lat, west], [lat, east]], lineOptions));
     }
   }
 
@@ -1109,7 +1113,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     renderViewerHazards(map, data);
-    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {});
+    const gridVisible = (data.layerVisibility || data.session?.layerVisibility || {}).grid !== false;
+    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {}, gridVisible);
 
     (data.pins || []).forEach((pin, index) => {
       if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;

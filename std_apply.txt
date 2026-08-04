@@ -1,10 +1,10 @@
-G-Link Standard Version2026.08.03 Build1845 変更ファイル
+G-Link Standard Version2026.08.04 Build1416 変更ファイル
 
-修正内容:
-- ライブ共有の変更比較から自動更新時刻(sharedAt/t)を除外
-- 3秒遅延自動送信タイマーが毎秒リセットされる不具合を修正
-- 実際の送信データには送信時刻を維持
-- Version/Build表示とキャッシュ参照をBuild1845へ更新
-
-適用方法:
-同名ファイルをG-Link Standardリポジトリ直下へ上書きし、Commit/Push後にCtrl+F5を実行してください。
+- fixed.html
+  - 共有バナー下部の「従来の共有方式について」を削除
+- fixed.js
+  - Viewer共有データへグリッド表示状態を追加
+- viewer.js
+  - 指揮本部モードと同じ基準線計算でグリッドを描画
+  - グリッド線の色・濃さ・太さ・表示状態をライブ共有へ反映
+- Version/Build表示とキャッシュ参照をBuild1416へ同期更新
