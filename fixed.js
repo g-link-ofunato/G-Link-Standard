@@ -235,6 +235,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const coordinateTypeStatusText = document.getElementById("coordinateTypeStatusText");
   const coordSearchInput = document.getElementById("coordSearchInput");
   const coordSearchBtn = document.getElementById("coordSearchBtn");
+  const coordModeDmsBtn = document.getElementById("coordModeDmsBtn");
+  const coordModeDecimalBtn = document.getElementById("coordModeDecimalBtn");
+  const coordDmsInputs = document.getElementById("coordDmsInputs");
+  const coordDecimalInputs = document.getElementById("coordDecimalInputs");
+  const coordLatDmsInput = document.getElementById("coordLatDmsInput");
+  const coordLngDmsInput = document.getElementById("coordLngDmsInput");
+  const coordLatDecimalInput = document.getElementById("coordLatDecimalInput");
+  const coordLngDecimalInput = document.getElementById("coordLngDecimalInput");
   const addressSearchInput = document.getElementById("addressSearchInput");
   const addressSearchBtn = document.getElementById("addressSearchBtn");
   const incidentSearchInput = document.getElementById("incidentSearchInput");
@@ -994,6 +1002,113 @@ window.addEventListener("DOMContentLoaded", () => {
     return null;
   }
  
+  let coordinateSearchMode = "dms";
+
+  function formatDmsDigitMask(rawValue, axis) {
+    const digits = String(rawValue || "").replace(/\D/g, "");
+    const maxLength = axis === "lat" ? 8 : 9;
+    const normalized = digits.slice(0, maxLength).padEnd(maxLength, "0");
+    const degreeLength = axis === "lat" ? 2 : 3;
+    const degrees = normalized.slice(0, degreeLength);
+    const minutes = normalized.slice(degreeLength, degreeLength + 2);
+    const seconds = normalized.slice(degreeLength + 2, degreeLength + 4);
+    const decimals = normalized.slice(degreeLength + 4, degreeLength + 6);
+    return `${degrees}度${minutes}分${seconds}.${decimals}秒`;
+  }
+
+  function getDmsRawDigits(input, axis) {
+    if (!input) return "";
+    const maxLength = axis === "lat" ? 8 : 9;
+    return String(input.dataset.rawDigits || "").replace(/\D/g, "").slice(0, maxLength);
+  }
+
+  function renderDmsMaskedInput(input, axis) {
+    if (!input) return;
+    input.value = formatDmsDigitMask(getDmsRawDigits(input, axis), axis);
+  }
+
+  function setupDmsMaskedInput(input, axis) {
+    if (!input) return;
+    input.dataset.rawDigits = "";
+    renderDmsMaskedInput(input, axis);
+
+    input.addEventListener("keydown", event => {
+      if (event.ctrlKey || event.metaKey) return;
+      const maxLength = axis === "lat" ? 8 : 9;
+      let raw = getDmsRawDigits(input, axis);
+
+      if (/^\d$/.test(event.key)) {
+        event.preventDefault();
+        if (raw.length < maxLength) raw += event.key;
+        input.dataset.rawDigits = raw;
+        renderDmsMaskedInput(input, axis);
+        return;
+      }
+
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        input.dataset.rawDigits = raw.slice(0, -1);
+        renderDmsMaskedInput(input, axis);
+        return;
+      }
+
+      if (["Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+    });
+
+    input.addEventListener("paste", event => {
+      event.preventDefault();
+      const maxLength = axis === "lat" ? 8 : 9;
+      const pasted = (event.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, maxLength);
+      input.dataset.rawDigits = pasted;
+      renderDmsMaskedInput(input, axis);
+    });
+
+    input.addEventListener("focus", () => {
+      requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
+    });
+  }
+
+  function setCoordinateSearchMode(mode) {
+    coordinateSearchMode = mode === "decimal" ? "decimal" : "dms";
+    if (coordDmsInputs) coordDmsInputs.hidden = coordinateSearchMode !== "dms";
+    if (coordDecimalInputs) coordDecimalInputs.hidden = coordinateSearchMode !== "decimal";
+    if (coordModeDmsBtn) coordModeDmsBtn.classList.toggle("active", coordinateSearchMode === "dms");
+    if (coordModeDecimalBtn) coordModeDecimalBtn.classList.toggle("active", coordinateSearchMode === "decimal");
+  }
+
+  function parseMaskedDmsInput(input, axis) {
+    const raw = getDmsRawDigits(input, axis);
+    const expectedLength = axis === "lat" ? 8 : 9;
+    if (raw.length !== expectedLength) return null;
+
+    const degreeLength = axis === "lat" ? 2 : 3;
+    const degrees = Number(raw.slice(0, degreeLength));
+    const minutes = Number(raw.slice(degreeLength, degreeLength + 2));
+    const secondsWhole = Number(raw.slice(degreeLength + 2, degreeLength + 4));
+    const secondsDecimal = Number(raw.slice(degreeLength + 4, degreeLength + 6));
+    const seconds = secondsWhole + secondsDecimal / 100;
+    const degreeLimit = axis === "lat" ? 90 : 180;
+
+    if (![degrees, minutes, seconds].every(Number.isFinite)) return null;
+    if (degrees > degreeLimit || minutes >= 60 || seconds >= 60) return null;
+    return degrees + minutes / 60 + seconds / 3600;
+  }
+
+  function setupCoordinateSearchInputs() {
+    setupDmsMaskedInput(coordLatDmsInput, "lat");
+    setupDmsMaskedInput(coordLngDmsInput, "lng");
+    if (coordModeDmsBtn) coordModeDmsBtn.addEventListener("click", () => setCoordinateSearchMode("dms"));
+    if (coordModeDecimalBtn) coordModeDecimalBtn.addEventListener("click", () => setCoordinateSearchMode("decimal"));
+    [coordLatDmsInput, coordLngDmsInput, coordLatDecimalInput, coordLngDecimalInput].forEach(input => {
+      if (!input) return;
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") searchCoordinate();
+      });
+    });
+    setCoordinateSearchMode("dms");
+  }
+
   function updateCoordinateTypeControls() {
     if (coordinateTypeSelect) coordinateTypeSelect.value = coordinateType;
     if (coordinateTypeStatusText) coordinateTypeStatusText.textContent = coordinateTypeLabels[coordinateType] || coordinateTypeLabels.dms;
@@ -2914,6 +3029,7 @@ window.addEventListener("DOMContentLoaded", () => {
   updateGridLineSettingControls();
   setupGridLineSettingEvents();
   setupSettingMenuEvents();
+  setupCoordinateSearchInputs();
   setupMeasureEvents();
   setupSharePanelEvents();
  
@@ -5417,17 +5533,30 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function searchCoordinate() {
-    const value = coordSearchInput.value.trim();
- 
-    if (!value) {
-      alert("座標を入力してください。");
-      return;
-    }
- 
-    const parsed = parseLatLngInput(value);
-    if (!parsed) {
-      alert("座標の形式を確認してください。\n例：39度04分12.34秒N, 141度42分34.56秒E\n例：39.070094, 141.709600");
-      return;
+    let parsed = null;
+
+    if (coordinateSearchMode === "dms") {
+      const lat = parseMaskedDmsInput(coordLatDmsInput, "lat");
+      const lng = parseMaskedDmsInput(coordLngDmsInput, "lng");
+      if (Number.isFinite(lat) && Number.isFinite(lng)) parsed = { lat, lng };
+      if (!parsed) {
+        alert("度分秒の入力を確認してください。\n緯度は8桁（00度00分00.00秒）、経度は9桁（000度00分00.00秒）で入力してください。\n分・秒は00～59の範囲です。");
+        return;
+      }
+    } else {
+      const latText = String(coordLatDecimalInput?.value || "").trim();
+      const lngText = String(coordLngDecimalInput?.value || "").trim();
+      if (!latText || !lngText) {
+        alert("緯度と経度を入力してください。");
+        return;
+      }
+      const lat = parseSingleCoordinate(latText, "lat");
+      const lng = parseSingleCoordinate(lngText, "lng");
+      if (Number.isFinite(lat) && Number.isFinite(lng)) parsed = { lat, lng };
+      if (!parsed) {
+        alert("10進法の座標を確認してください。\n例：緯度 39.070094、経度 141.709600");
+        return;
+      }
     }
  
     const { lat, lng } = parsed;
@@ -5616,9 +5745,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") searchGrid();
   });
  
-  coordSearchInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") searchCoordinate();
-  });
+  if (coordSearchInput) {
+    coordSearchInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") searchCoordinate();
+    });
+  }
  
   if (addressSearchInput) {
     addressSearchInput.addEventListener("keydown", e => {

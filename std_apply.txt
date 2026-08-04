@@ -1,4 +1,4 @@
-G-Link Standard Version2026.08.04 Build1445 変更ファイル
+G-Link Standard Version2026.08.04 Build1510 変更ファイル
 
 修正内容
 - 現場閲覧モードの赤色外枠を削除

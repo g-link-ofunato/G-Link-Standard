@@ -70,12 +70,38 @@
           </div>
         </div>
  
-        <div class="searchBlock">
+        <div class="searchBlock coordinateSearchBlock">
           <label>座標検索</label>
-          <div class="searchRow">
-            <input id="coordSearchInput" type="text" placeholder="例：35度42分47.56秒, 139度40分57.29秒">
-            <button id="coordSearchBtn">検索</button>
+          <div class="coordinateSearchMode" role="group" aria-label="座標入力形式">
+            <button type="button" id="coordModeDmsBtn" class="coordModeBtn active">度分秒</button>
+            <button type="button" id="coordModeDecimalBtn" class="coordModeBtn">10進法</button>
           </div>
+
+          <div id="coordDmsInputs" class="coordDmsInputs">
+            <label class="coordInputLine">
+              <span>緯度</span>
+              <input id="coordLatDmsInput" class="coordMaskedInput" type="text" inputmode="numeric" autocomplete="off" value="00度00分00.00秒" aria-label="緯度 度分秒">
+            </label>
+            <label class="coordInputLine">
+              <span>経度</span>
+              <input id="coordLngDmsInput" class="coordMaskedInput" type="text" inputmode="numeric" autocomplete="off" value="000度00分00.00秒" aria-label="経度 度分秒">
+            </label>
+            <div class="searchHelp">数字のみ入力してください。緯度8桁、経度9桁で「度・分・秒」を自動表示します。</div>
+          </div>
+
+          <div id="coordDecimalInputs" class="coordDecimalInputs" hidden>
+            <label class="coordInputLine">
+              <span>緯度</span>
+              <input id="coordLatDecimalInput" type="text" inputmode="decimal" placeholder="例：39.070094">
+            </label>
+            <label class="coordInputLine">
+              <span>経度</span>
+              <input id="coordLngDecimalInput" type="text" inputmode="decimal" placeholder="例：141.709600">
+            </label>
+          </div>
+
+          <button id="coordSearchBtn" class="coordSearchAction">座標を検索</button>
+          <input id="coordSearchInput" type="hidden">
         </div>
  
         <div class="searchBlock">
