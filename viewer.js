@@ -1328,10 +1328,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (viewerGpsWatchId !== null) {
       navigator.geolocation.clearWatch(viewerGpsWatchId);
       viewerGpsWatchId = null;
+
+      // 追従解除時は、GPS表示を地図上から完全に削除する。
+      if (map && viewerGpsMarker) {
+        try { map.removeLayer(viewerGpsMarker); } catch (error) { console.warn("GPSマーカー削除失敗", error); }
+      }
+      if (map && viewerGpsAccuracyCircle) {
+        try { map.removeLayer(viewerGpsAccuracyCircle); } catch (error) { console.warn("GPS精度円削除失敗", error); }
+      }
+      viewerGpsMarker = null;
+      viewerGpsAccuracyCircle = null;
+      viewerGpsHasCentered = false;
+
       if (viewerLocationBtn) {
-        viewerLocationBtn.classList.remove("is-tracking");
+        viewerLocationBtn.classList.remove("is-tracking", "is-error");
         viewerLocationBtn.setAttribute("aria-pressed","false");
         viewerLocationBtn.textContent = "現在地";
+        viewerLocationBtn.title = "現在地を表示";
       }
       if (viewerCurrentLocation) {
         viewerCurrentLocation.innerHTML = "";
