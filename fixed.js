@@ -350,6 +350,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const injuredCount = document.getElementById("injuredCount");
   const attachment = document.getElementById("attachment");
   const attachmentInfo = document.getElementById("attachmentInfo");
+  const removeAttachmentBtn = document.getElementById("removeAttachmentBtn");
   const attachmentPreview = document.getElementById("attachmentPreview");
   const savePin = document.getElementById("savePin");
   const closePanel = document.getElementById("closePanel");
@@ -466,6 +467,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let editingHistoryItem = null;
   let pendingAttachment = null;
   let activityHistory = [];
+  const historyStatusExpanded = { unassigned: false, active: false, completed: false };
   let lastCursorLatLng = null;
   const coordinateTypeLabels = {
     dms: "緯度・経度（60進法）",
@@ -5922,6 +5924,7 @@ window.addEventListener("DOMContentLoaded", () => {
     attachment.value = "";
  
     attachmentInfo.textContent = data.attachmentName ? "添付済み：" + data.attachmentName : "添付なし";
+    if (removeAttachmentBtn) removeAttachmentBtn.style.display = data.attachmentDataUrl ? "block" : "none";
  
     if (data.attachmentDataUrl) {
       attachmentPreview.src = data.attachmentDataUrl;
@@ -6073,7 +6076,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       const titleSpan = document.createElement("span");
       titleSpan.className = "historyDateTitle";
-      titleSpan.textContent = `▼ ${statusLabels[status]}`;
+      titleSpan.textContent = `${historyStatusExpanded[status] ? "▼" : "▶"} ${statusLabels[status]}`;
 
       const countSpan = document.createElement("span");
       countSpan.className = "historyDateCount";
@@ -6083,10 +6086,13 @@ window.addEventListener("DOMContentLoaded", () => {
       headerBtn.appendChild(countSpan);
 
       const bodyDiv = document.createElement("div");
-      bodyDiv.className = "historyDateBody";
+      bodyDiv.className = `historyDateBody${historyStatusExpanded[status] ? "" : " collapsed"}`;
+      headerBtn.setAttribute("aria-expanded", historyStatusExpanded[status] ? "true" : "false");
       headerBtn.addEventListener("click", () => {
-        bodyDiv.classList.toggle("collapsed");
-        titleSpan.textContent = `${bodyDiv.classList.contains("collapsed") ? "▶" : "▼"} ${statusLabels[status]}`;
+        historyStatusExpanded[status] = !historyStatusExpanded[status];
+        bodyDiv.classList.toggle("collapsed", !historyStatusExpanded[status]);
+        headerBtn.setAttribute("aria-expanded", historyStatusExpanded[status] ? "true" : "false");
+        titleSpan.textContent = `${historyStatusExpanded[status] ? "▼" : "▶"} ${statusLabels[status]}`;
       });
 
       items.forEach(item => {
@@ -6398,6 +6404,26 @@ window.addEventListener("DOMContentLoaded", () => {
     addPin(e.latlng);
   });
  
+
+  if (removeAttachmentBtn) {
+    removeAttachmentBtn.addEventListener("click", () => {
+      if (!selectedPin) return;
+      const hasAttachment = !!(selectedPin.data.attachmentDataUrl || pendingAttachment);
+      if (!hasAttachment) return;
+      if (!confirm("この添付ファイルを削除しますか？")) return;
+
+      selectedPin.data.attachmentName = "";
+      selectedPin.data.attachmentDataUrl = "";
+      pendingAttachment = null;
+      attachment.value = "";
+      attachmentInfo.textContent = "添付なし";
+      attachmentPreview.removeAttribute("src");
+      attachmentPreview.style.display = "none";
+      removeAttachmentBtn.style.display = "none";
+      refreshPin(selectedPin);
+    });
+  }
+
   attachment.addEventListener("change", () => {
     const file = attachment.files[0];
  
@@ -6420,6 +6446,7 @@ window.addEventListener("DOMContentLoaded", () => {
       attachmentInfo.textContent = "選択中：" + file.name;
       attachmentPreview.src = reader.result;
       attachmentPreview.style.display = "block";
+      if (removeAttachmentBtn) removeAttachmentBtn.style.display = "block";
     };
  
     reader.readAsDataURL(file);

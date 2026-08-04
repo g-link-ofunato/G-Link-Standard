@@ -697,6 +697,24 @@ body {
   border-radius: 4px;
 }
  
+
+.removeAttachmentBtn {
+  display: none;
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px 10px;
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  background: #fff;
+  color: #b91c1c;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.removeAttachmentBtn:hover {
+  background: #fef2f2;
+}
+
 #attachmentPreview {
   display: none;
   width: 100%;
