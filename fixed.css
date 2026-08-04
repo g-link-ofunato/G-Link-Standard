@@ -200,6 +200,7 @@ body {
  
 #gridSearchBtn,
 #coordSearchBtn,
+#addressSearchBtn,
 #incidentSearchBtn {
   width: 64px;
   height: 32px;
@@ -213,6 +214,7 @@ body {
  
 #gridSearchBtn:hover,
 #coordSearchBtn:hover,
+#addressSearchBtn:hover,
 #incidentSearchBtn:hover {
   background: #1d4ed8;
 }
@@ -3483,7 +3485,7 @@ body {
 .legacyShareDetails summary { cursor:pointer; font-weight:700; }
 
 
-/* Version2026.08.04 Build1510: ライブ共有 第4段階（3秒遅延自動送信） */
+/* Version2026.08.04 Build1607: ライブ共有 第4段階（3秒遅延自動送信） */
 .liveAutoSendRow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;cursor:pointer}
 .liveAutoSendRow[hidden],.liveShareMetrics[hidden]{display:none!important}
 .liveAutoSendRow input{width:18px;height:18px;accent-color:#0f67d8}
@@ -3497,7 +3499,7 @@ body {
 .liveShareStateBadge.isError{color:#b91c1c;background:#fee2e2;box-shadow:0 0 0 1px #fca5a5 inset}
 @media(max-width:520px){.liveShareMetrics{grid-template-columns:1fr}}
 
-/* Version2026.08.04 Build1510: 数字入力型の度分秒テンプレート */
+/* Version2026.08.04 Build1607: 数字入力型の度分秒テンプレート */
 .coordinateSearchMode {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3562,9 +3564,25 @@ body {
   letter-spacing: 0.02em;
 }
 
+.coordInputLineWithAction {
+  grid-template-columns: 34px minmax(0, 1fr) 64px !important;
+}
+
 .coordSearchAction {
-  width: 100%;
+  width: 64px;
+  height: 34px;
   min-height: 34px;
-  margin-top: 8px;
+  margin: 0;
+  padding: 0 8px;
+  border: none;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #ffffff;
   font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.coordSearchAction:hover {
+  background: #1d4ed8;
 }

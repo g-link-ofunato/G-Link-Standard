@@ -1075,6 +1075,15 @@ window.addEventListener("DOMContentLoaded", () => {
     if (coordDecimalInputs) coordDecimalInputs.hidden = coordinateSearchMode !== "decimal";
     if (coordModeDmsBtn) coordModeDmsBtn.classList.toggle("active", coordinateSearchMode === "dms");
     if (coordModeDecimalBtn) coordModeDecimalBtn.classList.toggle("active", coordinateSearchMode === "decimal");
+
+    const dmsActionRow = coordLngDmsInput?.closest(".coordInputLine");
+    const decimalActionRow = coordLngDecimalInput?.closest(".coordInputLine");
+    [dmsActionRow, decimalActionRow].forEach(row => row?.classList.remove("coordInputLineWithAction"));
+    const activeActionRow = coordinateSearchMode === "decimal" ? decimalActionRow : dmsActionRow;
+    if (activeActionRow && coordSearchBtn) {
+      activeActionRow.classList.add("coordInputLineWithAction");
+      activeActionRow.appendChild(coordSearchBtn);
+    }
   }
 
   function parseMaskedDmsInput(input, axis) {
