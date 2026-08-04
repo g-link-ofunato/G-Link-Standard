@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="viewer.css?v=Build1632">
+  <link rel="stylesheet" href="viewer.css?v=Build1645">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
 <body>
@@ -15,16 +15,8 @@
       <div class="viewerSubtitle">災害情報共有システム（閲覧専用）</div>
     </div>
     <div class="viewerHeaderActions">
-      <div id="viewerLiveControl" class="viewerLiveControl" hidden>
-        <span id="viewerLiveConnection" class="viewerLiveConnection isOnline">オンライン</span>
-        <label for="viewerAutoRefreshSelect">自動更新</label>
-        <select id="viewerAutoRefreshSelect" aria-label="ライブ共有の自動更新間隔">
-          <option value="0">OFF</option>
-          <option value="3">3秒</option>
-          <option value="5" selected>5秒</option>
-          <option value="10">10秒</option>
-        </select>
-        <span id="viewerLiveUpdatedAt" class="viewerLiveUpdatedAt">最終更新：-</span>
+      <div id="viewerCurrentLocation" class="viewerCurrentLocation" aria-live="polite">
+        <span class="viewerCurrentLocationTitle">現在地未取得</span>
       </div>
       <button id="viewerLocationBtn" type="button" class="viewerModeBtn viewerLocationBtn" aria-pressed="false" title="端末の現在地を表示して常時追従します">現在地</button>
       <button id="viewerLayerToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerLayerPanel" aria-expanded="false">レイヤ</button>
@@ -128,6 +120,21 @@
         </dl>
       </section>
 
+      <section id="viewerLiveSettingsCard" class="infoCard" hidden>
+        <h2>ライブ共有</h2>
+        <div id="viewerLiveControl" class="viewerLiveControl">
+          <span id="viewerLiveConnection" class="viewerLiveConnection isOnline">オンライン</span>
+          <label for="viewerAutoRefreshSelect">自動更新</label>
+          <select id="viewerAutoRefreshSelect" aria-label="ライブ共有の自動更新間隔">
+            <option value="0">OFF</option>
+            <option value="3">3秒</option>
+            <option value="5" selected>5秒</option>
+            <option value="10">10秒</option>
+          </select>
+          <span id="viewerLiveUpdatedAt" class="viewerLiveUpdatedAt">最終更新：-</span>
+        </div>
+      </section>
+
       <section class="infoCard viewerSummaryCard">
         <h2>概要</h2>
         <div id="viewerSummary" class="viewerSummary"></div>
@@ -165,7 +172,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="viewer.js?v=Build1632"></script>
+  <script src="viewer.js?v=Build1645"></script>
   <script src="license-auth.js?v=Build1445"></script>
 </body>
 </html>

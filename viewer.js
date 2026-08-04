@@ -5,6 +5,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   const viewerSearchToggleBtn = document.getElementById("viewerSearchToggleBtn");
   const viewerInfoToggleBtn = document.getElementById("viewerInfoToggleBtn");
   const viewerLocationBtn = document.getElementById("viewerLocationBtn");
+  const viewerCurrentLocation = document.getElementById("viewerCurrentLocation");
+  const viewerLiveSettingsCard = document.getElementById("viewerLiveSettingsCard");
   const viewerLayerPanel = document.getElementById("viewerLayerPanel");
   const viewerSearchPanel = document.getElementById("viewerSearchPanel");
   const viewerInfoPanel = document.getElementById("viewerInfoPanel");
@@ -1223,6 +1225,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     return "現在地を取得できませんでした。";
   }
 
+  function updateViewerCurrentLocation(latlng) {
+    if (!viewerCurrentLocation || !latlng) return;
+    const gridSize = Number(currentData?.gridSize || currentData?.session?.gridSize || 0);
+    const gridNo = getViewerGridNumber(latlng, currentBounds, gridSize);
+    viewerCurrentLocation.innerHTML = `
+      <span class="viewerCurrentLocationTitle">現在地</span>
+      <span class="viewerCurrentLocationCoord">緯度 ${escapeHtml(formatDmsValue(latlng.lat, "lat"))}</span>
+      <span class="viewerCurrentLocationCoord">経度 ${escapeHtml(formatDmsValue(latlng.lng, "lng"))}</span>
+      <span class="viewerCurrentLocationGrid">グリッド ${escapeHtml(gridNo || "-")}</span>`;
+    viewerCurrentLocation.classList.add("is-active");
+  }
+
+  function recenterViewerGps() {
+    const latlng = viewerGpsMarker?.getLatLng?.();
+    if (latlng && map) {
+      map.invalidateSize();
+      map.setView(latlng, Math.max(map.getZoom(), 16), {animate:true});
+      updateViewerCurrentLocation(latlng);
+      return true;
+    }
+    return false;
+  }
+
   function ensureGpsLayers(latlng, accuracy) {
     if (!map) return;
     if (!viewerGpsMarker) {
@@ -1264,6 +1289,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !map) return;
     const latlng = L.latLng(latitude, longitude);
     ensureGpsLayers(latlng, position.coords.accuracy);
+    updateViewerCurrentLocation(latlng);
 
     // 初回は現在地を中央へ。以降は常時更新し、画面外に出たときだけ中央へ戻す。
     if (!viewerGpsHasCentered) {
@@ -1278,7 +1304,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       viewerLocationBtn.classList.remove("is-error");
       viewerLocationBtn.setAttribute("aria-pressed", "true");
       viewerLocationBtn.textContent = "現在地追従中";
-      viewerLocationBtn.title = `現在地を常時追従中（精度：約${Math.round(Number(position.coords.accuracy || 0))}m）`;
+      viewerLocationBtn.title = "現在地を常時追従中。タップすると現在地へ戻ります";
     }
   }
 
@@ -1300,8 +1326,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (viewerGpsWatchId !== null) {
-      const latlng = viewerGpsMarker?.getLatLng?.();
-      if (latlng && map) map.setView(latlng, Math.max(map.getZoom(), 16), {animate:true});
+      if (!recenterViewerGps()) {
+        navigator.geolocation.getCurrentPosition(handleGpsPosition, handleGpsError, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+      }
       return;
     }
     if (viewerLocationBtn) {
@@ -1372,6 +1399,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       map.invalidateSize();
       const info = getViewerGridInfo(currentBounds, Number(data.gridSize || data.session?.gridSize || 0));
       if (info && viewerLayerVisibility.grid !== false) drawViewerGridLabels(map, info);
+      const gpsLatLng = viewerGpsMarker?.getLatLng?.();
+      if (gpsLatLng) updateViewerCurrentLocation(gpsLatLng);
     }, 60);
   }
 
@@ -1447,6 +1476,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   if (liveId) {
     if (liveControl) liveControl.hidden = false;
+    if (viewerLiveSettingsCard) viewerLiveSettingsCard.hidden = false;
     const savedInterval = (() => { try { return localStorage.getItem(LIVE_INTERVAL_KEY); } catch (error) { return null; } })();
     if (autoRefreshSelect && ["0","3","5","10"].includes(savedInterval || "")) autoRefreshSelect.value = savedInterval;
     if (autoRefreshSelect) autoRefreshSelect.addEventListener("change", () => {

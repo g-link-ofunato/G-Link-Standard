@@ -756,7 +756,7 @@ body {
 @media (max-width:700px) { .viewerLayerPanel { top:8px; right:8px; width:min(300px,calc(100vw - 16px)); } .viewerLayerSublist { grid-template-columns:1fr; } }
 
 
-/* Version2026.08.04 Build1632: Viewer端末GPS現在地・常時追従 */
+/* Version2026.08.04 Build1645: Viewer現在地再センタリング・現在地情報バナー */
 .viewerLocationBtn.is-tracking {
   background:#dbeafe;
   color:#1d4ed8;
@@ -804,4 +804,26 @@ body {
 }
 @media (prefers-reduced-motion:reduce) {
   .viewerGpsPulse::after { animation:none; opacity:.45; transform:translate(-50%,-50%) scale(1.15); }
+}
+
+
+/* Version2026.08.04 Build1645: 現在地座標・グリッド番号バナー */
+.viewerCurrentLocation {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px;
+  border:1px solid rgba(148,163,184,.45); border-radius:9px; background:rgba(255,255,255,.94);
+  color:#334155; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(15,23,42,.08);
+}
+.viewerCurrentLocation.is-active { border-color:#93c5fd; background:rgba(239,246,255,.96); color:#0f172a; }
+.viewerCurrentLocationTitle { color:#1d4ed8; font-weight:900; white-space:nowrap; }
+.viewerCurrentLocationCoord, .viewerCurrentLocationGrid { white-space:nowrap; }
+.viewerCurrentLocationGrid { padding-left:8px; border-left:1px solid #cbd5e1; color:#0f5132; font-weight:900; }
+#viewerLiveSettingsCard .viewerLiveControl { box-shadow:none; border:none; padding:0; background:transparent; }
+@media (max-width:900px) {
+  .viewerCurrentLocation { width:100%; order:3; justify-content:center; }
+  #viewerLiveSettingsCard .viewerLiveControl { width:100%; justify-content:flex-start; }
+}
+@media (max-width:560px) {
+  .viewerCurrentLocation { display:grid; grid-template-columns:auto 1fr; gap:3px 8px; justify-content:stretch; }
+  .viewerCurrentLocationTitle { grid-row:1 / span 3; align-self:center; }
+  .viewerCurrentLocationGrid { padding-left:0; border-left:none; }
 }
