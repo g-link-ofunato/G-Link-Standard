@@ -2197,6 +2197,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (panelId === "sharePanel") {
       updateSharePanel();
     }
+    if (panelId === "historyPanel") {
+      renderActivityHistory();
+    }
   }
  
   function closeToolPanelFunc() {
@@ -5994,8 +5997,12 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function updateHistoryItemFromPin(pin) {
-    const item = activityHistory.find(h => h.id === pin.data.id);
-    if (!item) return;
+    let item = activityHistory.find(h => h.id === pin.data.id);
+    if (!item) {
+      item = makeHistoryItemFromPin(pin);
+      activityHistory.push(item);
+      return item;
+    }
  
     item.type = pin.data.type;
     item.typeLabel = pinLabels[pin.data.type] || "未分類";
@@ -6012,6 +6019,7 @@ window.addEventListener("DOMContentLoaded", () => {
     item.completed = !!pin.data.completed;
     item.status = getPinActivityStatus(pin.data);
     item.statusLabel = ({ unassigned: "未対応", active: "活動中", completed: "活動完了" })[item.status] || "未対応";
+    return item;
   }
 
   function getHistoryPinNo(item) {
@@ -6122,7 +6130,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pin.data.completedTimestamp = completedTimestamp;
     pin.data.completedLabel = getDateTimeLabelFromTimestamp(completedTimestamp);
  
-    activityHistory.push(makeHistoryItemFromPin(pin));
+    updateHistoryItemFromPin(pin);
     refreshPin(pin);
     renderActivityHistory();
     openToolPanel("historyPanel");
@@ -6467,10 +6475,8 @@ window.addEventListener("DOMContentLoaded", () => {
       selectedPin.data.attachmentDataUrl = pendingAttachment.dataUrl;
     }
  
-    if (selectedPin.data.completed) {
-      updateHistoryItemFromPin(selectedPin);
-      renderActivityHistory();
-    }
+    updateHistoryItemFromPin(selectedPin);
+    renderActivityHistory();
  
     refreshPin(selectedPin);
     editPanel.style.display = "none";
