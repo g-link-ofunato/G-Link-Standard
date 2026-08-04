@@ -1,4 +1,4 @@
-G-Link Standard Version2026.08.04 Build1416 変更ファイル
+G-Link Standard Version2026.08.04 Build1432 変更ファイル
 
 - fixed.html
   - 共有バナー下部の「従来の共有方式について」を削除
@@ -7,4 +7,4 @@ G-Link Standard Version2026.08.04 Build1416 変更ファイル
 - viewer.js
   - 指揮本部モードと同じ基準線計算でグリッドを描画
   - グリッド線の色・濃さ・太さ・表示状態をライブ共有へ反映
-- Version/Build表示とキャッシュ参照をBuild1416へ同期更新
+- Version/Build表示とキャッシュ参照をBuild1432へ同期更新

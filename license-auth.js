@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const BUILD='Build1416';
+  const BUILD='Build1432';
   const PORTAL_BASE='https://g-link-portal.pages.dev';
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const INACTIVITY_LIMIT_MS=24*60*60*1000;

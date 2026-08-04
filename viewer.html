@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="viewer.css?v=Build1416">
-  <link rel="stylesheet" href="license-auth.css?v=Build1416" />
+  <link rel="stylesheet" href="viewer.css?v=Build1432">
+  <link rel="stylesheet" href="license-auth.css?v=Build1432" />
 </head>
 <body>
   <header id="viewerHeader">
@@ -26,6 +26,7 @@
         </select>
         <span id="viewerLiveUpdatedAt" class="viewerLiveUpdatedAt">最終更新：-</span>
       </div>
+      <button id="viewerLayerToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerLayerPanel" aria-expanded="false">レイヤ</button>
       <button id="viewerSearchToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerSearchPanel" aria-expanded="false">検索</button>
       <button id="viewerInfoToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerInfoPanel" aria-expanded="false">情報</button>
     </div>
@@ -36,6 +37,51 @@
   <main id="viewerLayout">
     <section id="viewerMapArea">
       <div id="viewerMap"></div>
+      <div id="viewerLayerPanel" class="viewerLayerPanel viewerFloatingPanel" data-panel-state="normal" hidden>
+        <div class="viewerPanelHeader">
+          <div class="viewerLayerTitle">レイヤ</div>
+          <div class="viewerPanelActions">
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerLayerPanel" data-panel-action="min" aria-label="レイヤパネルを縮小">－</button>
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerLayerPanel" data-panel-action="max" aria-label="レイヤパネルを拡大">□</button>
+            <button type="button" class="viewerPanelBtn" data-panel-target="viewerLayerPanel" data-panel-action="close" aria-label="レイヤパネルを閉じる">×</button>
+          </div>
+        </div>
+        <p class="viewerLayerIntro">表示・非表示はこの端末だけに反映されます。指揮本部モードの表示状態とは連動しません。</p>
+        <div class="viewerLayerList">
+          <label><input type="checkbox" data-viewer-layer="grid" checked><span>▦ グリッド</span></label>
+          <details>
+            <summary><label><input type="checkbox" data-viewer-layer="pins" checked><span>📍 災害情報</span></label></summary>
+            <div class="viewerLayerSublist">
+              <strong>種別</strong>
+              <label><input type="checkbox" data-viewer-layer="pinFire" checked><span>火災</span></label>
+              <label><input type="checkbox" data-viewer-layer="pinRescue" checked><span>救助</span></label>
+              <label><input type="checkbox" data-viewer-layer="pinEmergency" checked><span>救急</span></label>
+              <label><input type="checkbox" data-viewer-layer="pinOther" checked><span>その他</span></label>
+              <strong>活動状態</strong>
+              <label><input type="checkbox" data-viewer-layer="pinUnassigned" checked><span>未対応</span></label>
+              <label><input type="checkbox" data-viewer-layer="pinActive" checked><span>活動中</span></label>
+              <label><input type="checkbox" data-viewer-layer="pinCompleted" checked><span>活動完了</span></label>
+            </div>
+          </details>
+          <details>
+            <summary><label><input type="checkbox" data-viewer-layer="drawings" checked><span>⬡ 図形</span></label></summary>
+            <div class="viewerLayerSublist">
+              <label><input type="checkbox" data-viewer-layer="drawingLine" checked><span>直線</span></label>
+              <label><input type="checkbox" data-viewer-layer="drawingPolyline" checked><span>折れ線</span></label>
+              <label><input type="checkbox" data-viewer-layer="drawingRectangle" checked><span>四角形</span></label>
+              <label><input type="checkbox" data-viewer-layer="drawingCircle" checked><span>円</span></label>
+              <label><input type="checkbox" data-viewer-layer="drawingArrow" checked><span>矢印</span></label>
+              <label><input type="checkbox" data-viewer-layer="drawingFreehand" checked><span>フリーハンド</span></label>
+            </div>
+          </details>
+          <label><input type="checkbox" data-viewer-layer="measurements" checked><span>📐 計測</span></label>
+          <label><input type="checkbox" data-viewer-layer="texts" checked><span>T テキスト</span></label>
+          <label><input type="checkbox" data-viewer-layer="tracks" checked><span>🛰 GPX軌跡</span></label>
+          <label><input type="checkbox" data-viewer-layer="hazards" checked><span>⚠ ハザードマップ</span></label>
+        </div>
+        <button id="viewerShowAllLayersBtn" type="button" class="viewerLayerShowAll">すべて表示</button>
+      </div>
+      <div id="viewerGridOverlay" class="viewerGridOverlay" aria-hidden="true"></div>
       <div id="viewerSearchPanel" class="viewerSearchPanel viewerFloatingPanel" data-panel-state="normal" hidden>
         <div class="viewerPanelHeader">
           <div class="viewerSearchTitle">検索</div>
@@ -118,7 +164,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="viewer.js?v=Build1416"></script>
-  <script src="license-auth.js?v=Build1416"></script>
+  <script src="viewer.js?v=Build1432"></script>
+  <script src="license-auth.js?v=Build1432"></script>
 </body>
 </html>

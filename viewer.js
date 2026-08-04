@@ -1,8 +1,10 @@
 window.addEventListener("DOMContentLoaded", async () => {
   const viewerError = document.getElementById("viewerError");
   const mapEl = document.getElementById("viewerMap");
+  const viewerLayerToggleBtn = document.getElementById("viewerLayerToggleBtn");
   const viewerSearchToggleBtn = document.getElementById("viewerSearchToggleBtn");
   const viewerInfoToggleBtn = document.getElementById("viewerInfoToggleBtn");
+  const viewerLayerPanel = document.getElementById("viewerLayerPanel");
   const viewerSearchPanel = document.getElementById("viewerSearchPanel");
   const viewerInfoPanel = document.getElementById("viewerInfoPanel");
 
@@ -92,14 +94,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function closeViewerPanel(panelId, map = null) {
+    if (panelId === "viewerLayerPanel") setPanelOpen(viewerLayerPanel, viewerLayerToggleBtn, false, map);
     if (panelId === "viewerSearchPanel") setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, false, map);
     if (panelId === "viewerInfoPanel") setPanelOpen(viewerInfoPanel, viewerInfoToggleBtn, false, map);
   }
 
   function setupViewerPanels(map) {
+    setPanelOpen(viewerLayerPanel, viewerLayerToggleBtn, false, map);
     setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, false, map);
     setPanelOpen(viewerInfoPanel, viewerInfoToggleBtn, false, map);
 
+    if (viewerLayerToggleBtn) {
+      viewerLayerToggleBtn.addEventListener("click", () => {
+        setPanelOpen(viewerLayerPanel, viewerLayerToggleBtn, !isPanelOpen(viewerLayerPanel), map);
+      });
+    }
     if (viewerSearchToggleBtn) {
       viewerSearchToggleBtn.addEventListener("click", () => {
         setPanelOpen(viewerSearchPanel, viewerSearchToggleBtn, !isPanelOpen(viewerSearchPanel), map);
@@ -622,7 +631,61 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
 
+  const VIEWER_LAYER_STORAGE_KEY = "gLinkViewerLayerVisibility";
+  const defaultViewerLayerVisibility = Object.freeze({
+    grid:true, pins:true, pinFire:true, pinRescue:true, pinEmergency:true, pinOther:true,
+    pinUnassigned:true, pinActive:true, pinCompleted:true, drawings:true, drawingLine:true,
+    drawingPolyline:true, drawingRectangle:true, drawingCircle:true, drawingArrow:true,
+    drawingFreehand:true, measurements:true, texts:true, tracks:true, hazards:true
+  });
+  let viewerLayerVisibility = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(VIEWER_LAYER_STORAGE_KEY) || "{}");
+      return {...defaultViewerLayerVisibility, ...(saved && typeof saved === "object" ? saved : {})};
+    } catch (_) { return {...defaultViewerLayerVisibility}; }
+  })();
+
+  function persistViewerLayerVisibility() {
+    try { localStorage.setItem(VIEWER_LAYER_STORAGE_KEY, JSON.stringify(viewerLayerVisibility)); } catch (_) {}
+  }
+
+  function pinVisibleInViewer(pin) {
+    if (viewerLayerVisibility.pins === false) return false;
+    const typeKey = {fire:"pinFire", rescue:"pinRescue", emergency:"pinEmergency", other:"pinOther"}[normalizePinType(pin?.type)] || "pinOther";
+    if (viewerLayerVisibility[typeKey] === false) return false;
+    const status = getViewerActivityStatus(pin);
+    const statusKey = status === "completed" ? "pinCompleted" : status === "active" ? "pinActive" : "pinUnassigned";
+    return viewerLayerVisibility[statusKey] !== false;
+  }
+
+  function drawingVisibleInViewer(item) {
+    if (viewerLayerVisibility.drawings === false) return false;
+    const type = item?.meta?.type || item?.type || "polyline";
+    const key = {line:"drawingLine", polyline:"drawingPolyline", rectangle:"drawingRectangle", circle:"drawingCircle", arrow:"drawingArrow", freehand:"drawingFreehand"}[type] || "drawingPolyline";
+    return viewerLayerVisibility[key] !== false;
+  }
+
+  function setupViewerLayerControls() {
+    document.querySelectorAll("[data-viewer-layer]").forEach(input => {
+      const key = input.dataset.viewerLayer;
+      input.checked = viewerLayerVisibility[key] !== false;
+      input.addEventListener("change", () => {
+        viewerLayerVisibility[key] = input.checked;
+        persistViewerLayerVisibility();
+        if (currentData) renderViewerData(currentData, {initial:false});
+      });
+    });
+    const showAll = document.getElementById("viewerShowAllLayersBtn");
+    if (showAll) showAll.addEventListener("click", () => {
+      viewerLayerVisibility = {...defaultViewerLayerVisibility};
+      document.querySelectorAll("[data-viewer-layer]").forEach(input => { input.checked = true; });
+      persistViewerLayerVisibility();
+      if (currentData) renderViewerData(currentData, {initial:false});
+    });
+  }
+
   function renderViewerHazards(map, data) {
+    if (viewerLayerVisibility.hazards === false) return;
     const settings = data?.hazardSettings;
     if (!settings || !settings.layers) return;
     if (!map.getPane("viewerHazardPane")) {
@@ -668,10 +731,64 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function renderGrid(map, bounds, gridSize, settings = {}, visible = true) {
-    const size = Number(gridSize || 0);
-    if (!bounds || !size || visible === false) return;
+  function getViewerColumnName(index) {
+    let name = "";
+    let n = index;
+    while (n >= 0) {
+      name = String.fromCharCode((n % 26) + 65) + name;
+      n = Math.floor(n / 26) - 1;
+    }
+    return name;
+  }
 
+  function clearViewerGridOverlay() {
+    const overlay = document.getElementById("viewerGridOverlay");
+    if (overlay) overlay.innerHTML = "";
+  }
+
+  function drawViewerGridLabels(map, info) {
+    const overlay = document.getElementById("viewerGridOverlay");
+    if (!overlay || !info || viewerLayerVisibility.grid === false) return;
+    overlay.innerHTML = "";
+    const colCount = Math.round((info.eastLine - info.westLine) / info.lngStep);
+    const rowCount = Math.round((info.northLine - info.southLine) / info.latStep);
+
+    function addCell(lat1, lng1, lat2, lng2, text, blank=false) {
+      const p1 = map.latLngToContainerPoint([lat1,lng1]);
+      const p2 = map.latLngToContainerPoint([lat2,lng2]);
+      const width = Math.abs(p2.x-p1.x), height = Math.abs(p2.y-p1.y);
+      const cell = document.createElement("div");
+      cell.className = "viewerGridEdgeCell" + (blank ? " isBlank" : "");
+      cell.textContent = text || "";
+      cell.style.left = `${Math.min(p1.x,p2.x)}px`;
+      cell.style.top = `${Math.min(p1.y,p2.y)}px`;
+      cell.style.width = `${width}px`;
+      cell.style.height = `${height}px`;
+      const base = Math.min(width*0.52,height*0.62);
+      cell.style.fontSize = `${Math.max(8,Math.min(30,String(text||"").length>=2?base*0.86:base))}px`;
+      overlay.appendChild(cell);
+    }
+
+    addCell(info.northLine+info.latStep,info.westLine-info.lngStep,info.northLine,info.westLine,"",true);
+    addCell(info.northLine+info.latStep,info.eastLine,info.northLine,info.eastLine+info.lngStep,"",true);
+    addCell(info.southLine,info.westLine-info.lngStep,info.southLine-info.latStep,info.westLine,"",true);
+    addCell(info.southLine,info.eastLine,info.southLine-info.latStep,info.eastLine+info.lngStep,"",true);
+    for (let i=0;i<colCount;i++) {
+      const l1=info.westLine+info.lngStep*i, l2=l1+info.lngStep, label=getViewerColumnName(i);
+      addCell(info.northLine+info.latStep,l1,info.northLine,l2,label);
+      addCell(info.southLine,l1,info.southLine-info.latStep,l2,label);
+    }
+    for (let i=0;i<rowCount;i++) {
+      const a=info.northLine-info.latStep*i, b=a-info.latStep, label=String(i+1);
+      addCell(a,info.westLine-info.lngStep,b,info.westLine,label);
+      addCell(a,info.eastLine,b,info.eastLine+info.lngStep,label);
+    }
+  }
+
+  function renderGrid(map, bounds, gridSize, settings = {}, visible = true) {
+    clearViewerGridOverlay();
+    const size = Number(gridSize || 0);
+    if (!bounds || !size || visible === false || viewerLayerVisibility.grid === false) return;
     const info = getViewerGridInfo(bounds, size);
     if (!info) return;
     const color = settings.color || "#888888";
@@ -683,13 +800,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     const east = info.eastLine + info.lngStep;
     const lineOptions = { color, weight, opacity, interactive: false };
     const gridGroup = L.layerGroup().addTo(map);
-
-    for (let lng = info.westLine; lng <= info.eastLine + info.lngStep / 2; lng += info.lngStep) {
-      gridGroup.addLayer(L.polyline([[south, lng], [north, lng]], lineOptions));
-    }
-    for (let lat = info.southLine; lat <= info.northLine + info.latStep / 2; lat += info.latStep) {
-      gridGroup.addLayer(L.polyline([[lat, west], [lat, east]], lineOptions));
-    }
+    for (let lng=info.westLine;lng<=info.eastLine+info.lngStep/2;lng+=info.lngStep) gridGroup.addLayer(L.polyline([[south,lng],[north,lng]],lineOptions));
+    for (let lat=info.southLine;lat<=info.northLine+info.latStep/2;lat+=info.latStep) gridGroup.addLayer(L.polyline([[lat,west],[lat,east]],lineOptions));
+    drawViewerGridLabels(map, info);
   }
 
   function renderLegend(data) {
@@ -1081,6 +1194,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   function clearDynamicMapLayers() {
     if (!map) return;
     map.closePopup();
+    clearViewerGridOverlay();
     const keep = new Set([baseLayer]);
     map.eachLayer(layer => {
       if (!keep.has(layer)) map.removeLayer(layer);
@@ -1113,26 +1227,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     renderViewerHazards(map, data);
-    const gridVisible = (data.layerVisibility || data.session?.layerVisibility || {}).grid !== false;
-    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {}, gridVisible);
+    renderGrid(map, currentBounds, data.gridSize || data.session?.gridSize, data.gridLineSettings || {}, viewerLayerVisibility.grid !== false);
 
     (data.pins || []).forEach((pin, index) => {
-      if (typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
+      if (!pinVisibleInViewer(pin) || typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
       const marker = L.marker([pin.lat, pin.lng], {
         icon: createPinIcon(pin.type, pin.completed, index + 1, pin.units)
       }).addTo(map);
       marker.bindPopup(pinPopup(pin, index + 1));
     });
 
-    renderTracks(map, data);
-    renderDrawings(map, data);
-    renderTexts(map, data);
-    renderMeasurements(map, data);
+    if (viewerLayerVisibility.tracks !== false) renderTracks(map, data);
+    if (viewerLayerVisibility.drawings !== false) renderDrawings(map, {...data, drawings:(data.drawings || []).filter(drawingVisibleInViewer)});
+    if (viewerLayerVisibility.texts !== false) renderTexts(map, data);
+    if (viewerLayerVisibility.measurements !== false) renderMeasurements(map, data);
 
     if (!initial && preservedCenter && Number.isFinite(preservedZoom)) {
       map.setView(preservedCenter, preservedZoom, { animate:false });
     }
-    setTimeout(() => map.invalidateSize(), 60);
+    setTimeout(() => {
+      map.invalidateSize();
+      const info = getViewerGridInfo(currentBounds, Number(data.gridSize || data.session?.gridSize || 0));
+      if (info && viewerLayerVisibility.grid !== false) drawViewerGridLabels(map, info);
+    }, 60);
   }
 
   async function refreshLiveData({force=false}={}) {
@@ -1187,6 +1304,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     attributionControl: true
   }).setView(center, Number(data.session?.zoom || 14));
   setupViewerPanels(map);
+  setupViewerLayerControls();
+  map.on("zoom move resize", () => {
+    if (!currentData || viewerLayerVisibility.grid === false) return clearViewerGridOverlay();
+    const info = getViewerGridInfo(currentBounds, Number(currentData.gridSize || currentData.session?.gridSize || 0));
+    if (info) drawViewerGridLabels(map, info);
+  });
   setupViewerInteraction(map, () => ({data:currentData, bounds:currentBounds}));
   renderViewerData(data, {initial:true});
   showSuccessDiagnostic();
@@ -1211,7 +1334,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     window.addEventListener("online", () => refreshLiveData({force:true}));
   }
 
-  diag("パネル状態", true, `検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);
+  diag("パネル状態", true, `レイヤ=${viewerLayerPanel && !viewerLayerPanel.hidden ? "OPEN" : "CLOSE"} / 検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);
   diag("地図表示領域", true, `${mapEl ? mapEl.clientWidth : 0}×${mapEl ? mapEl.clientHeight : 0}px`);
   diag("地図表示完了", true);
   setTimeout(() => map.invalidateSize(), 100);
