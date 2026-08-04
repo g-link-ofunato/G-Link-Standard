@@ -1326,8 +1326,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (viewerGpsWatchId !== null) {
-      if (!recenterViewerGps()) {
-        navigator.geolocation.getCurrentPosition(handleGpsPosition, handleGpsError, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+      navigator.geolocation.clearWatch(viewerGpsWatchId);
+      viewerGpsWatchId = null;
+      if (viewerLocationBtn) {
+        viewerLocationBtn.classList.remove("is-tracking");
+        viewerLocationBtn.setAttribute("aria-pressed","false");
+        viewerLocationBtn.textContent = "現在地";
+      }
+      if (viewerCurrentLocation) {
+        viewerCurrentLocation.innerHTML = "";
+        viewerCurrentLocation.classList.remove("is-active");
       }
       return;
     }
