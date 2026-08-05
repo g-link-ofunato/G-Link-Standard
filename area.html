@@ -6,7 +6,7 @@
   <title>G-Link Standard エリア選択</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <link rel="stylesheet" href="style.css?v=Build1445"/>
+  <link rel="stylesheet" href="style.css?v=Build1346"/>
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -74,9 +74,30 @@
 
   <div class="toolItem searchItem coordinateSearchItem">
     <label>座標検索</label>
-    <div class="searchRow">
-      <input id="coordinateSearchBox" type="text" placeholder="例：35度43分36.21秒N, 139度48分23.47秒E">
-      <button id="coordinateSearchBtn">検索</button>
+    <div class="areaCoordinateSearchMode" role="group" aria-label="座標入力形式">
+      <button type="button" id="areaCoordModeDmsBtn" class="areaCoordModeBtn active">度分秒</button>
+      <button type="button" id="areaCoordModeDecimalBtn" class="areaCoordModeBtn">10進法</button>
+    </div>
+    <div id="areaCoordDmsInputs" class="areaCoordInputs">
+      <label class="areaCoordInputLine">
+        <span>緯度</span>
+        <input id="areaCoordLatDmsInput" class="areaCoordMaskedInput" type="text" inputmode="numeric" autocomplete="off" value="00度00分00.00秒" aria-label="緯度 度分秒">
+      </label>
+      <label class="areaCoordInputLine areaCoordInputLineWithAction">
+        <span>経度</span>
+        <input id="areaCoordLngDmsInput" class="areaCoordMaskedInput" type="text" inputmode="numeric" autocomplete="off" value="000度00分00.00秒" aria-label="経度 度分秒">
+        <button id="coordinateSearchBtn" class="areaCoordSearchAction">検索</button>
+      </label>
+    </div>
+    <div id="areaCoordDecimalInputs" class="areaCoordInputs" hidden>
+      <label class="areaCoordInputLine">
+        <span>緯度</span>
+        <input id="areaCoordLatDecimalInput" type="text" inputmode="decimal" placeholder="例：39.070094">
+      </label>
+      <label class="areaCoordInputLine">
+        <span>経度</span>
+        <input id="areaCoordLngDecimalInput" type="text" inputmode="decimal" placeholder="例：141.709600">
+      </label>
     </div>
   </div>
  
@@ -90,7 +111,7 @@
 <div id="map"></div>
 <div id="printFrame"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=Build1445"></script>
+<script src="app.js?v=Build1346"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>

@@ -224,6 +224,118 @@ window.addEventListener("DOMContentLoaded", () => {
     return `${formatDms(lat, "lat")}, ${formatDms(lng, "lng")}`;
   }
 
+  let areaCoordinateSearchMode = "dms";
+
+  function formatAreaDmsDigitMask(rawValue, axis) {
+    const digits = String(rawValue || "").replace(/\D/g, "");
+    const maxLength = axis === "lat" ? 8 : 9;
+    const normalized = digits.slice(0, maxLength).padEnd(maxLength, "0");
+    const degreeLength = axis === "lat" ? 2 : 3;
+    return `${normalized.slice(0, degreeLength)}度${normalized.slice(degreeLength, degreeLength + 2)}分${normalized.slice(degreeLength + 2, degreeLength + 4)}.${normalized.slice(degreeLength + 4, degreeLength + 6)}秒`;
+  }
+
+  function getAreaDmsRawDigits(input, axis) {
+    if (!input) return "";
+    const maxLength = axis === "lat" ? 8 : 9;
+    return String(input.dataset.rawDigits || "").replace(/\D/g, "").slice(0, maxLength);
+  }
+
+  function renderAreaDmsMaskedInput(input, axis) {
+    if (!input) return;
+    input.value = formatAreaDmsDigitMask(getAreaDmsRawDigits(input, axis), axis);
+  }
+
+  function setupAreaDmsMaskedInput(input, axis) {
+    if (!input) return;
+    input.dataset.rawDigits = "";
+    renderAreaDmsMaskedInput(input, axis);
+
+    input.addEventListener("keydown", event => {
+      if (event.ctrlKey || event.metaKey) return;
+      const maxLength = axis === "lat" ? 8 : 9;
+      let raw = getAreaDmsRawDigits(input, axis);
+
+      if (/^\d$/.test(event.key)) {
+        event.preventDefault();
+        if (raw.length < maxLength) raw += event.key;
+        input.dataset.rawDigits = raw;
+        renderAreaDmsMaskedInput(input, axis);
+        return;
+      }
+
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        input.dataset.rawDigits = raw.slice(0, -1);
+        renderAreaDmsMaskedInput(input, axis);
+        return;
+      }
+
+      if (["Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+    });
+
+    input.addEventListener("paste", event => {
+      event.preventDefault();
+      const maxLength = axis === "lat" ? 8 : 9;
+      const pasted = (event.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, maxLength);
+      input.dataset.rawDigits = pasted;
+      renderAreaDmsMaskedInput(input, axis);
+    });
+
+    input.addEventListener("focus", () => {
+      requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
+    });
+  }
+
+  function parseAreaMaskedDmsInput(input, axis) {
+    const raw = getAreaDmsRawDigits(input, axis);
+    const expectedLength = axis === "lat" ? 8 : 9;
+    if (raw.length !== expectedLength) return null;
+
+    const degreeLength = axis === "lat" ? 2 : 3;
+    const degrees = Number(raw.slice(0, degreeLength));
+    const minutes = Number(raw.slice(degreeLength, degreeLength + 2));
+    const secondsWhole = Number(raw.slice(degreeLength + 2, degreeLength + 4));
+    const secondsDecimal = Number(raw.slice(degreeLength + 4, degreeLength + 6));
+    const seconds = secondsWhole + secondsDecimal / 100;
+    const degreeLimit = axis === "lat" ? 90 : 180;
+
+    if (![degrees, minutes, seconds].every(Number.isFinite)) return null;
+    if (degrees > degreeLimit || minutes >= 60 || seconds >= 60) return null;
+    return degrees + minutes / 60 + seconds / 3600;
+  }
+
+  function setAreaCoordinateSearchMode(mode) {
+    areaCoordinateSearchMode = mode === "decimal" ? "decimal" : "dms";
+    if (areaCoordDmsInputs) areaCoordDmsInputs.hidden = areaCoordinateSearchMode !== "dms";
+    if (areaCoordDecimalInputs) areaCoordDecimalInputs.hidden = areaCoordinateSearchMode !== "decimal";
+    if (areaCoordModeDmsBtn) areaCoordModeDmsBtn.classList.toggle("active", areaCoordinateSearchMode === "dms");
+    if (areaCoordModeDecimalBtn) areaCoordModeDecimalBtn.classList.toggle("active", areaCoordinateSearchMode === "decimal");
+
+    const dmsActionRow = areaCoordLngDmsInput?.closest(".areaCoordInputLine");
+    const decimalActionRow = areaCoordLngDecimalInput?.closest(".areaCoordInputLine");
+    [dmsActionRow, decimalActionRow].forEach(row => row?.classList.remove("areaCoordInputLineWithAction"));
+    const activeActionRow = areaCoordinateSearchMode === "decimal" ? decimalActionRow : dmsActionRow;
+    if (activeActionRow && coordinateSearchBtn) {
+      activeActionRow.classList.add("areaCoordInputLineWithAction");
+      activeActionRow.appendChild(coordinateSearchBtn);
+    }
+    updateLayoutMetrics();
+  }
+
+  function setupAreaCoordinateSearchInputs() {
+    setupAreaDmsMaskedInput(areaCoordLatDmsInput, "lat");
+    setupAreaDmsMaskedInput(areaCoordLngDmsInput, "lng");
+    areaCoordModeDmsBtn?.addEventListener("click", () => setAreaCoordinateSearchMode("dms"));
+    areaCoordModeDecimalBtn?.addEventListener("click", () => setAreaCoordinateSearchMode("decimal"));
+    [areaCoordLatDmsInput, areaCoordLngDmsInput, areaCoordLatDecimalInput, areaCoordLngDecimalInput].forEach(input => {
+      input?.addEventListener("keydown", event => {
+        if (event.key === "Enter") searchCoordinateLocation();
+      });
+    });
+    setAreaCoordinateSearchMode("dms");
+  }
+
   const frame = document.getElementById("printFrame");
   const currentScale = document.getElementById("currentScale");
  
@@ -234,7 +346,14 @@ window.addEventListener("DOMContentLoaded", () => {
  
   const searchBox = document.getElementById("searchBox");
   const searchBtn = document.getElementById("searchBtn");
-  const coordinateSearchBox = document.getElementById("coordinateSearchBox");
+  const areaCoordModeDmsBtn = document.getElementById("areaCoordModeDmsBtn");
+  const areaCoordModeDecimalBtn = document.getElementById("areaCoordModeDecimalBtn");
+  const areaCoordDmsInputs = document.getElementById("areaCoordDmsInputs");
+  const areaCoordDecimalInputs = document.getElementById("areaCoordDecimalInputs");
+  const areaCoordLatDmsInput = document.getElementById("areaCoordLatDmsInput");
+  const areaCoordLngDmsInput = document.getElementById("areaCoordLngDmsInput");
+  const areaCoordLatDecimalInput = document.getElementById("areaCoordLatDecimalInput");
+  const areaCoordLngDecimalInput = document.getElementById("areaCoordLngDecimalInput");
   const coordinateSearchBtn = document.getElementById("coordinateSearchBtn");
   const commitBtn = document.getElementById("commitSessionBtn");
   const toolbar = document.getElementById("toolbar");
@@ -510,25 +629,41 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function searchCoordinateLocation() {
-    const value = coordinateSearchBox.value.trim();
     lastSearchMode = "座標検索";
-    lastSearchKeyword = value;
     lastSearchResult = "検索開始";
     updateDiagnostic();
 
-    if (!value) {
-      lastSearchResult = "未入力";
-      updateDiagnostic();
-      alert("検索する座標を入力してください。");
-      return;
-    }
-
-    const parsed = parseLatLngInput(value);
-    if (!parsed) {
-      lastSearchResult = "形式エラー";
-      updateDiagnostic();
-      alert("座標の形式を確認してください。\n例：35度43分36.21秒N, 139度48分23.47秒E\n例：35.726725, 139.806519");
-      return;
+    let parsed = null;
+    if (areaCoordinateSearchMode === "dms") {
+      const lat = parseAreaMaskedDmsInput(areaCoordLatDmsInput, "lat");
+      const lng = parseAreaMaskedDmsInput(areaCoordLngDmsInput, "lng");
+      lastSearchKeyword = `${areaCoordLatDmsInput?.value || ""}, ${areaCoordLngDmsInput?.value || ""}`;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) parsed = { lat, lng };
+      if (!parsed) {
+        lastSearchResult = "形式エラー";
+        updateDiagnostic();
+        alert("度分秒の入力を確認してください。\n緯度は8桁（00度00分00.00秒）、経度は9桁（000度00分00.00秒）で入力してください。\n分・秒は00～59の範囲です。");
+        return;
+      }
+    } else {
+      const latText = String(areaCoordLatDecimalInput?.value || "").trim();
+      const lngText = String(areaCoordLngDecimalInput?.value || "").trim();
+      lastSearchKeyword = `${latText}, ${lngText}`;
+      if (!latText || !lngText) {
+        lastSearchResult = "未入力";
+        updateDiagnostic();
+        alert("緯度と経度を入力してください。");
+        return;
+      }
+      const lat = parseSingleCoordinate(latText, "lat");
+      const lng = parseSingleCoordinate(lngText, "lng");
+      if (Number.isFinite(lat) && Number.isFinite(lng)) parsed = { lat, lng };
+      if (!parsed) {
+        lastSearchResult = "形式エラー";
+        updateDiagnostic();
+        alert("10進法の座標を確認してください。\n例：緯度 39.070094、経度 141.709600");
+        return;
+      }
     }
 
     const { lat, lng } = parsed;
@@ -549,9 +684,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") searchLocation();
   });
 
-  coordinateSearchBox.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") searchCoordinateLocation();
-  });
  
   commitBtn.addEventListener("click", () => {
  
@@ -749,6 +881,7 @@ window.addEventListener("DOMContentLoaded", () => {
     updateDiagnostic();
   });
  
+  setupAreaCoordinateSearchInputs();
   setBaseMap(settings.mapType);
   updateLayoutMetrics();
   updateScaleDisplay();
