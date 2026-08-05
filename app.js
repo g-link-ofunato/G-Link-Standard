@@ -1,4 +1,45 @@
 window.addEventListener("DOMContentLoaded", () => {
+  const areaPageParams = new URLSearchParams(window.location.search);
+  const areaReconfigureId = areaPageParams.get("reconfigure") || "";
+  const AREA_TRANSFER_DB_NAME = "gLinkAreaTransferDb";
+  const AREA_TRANSFER_STORE_NAME = "transfers";
+
+  function openAreaTransferDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error("このブラウザは一時引継ぎ保存に対応していません。"));
+      const request = indexedDB.open(AREA_TRANSFER_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(AREA_TRANSFER_STORE_NAME)) db.createObjectStore(AREA_TRANSFER_STORE_NAME, { keyPath: "id" });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("一時引継ぎ保存を開けませんでした。"));
+    });
+  }
+
+  async function readAreaTransferData(id) {
+    const db = await openAreaTransferDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(AREA_TRANSFER_STORE_NAME, "readonly");
+        const request = tx.objectStore(AREA_TRANSFER_STORE_NAME).get(id);
+        request.onsuccess = () => resolve(request.result?.data || null);
+        request.onerror = () => reject(request.error || new Error("編集内容を読み込めませんでした。"));
+      });
+    } finally { db.close(); }
+  }
+
+  async function deleteAreaTransferData(id) {
+    const db = await openAreaTransferDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(AREA_TRANSFER_STORE_NAME, "readwrite");
+        tx.objectStore(AREA_TRANSFER_STORE_NAME).delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error("一時データを削除できませんでした。"));
+      });
+    } finally { db.close(); }
+  }
  
   const mapLayers = {
     pale: {
@@ -685,7 +726,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
  
-  commitBtn.addEventListener("click", () => {
+  commitBtn.addEventListener("click", async () => {
  
     updateScaleDisplay();
  
@@ -739,6 +780,48 @@ window.addEventListener("DOMContentLoaded", () => {
       console.warn("G-Link作業状態のバックアップ保存に失敗しました。", error);
     }
  
+    if (areaReconfigureId) {
+      const fixedWindow = window.open("about:blank", "_blank");
+      if (!fixedWindow) {
+        alert("新しい指揮本部モードを開けませんでした。ブラウザのポップアップ許可を確認してください。");
+        return;
+      }
+      try {
+        const transferData = await readAreaTransferData(areaReconfigureId);
+        if (!transferData || transferData.format !== "glink") throw new Error("引継ぎ対象の編集データが見つかりませんでした。");
+        const nextData = {
+          ...transferData,
+          savedAt: new Date().toISOString(),
+          session: {
+            ...(transferData.session || {}),
+            ...session,
+            header: transferData.session?.header || session.header,
+            coordinateType: transferData.session?.coordinateType || transferData.coordinateType || "dms"
+          },
+          bounds: session.bounds,
+          gridSize: session.gridSize,
+          mapType: session.mapType,
+          areaReconfiguration: {
+            ...(transferData.areaReconfiguration || {}),
+            completedAt: new Date().toISOString(),
+            targetBounds: session.bounds
+          }
+        };
+        const nextJson = JSON.stringify(nextData);
+        fixedWindow.sessionStorage.setItem("disasterSession", JSON.stringify(nextData.session));
+        fixedWindow.sessionStorage.setItem("gLink_pendingRestoreData", nextJson);
+        fixedWindow.sessionStorage.setItem("gLink_workingData", nextJson);
+        fixedWindow.sessionStorage.setItem("gLink_returnFromSaveCenter", "1");
+        fixedWindow.location.replace("fixed.html?restore=glink&reconfigured=1");
+        await deleteAreaTransferData(areaReconfigureId);
+      } catch (error) {
+        try { fixedWindow.close(); } catch (closeError) {}
+        console.error("災害エリア再設定データの復元準備に失敗しました。", error);
+        alert(`災害エリア再設定データの復元準備に失敗しました。\n${error?.message || error}`);
+      }
+      return;
+    }
+
     window.open("fixed.html", "_blank");
  
   });

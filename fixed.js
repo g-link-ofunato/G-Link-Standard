@@ -230,6 +230,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const mapTypeSettingSection = document.getElementById("mapTypeSettingSection");
   const coordinateSettingSection = document.getElementById("coordinateSettingSection");
   const fixedMapType = document.getElementById("fixedMapType");
+  const reconfigureDisasterAreaBtn = document.getElementById("reconfigureDisasterAreaBtn");
   const mapTypeStatusText = document.getElementById("mapTypeStatusText");
   const coordinateTypeSelect = document.getElementById("coordinateTypeSelect");
   const coordinateTypeStatusText = document.getElementById("coordinateTypeStatusText");
@@ -3043,6 +3044,7 @@ window.addEventListener("DOMContentLoaded", () => {
   updateGridLineSettingControls();
   setupGridLineSettingEvents();
   setupSettingMenuEvents();
+  if (reconfigureDisasterAreaBtn) reconfigureDisasterAreaBtn.addEventListener("click", startDisasterAreaReconfiguration);
   setupCoordinateSearchInputs();
   setupMeasureEvents();
   setupSharePanelEvents();
@@ -6842,6 +6844,86 @@ window.addEventListener("DOMContentLoaded", () => {
     return null;
   }
  
+  const AREA_TRANSFER_DB_NAME = "gLinkAreaTransferDb";
+  const AREA_TRANSFER_STORE_NAME = "transfers";
+
+  function openAreaTransferDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("このブラウザは一時引継ぎ保存に対応していません。"));
+        return;
+      }
+      const request = indexedDB.open(AREA_TRANSFER_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(AREA_TRANSFER_STORE_NAME)) {
+          db.createObjectStore(AREA_TRANSFER_STORE_NAME, { keyPath: "id" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("一時引継ぎ保存を開けませんでした。"));
+    });
+  }
+
+  async function saveAreaTransferData(id, data) {
+    const db = await openAreaTransferDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(AREA_TRANSFER_STORE_NAME, "readwrite");
+        tx.objectStore(AREA_TRANSFER_STORE_NAME).put({ id, data, createdAt: Date.now() });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error("編集内容を一時保存できませんでした。"));
+        tx.onabort = () => reject(tx.error || new Error("編集内容の一時保存が中断されました。"));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  function makeAreaTransferId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    return `area-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  async function startDisasterAreaReconfiguration() {
+    const confirmed = confirm(
+      "現在の編集内容を保持したまま、新しいタブで災害エリアを再設定します。\n\n" +
+      "・現在のタブは確認用として残ります\n" +
+      "・新しいタブへ全データを複製します\n" +
+      "・新しい範囲に合わせてグリッド番号を再計算します\n" +
+      "・現在のタブのライブ自動送信は停止します"
+    );
+    if (!confirmed) return;
+
+    const areaWindow = window.open("about:blank", "_blank");
+    if (!areaWindow) {
+      alert("新しいタブを開けませんでした。ブラウザのポップアップ許可を確認してください。");
+      return;
+    }
+
+    try {
+      const transferId = makeAreaTransferId();
+      const transferData = buildGlinkData();
+      transferData.areaReconfiguration = {
+        sourceCreatedAt: new Date().toISOString(),
+        sourceBounds: transferData.session?.bounds || transferData.bounds || null
+      };
+      await saveAreaTransferData(transferId, transferData);
+
+      if (liveAutoSendCheckbox) {
+        liveAutoSendCheckbox.checked = false;
+        try { localStorage.setItem(LIVE_AUTO_SEND_KEY, "false"); } catch (error) {}
+        clearLiveAutoSendTimer();
+      }
+
+      areaWindow.location.replace(`area.html?reconfigure=${encodeURIComponent(transferId)}`);
+    } catch (error) {
+      try { areaWindow.close(); } catch (closeError) {}
+      console.error("災害エリア再設定の準備に失敗しました。", error);
+      alert(`災害エリア再設定の準備に失敗しました。\n${error?.message || error}`);
+    }
+  }
+
   function buildGlinkData() {
     glinkDiagLog("fixed buildGlinkData start", { session, mapCenter: (map && map.getCenter) ? map.getCenter() : null, mapZoom: (map && map.getZoom) ? map.getZoom() : null, fixedMapType: fixedMapType ? fixedMapType.value : null });
     glinkDiagLog("fixed object diagnosis before buildGlinkData", getGlinkObjectDiagnosis());
@@ -7136,6 +7218,7 @@ window.addEventListener("DOMContentLoaded", () => {
       applyGlinkProjectView(data);
       applyLayerVisibility({ skipSessionSave: true });
       refreshCoordinateDisplays();
+      if (data.areaReconfiguration) refreshGridDependentData();
     });
 
     const restoredCounts = getCurrentRestoredCountSummary();
