@@ -6,7 +6,7 @@
   <title>G-Link Standard エリア選択</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <link rel="stylesheet" href="style.css?v=Build1346"/>
+  <link rel="stylesheet" href="style.css?v=Build1437"/>
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -74,10 +74,12 @@
 
   <div class="toolItem searchItem coordinateSearchItem">
     <label>座標検索</label>
-    <div class="areaCoordinateSearchMode" role="group" aria-label="座標入力形式">
-      <button type="button" id="areaCoordModeDmsBtn" class="areaCoordModeBtn active">度分秒</button>
-      <button type="button" id="areaCoordModeDecimalBtn" class="areaCoordModeBtn">10進法</button>
-    </div>
+    <div class="areaCoordinateCompact">
+      <div class="areaCoordinateSearchMode" role="group" aria-label="座標入力形式">
+        <button type="button" id="areaCoordModeDmsBtn" class="areaCoordModeBtn active">度分秒</button>
+        <button type="button" id="areaCoordModeDecimalBtn" class="areaCoordModeBtn">10進法</button>
+      </div>
+      <div class="areaCoordinateFields">
     <div id="areaCoordDmsInputs" class="areaCoordInputs">
       <label class="areaCoordInputLine">
         <span>緯度</span>
@@ -99,6 +101,8 @@
         <input id="areaCoordLngDecimalInput" type="text" inputmode="decimal" placeholder="例：141.709600">
       </label>
     </div>
+      </div>
+    </div>
   </div>
  
  
@@ -111,7 +115,7 @@
 <div id="map"></div>
 <div id="printFrame"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=Build1346"></script>
+<script src="app.js?v=Build1437"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>

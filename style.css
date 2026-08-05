@@ -86,9 +86,16 @@ body {
 .searchRow button {
   height: 32px;
   min-width: 64px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #ffffff;
   font-weight: bold;
+  white-space: nowrap;
   cursor: pointer;
 }
+.searchRow button:hover { background: #1d4ed8; }
  
  
 .commitItem {
@@ -100,7 +107,7 @@ body {
   min-width: 160px;
   font-weight: bold;
   cursor: pointer;
-  background: #2563eb;
+  background: #dc2626;
   color: white;
   border: none;
   border-radius: 5px;
@@ -204,13 +211,20 @@ body {
 }
 
 
-/* Version2026.08.05 Build1346: 災害エリア選択モード 座標検索テンプレート */
+/* Version2026.08.05 Build1437: 災害エリア選択モード 座標検索テンプレート */
+.areaCoordinateCompact {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 6px;
+}
 .areaCoordinateSearchMode {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 32px 32px;
   gap: 6px;
-  margin-bottom: 6px;
+  margin: 0;
 }
+.areaCoordinateFields { min-width: 0; }
 .areaCoordModeBtn {
   min-height: 32px;
   border: 1px solid #94a3b8;
@@ -272,3 +286,11 @@ body {
   cursor: pointer;
 }
 .areaCoordSearchAction:hover { background: #1d4ed8; }
+
+/* Version2026.08.05 Build1437: 座標検索コンパクト配置・検索ボタン配色統一 */
+#commitSessionBtn:hover { background: #b91c1c; }
+@media (max-width: 560px) {
+  .areaCoordinateCompact { grid-template-columns: 84px minmax(0, 1fr); }
+  .areaCoordInputLineWithAction { grid-template-columns: 34px minmax(0, 1fr) 56px !important; }
+  .areaCoordSearchAction { width: 56px; padding: 0 6px; }
+}
