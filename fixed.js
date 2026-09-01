@@ -340,6 +340,18 @@ window.addEventListener("DOMContentLoaded", () => {
   const duplicateShapeEdit = document.getElementById("duplicateShapeEdit");
   const deleteShapeEdit = document.getElementById("deleteShapeEdit");
   const closeShapeEdit = document.getElementById("closeShapeEdit");
+
+  const measureEditPanel = document.getElementById("measureEditPanel");
+  const measureEditName = document.getElementById("measureEditName");
+  const measureEditLineColor = document.getElementById("measureEditLineColor");
+  const measureEditFillColor = document.getElementById("measureEditFillColor");
+  const measureEditOpacity = document.getElementById("measureEditOpacity");
+  const measureEditOpacityValue = document.getElementById("measureEditOpacityValue");
+  const measureEditWeight = document.getElementById("measureEditWeight");
+  const measureEditWeightValue = document.getElementById("measureEditWeightValue");
+  const saveMeasureEdit = document.getElementById("saveMeasureEdit");
+  const deleteMeasureEdit = document.getElementById("deleteMeasureEdit");
+  const closeMeasureEdit = document.getElementById("closeMeasureEdit");
  
   const editPanel = document.getElementById("editPanel");
   const pinType = document.getElementById("pinType");
@@ -511,6 +523,7 @@ window.addEventListener("DOMContentLoaded", () => {
     ...(session.layerVisibility && typeof session.layerVisibility === "object" ? session.layerVisibility : {})
   };
   let selectedShape = null;
+  let selectedMeasurement = null;
   let copiedShapeData = null;
   let pasteMode = false;
   let dragShapeState = null;
@@ -3850,6 +3863,8 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function selectShape(layer) {
+    if (measureEditPanel) measureEditPanel.style.display = "none";
+    clearSelectedMeasurementStyle();
     clearSelectedShapeStyle();
     selectedShape = layer;
     const meta = layer._fireGridMeta;
@@ -4482,6 +4497,59 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
  
+  function clearSelectedMeasurementStyle() {
+    if (!selectedMeasurement) return;
+    applyMeasurementStyle(selectedMeasurement);
+    selectedMeasurement = null;
+  }
+
+  function selectMeasurement(measurement) {
+    shapeEditPanel.style.display = "none";
+    clearSelectedShapeStyle();
+    clearSelectedMeasurementStyle();
+    selectedMeasurement = measurement;
+    if (!measurement || !measurement.layer) return;
+
+    if (measurement.layer.setStyle) {
+      measurement.layer.setStyle({
+        color: "#2563eb",
+        weight: Math.max(Number(measurement.style?.weight || 4) + 3, 6),
+        opacity: 1
+      });
+    }
+
+    if (measureEditName) measureEditName.value = getMeasurementDisplayName(measurement);
+    if (measureEditLineColor) measureEditLineColor.value = measurement.style.lineColor || measureSettings.lineColor;
+    if (measureEditFillColor) measureEditFillColor.value = measurement.style.fillColor || measureSettings.fillColor;
+    if (measureEditOpacity) {
+      const opacity = Math.round(Number(measurement.style.opacity ?? measureSettings.opacity) * 100);
+      measureEditOpacity.value = String(opacity);
+      if (measureEditOpacityValue) measureEditOpacityValue.textContent = String(opacity);
+    }
+    if (measureEditWeight) {
+      const weight = Number(measurement.style.weight || measureSettings.weight);
+      measureEditWeight.value = String(weight);
+      if (measureEditWeightValue) measureEditWeightValue.textContent = String(weight);
+    }
+
+    if (measureEditPanel) measureEditPanel.style.display = "block";
+  }
+
+  function attachMeasurementEvents(measurement) {
+    if (!measurement?.layer) return;
+    const layer = measurement.layer;
+    layer.off("contextmenu");
+    layer.on("contextmenu", e => {
+      if (e.originalEvent) {
+        e.originalEvent.preventDefault();
+        e.originalEvent.stopPropagation();
+        if (e.originalEvent.stopImmediatePropagation) e.originalEvent.stopImmediatePropagation();
+      }
+      window.fireGridSuppressNextClick = true;
+      selectMeasurement(measurement);
+    });
+  }
+
   function addMeasurement(points, sourceType) {
     const normalized = normalizePolygonPoints(points);
     if (normalized.length < 4) {
@@ -4511,10 +4579,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
  
     layer._fireGridMeasurementId = id;
-    layer.on("contextmenu", e => {
-      if (e.originalEvent) e.originalEvent.preventDefault();
-      deleteMeasurement(id);
-    });
+    attachMeasurementEvents(measurement);
  
     measurements.push(measurement);
     refreshMeasurementStats(measurement);
@@ -4526,6 +4591,11 @@ window.addEventListener("DOMContentLoaded", () => {
   function deleteMeasurement(id) {
     const target = measurements.find(item => item.id === id);
     if (!target) return;
+
+    if (selectedMeasurement === target) {
+      selectedMeasurement = null;
+      if (measureEditPanel) measureEditPanel.style.display = "none";
+    }
  
     measureLayer.removeLayer(target.layer);
     if (target.labelMarker) measureLayer.removeLayer(target.labelMarker);
@@ -4547,6 +4617,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!result) return;
     measureLayer.clearLayers();
     measurements = [];
+    selectedMeasurement = null;
+    if (measureEditPanel) measureEditPanel.style.display = "none";
     measureSerial = 1;
     updateMeasureSummaryBanner();
     renderMeasureList();
@@ -5494,6 +5566,55 @@ window.addEventListener("DOMContentLoaded", () => {
     shapeEditPanel.style.display = "none";
     clearSelectedShapeStyle();
   });
+
+  if (measureEditOpacity) {
+    measureEditOpacity.addEventListener("input", () => {
+      if (measureEditOpacityValue) measureEditOpacityValue.textContent = measureEditOpacity.value;
+    });
+  }
+
+  if (measureEditWeight) {
+    measureEditWeight.addEventListener("input", () => {
+      if (measureEditWeightValue) measureEditWeightValue.textContent = measureEditWeight.value;
+    });
+  }
+
+  if (saveMeasureEdit) {
+    saveMeasureEdit.addEventListener("click", () => {
+      if (!selectedMeasurement) return;
+      selectedMeasurement.name = (measureEditName?.value || "").trim() || "名称未設定";
+      selectedMeasurement.style = {
+        ...selectedMeasurement.style,
+        lineColor: measureEditLineColor?.value || selectedMeasurement.style.lineColor,
+        fillColor: measureEditFillColor?.value || selectedMeasurement.style.fillColor,
+        opacity: Number(measureEditOpacity?.value || 25) / 100,
+        weight: Number(measureEditWeight?.value || 4)
+      };
+      applyMeasurementStyle(selectedMeasurement);
+      refreshMeasurementStats(selectedMeasurement);
+      renderMeasureList();
+      applyMeasurementLayerFilter();
+      if (measureEditPanel) measureEditPanel.style.display = "none";
+      clearSelectedMeasurementStyle();
+    });
+  }
+
+  if (deleteMeasureEdit) {
+    deleteMeasureEdit.addEventListener("click", () => {
+      if (!selectedMeasurement) return;
+      const targetId = selectedMeasurement.id;
+      const result = confirm("この計測図形を削除しますか？");
+      if (!result) return;
+      deleteMeasurement(targetId);
+    });
+  }
+
+  if (closeMeasureEdit) {
+    closeMeasureEdit.addEventListener("click", () => {
+      if (measureEditPanel) measureEditPanel.style.display = "none";
+      clearSelectedMeasurementStyle();
+    });
+  }
  
   updateDrawStatus();
  
@@ -7091,10 +7212,7 @@ window.addEventListener("DOMContentLoaded", () => {
         visible: saved.visible !== false
       };
       layer._fireGridMeasurementId = id;
-      layer.on("contextmenu", e => {
-        if (e.originalEvent) e.originalEvent.preventDefault();
-        deleteMeasurement(id);
-      });
+      attachMeasurementEvents(measurement);
       measurements.push(measurement);
       refreshMeasurementStats(measurement);
     });

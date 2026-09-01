@@ -617,7 +617,8 @@ body {
 /* 各種編集パネル */
 #editPanel,
 #historyEditPanel,
-#shapeEditPanel {
+#shapeEditPanel,
+#measureEditPanel {
   position: absolute;
   top: 90px;
   right: 15px;
@@ -634,14 +635,16 @@ body {
  
 #editPanel h3,
 #historyEditPanel h3,
-#shapeEditPanel h3 {
+#shapeEditPanel h3,
+#measureEditPanel h3 {
   margin: 0 0 10px 0;
   font-size: 16px;
 }
  
 #editPanel label,
 #historyEditPanel label,
-#shapeEditPanel label {
+#shapeEditPanel label,
+#measureEditPanel label {
   display: block;
   margin-top: 8px;
   font-size: 12px;
@@ -655,7 +658,9 @@ body {
 #historyEditPanel select,
 #historyEditPanel textarea,
 #shapeEditPanel input,
-#shapeEditPanel select {
+#shapeEditPanel select,
+#measureEditPanel input,
+#measureEditPanel select {
   width: 100%;
   box-sizing: border-box;
   margin-top: 3px;
@@ -670,7 +675,9 @@ body {
 #historyEditPanel input,
 #historyEditPanel select,
 #shapeEditPanel input,
-#shapeEditPanel select {
+#shapeEditPanel select,
+#measureEditPanel input,
+#measureEditPanel select {
   height: 30px;
 }
  
@@ -769,7 +776,8 @@ body {
   #historyContextMenu,
   #editPanel,
   #historyEditPanel,
-  #shapeEditPanel {
+  #shapeEditPanel,
+  #measureEditPanel {
     display: none;
   }
  

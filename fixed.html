@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1541">
+  <link rel="stylesheet" href="fixed.css?v=Build1552">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -851,11 +851,43 @@
       <button id="closeShapeEdit">閉じる</button>
     </div>
   </div>
+
+  <!-- 計測図形編集パネル -->
+  <div id="measureEditPanel">
+    <h3>計測編集</h3>
+
+    <label>名称</label>
+    <input id="measureEditName" type="text" value="名称未設定" placeholder="名称未設定">
+
+    <label>線色</label>
+    <div class="customColorRow">
+      <span>色を選択</span>
+      <input id="measureEditLineColor" type="color" value="#e60000">
+    </div>
+
+    <label>塗り色</label>
+    <div class="customColorRow">
+      <span>色を選択</span>
+      <input id="measureEditFillColor" type="color" value="#e60000">
+    </div>
+
+    <label>透明度：<span id="measureEditOpacityValue">25</span>%</label>
+    <input id="measureEditOpacity" type="range" min="5" max="80" value="25">
+
+    <label>線の太さ：<span id="measureEditWeightValue">4</span></label>
+    <input id="measureEditWeight" type="range" min="1" max="10" value="4">
+
+    <div class="buttonRow shapeButtonRow">
+      <button id="saveMeasureEdit" type="button">保存</button>
+      <button id="deleteMeasureEdit" type="button" class="dangerButton">削除</button>
+      <button id="closeMeasureEdit" type="button">閉じる</button>
+    </div>
+  </div>
  
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1541"></script>
+  <script src="fixed.js?v=Build1552"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
