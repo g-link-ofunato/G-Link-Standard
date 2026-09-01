@@ -3677,3 +3677,40 @@ body {
 .measureVertexHelp {
   margin: 6px 0 2px; font-size: 11px; line-height: 1.45; color: #475569;
 }
+
+
+/* 計測図形 頂点編集 UI調整 Build1616 */
+#measureVertexEditActions {
+  margin-top: 8px;
+  width: 100%;
+}
+
+#measureVertexEditActions .buttonRow {
+  width: 100%;
+}
+
+#measureVertexEditActions .buttonRow button {
+  min-width: 0;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  font-size: 13px;
+}
+
+#addMeasureVertexMode.active {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.measureVertexHelp {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.measureVertexHelp > div + div {
+  margin-top: 2px;
+}

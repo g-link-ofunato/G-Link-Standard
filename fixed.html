@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1609">
+  <link rel="stylesheet" href="fixed.css?v=Build1616">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -883,12 +883,16 @@
     </div>
 
     <div id="measureVertexEditActions" style="display:none;">
-      <div class="buttonRow shapeButtonRow">
+      <div class="buttonRow shapeButtonRow measureVertexModeRow">
+        <button id="addMeasureVertexMode" type="button" class="active">頂点追加</button>
         <button id="deleteMeasureVertexMode" type="button">頂点削除</button>
-        <button id="saveMeasureVertexEdit" type="button">頂点保存</button>
       </div>
-      <div class="measureVertexHelp">辺の＋で頂点追加／「頂点削除」後に頂点をクリックして削除</div>
+      <div class="measureVertexHelp">
+        <div>頂点追加：辺の「＋」をクリック</div>
+        <div>頂点削除：ボタンを押した後、削除する頂点をクリック</div>
+      </div>
       <div class="buttonRow shapeButtonRow">
+        <button id="saveMeasureVertexEdit" type="button">頂点保存</button>
         <button id="cancelMeasureVertexEdit" type="button">キャンセル</button>
       </div>
     </div>
@@ -902,7 +906,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1609"></script>
+  <script src="fixed.js?v=Build1616"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>

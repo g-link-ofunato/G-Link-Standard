@@ -350,6 +350,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const measureEditWeight = document.getElementById("measureEditWeight");
   const measureEditWeightValue = document.getElementById("measureEditWeightValue");
   const startMeasureVertexEdit = document.getElementById("startMeasureVertexEdit");
+  const addMeasureVertexMode = document.getElementById("addMeasureVertexMode");
   const deleteMeasureVertexMode = document.getElementById("deleteMeasureVertexMode");
   const measureVertexEditActions = document.getElementById("measureVertexEditActions");
   const saveMeasureVertexEdit = document.getElementById("saveMeasureVertexEdit");
@@ -4514,7 +4515,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function setMeasurementVertexActionState(active) {
-    if (measureVertexEditActions) measureVertexEditActions.style.display = active ? "flex" : "none";
+    if (measureVertexEditActions) measureVertexEditActions.style.display = active ? "block" : "none";
     if (startMeasureVertexEdit) startMeasureVertexEdit.disabled = active;
   }
 
@@ -4540,6 +4541,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function setMeasurementVertexDeleteMode(active) {
     if (!measurementVertexEditState) return;
     measurementVertexEditState.deleteMode = !!active;
+    if (addMeasureVertexMode) addMeasureVertexMode.classList.toggle("active", !active);
     if (deleteMeasureVertexMode) {
       deleteMeasureVertexMode.classList.toggle("active", !!active);
       deleteMeasureVertexMode.textContent = active ? "削除モード終了" : "頂点削除";
@@ -4641,6 +4643,7 @@ window.addEventListener("DOMContentLoaded", () => {
       applyMeasurementLayerFilter();
     }
     measurementVertexEditState = null;
+    if (addMeasureVertexMode) addMeasureVertexMode.classList.add("active");
     if (deleteMeasureVertexMode) {
       deleteMeasureVertexMode.classList.remove("active");
       deleteMeasureVertexMode.textContent = "頂点削除";
@@ -4653,6 +4656,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const measurement = measurementVertexEditState.measurement;
     clearMeasurementVertexHandles();
     measurementVertexEditState = null;
+    if (addMeasureVertexMode) addMeasureVertexMode.classList.add("active");
     if (deleteMeasureVertexMode) {
       deleteMeasureVertexMode.classList.remove("active");
       deleteMeasureVertexMode.textContent = "頂点削除";
@@ -5768,6 +5772,13 @@ window.addEventListener("DOMContentLoaded", () => {
     startMeasureVertexEdit.addEventListener("click", () => {
       if (!selectedMeasurement) return;
       beginMeasurementVertexEdit(selectedMeasurement);
+    });
+  }
+
+  if (addMeasureVertexMode) {
+    addMeasureVertexMode.addEventListener("click", () => {
+      if (!measurementVertexEditState) return;
+      setMeasurementVertexDeleteMode(false);
     });
   }
 
