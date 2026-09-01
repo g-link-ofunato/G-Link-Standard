@@ -3659,3 +3659,21 @@ body {
 #measureVertexEditActions {
   margin-top: 8px;
 }
+
+
+/* 計測図形 頂点編集 第2段階 */
+.measureVertexAddHandle {
+  width: 16px; height: 16px; border: 2px solid #16a34a; border-radius: 50%;
+  background: #ffffff; color: #16a34a; box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.30); cursor: pointer;
+  font-size: 13px; line-height: 12px; text-align: center; font-weight: 800;
+}
+.measureVertexDeleteMode .measureVertexHandle, .measureVertexHandle.measureVertexDeleteMode {
+  border-color: #dc2626; background: #fee2e2; cursor: pointer;
+}
+#deleteMeasureVertexMode.active {
+  background: #dc2626; color: #ffffff; border-color: #dc2626;
+}
+.measureVertexHelp {
+  margin: 6px 0 2px; font-size: 11px; line-height: 1.45; color: #475569;
+}

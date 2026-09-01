@@ -350,6 +350,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const measureEditWeight = document.getElementById("measureEditWeight");
   const measureEditWeightValue = document.getElementById("measureEditWeightValue");
   const startMeasureVertexEdit = document.getElementById("startMeasureVertexEdit");
+  const deleteMeasureVertexMode = document.getElementById("deleteMeasureVertexMode");
   const measureVertexEditActions = document.getElementById("measureVertexEditActions");
   const saveMeasureVertexEdit = document.getElementById("saveMeasureVertexEdit");
   const cancelMeasureVertexEdit = document.getElementById("cancelMeasureVertexEdit");
@@ -4519,10 +4520,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function clearMeasurementVertexHandles() {
     if (!measurementVertexEditState) return;
-    (measurementVertexEditState.markers || []).forEach(marker => {
+    [...(measurementVertexEditState.markers || []), ...(measurementVertexEditState.midpointMarkers || [])].forEach(marker => {
       if (measureLayer.hasLayer(marker)) measureLayer.removeLayer(marker);
     });
     measurementVertexEditState.markers = [];
+    measurementVertexEditState.midpointMarkers = [];
   }
 
   function applyMeasurementVertexPositions(measurement, markers, renderList = false) {
@@ -4535,6 +4537,95 @@ window.addEventListener("DOMContentLoaded", () => {
     applyMeasurementLayerFilter();
   }
 
+  function setMeasurementVertexDeleteMode(active) {
+    if (!measurementVertexEditState) return;
+    measurementVertexEditState.deleteMode = !!active;
+    if (deleteMeasureVertexMode) {
+      deleteMeasureVertexMode.classList.toggle("active", !!active);
+      deleteMeasureVertexMode.textContent = active ? "削除モード終了" : "頂点削除";
+    }
+    (measurementVertexEditState.markers || []).forEach(marker => {
+      const el = marker.getElement();
+      if (el) el.classList.toggle("measureVertexDeleteMode", !!active);
+    });
+  }
+
+  function rebuildMeasurementVertexHandles() {
+    if (!measurementVertexEditState?.measurement?.layer) return;
+    const state = measurementVertexEditState;
+    const measurement = state.measurement;
+    const points = normalizePolygonPoints(getLatLngsFromLayer(measurement.layer)).slice(0, -1);
+    clearMeasurementVertexHandles();
+
+    state.markers = points.map((point, index) => {
+      const marker = L.marker(point, {
+        draggable: true,
+        keyboard: false,
+        zIndexOffset: 1200,
+        icon: L.divIcon({
+          className: "",
+          html: '<div class="measureVertexHandle" title="ドラッグして頂点を移動"></div>',
+          iconSize: [14, 14], iconAnchor: [7, 7]
+        })
+      }).addTo(measureLayer);
+      marker.on("drag", () => {
+        if (!measurementVertexEditState || measurementVertexEditState.measurement !== measurement) return;
+        applyMeasurementVertexPositions(measurement, measurementVertexEditState.markers, false);
+      });
+      marker.on("dragend", () => {
+        if (!measurementVertexEditState || measurementVertexEditState.measurement !== measurement) return;
+        applyMeasurementVertexPositions(measurement, measurementVertexEditState.markers, true);
+        rebuildMeasurementVertexHandles();
+      });
+      marker.on("click", e => {
+        if (e.originalEvent) L.DomEvent.stop(e.originalEvent);
+        if (!measurementVertexEditState?.deleteMode) return;
+        if (measurementVertexEditState.markers.length <= 3) {
+          alert("面積計測は3頂点未満にできません。");
+          return;
+        }
+        const remaining = measurementVertexEditState.markers
+          .filter(item => item !== marker)
+          .map(item => item.getLatLng());
+        measurement.layer.setLatLngs(remaining);
+        refreshMeasurementStats(measurement);
+        updateMeasureSummaryBanner();
+        renderMeasureList();
+        applyMeasurementLayerFilter();
+        rebuildMeasurementVertexHandles();
+      });
+      return marker;
+    });
+
+    state.midpointMarkers = points.map((point, index) => {
+      const next = points[(index + 1) % points.length];
+      const midpoint = L.latLng((point.lat + next.lat) / 2, (point.lng + next.lng) / 2);
+      const marker = L.marker(midpoint, {
+        keyboard: false,
+        zIndexOffset: 1150,
+        icon: L.divIcon({
+          className: "",
+          html: '<div class="measureVertexAddHandle" title="クリックして頂点を追加">＋</div>',
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        })
+      }).addTo(measureLayer);
+      marker.on("click", e => {
+        if (e.originalEvent) L.DomEvent.stop(e.originalEvent);
+        if (!measurementVertexEditState || measurementVertexEditState.measurement !== measurement) return;
+        const current = measurementVertexEditState.markers.map(item => item.getLatLng());
+        current.splice(index + 1, 0, marker.getLatLng());
+        measurement.layer.setLatLngs(current);
+        refreshMeasurementStats(measurement);
+        updateMeasureSummaryBanner();
+        renderMeasureList();
+        applyMeasurementLayerFilter();
+        rebuildMeasurementVertexHandles();
+      });
+      return marker;
+    });
+    setMeasurementVertexDeleteMode(!!state.deleteMode);
+  }
+
   function cancelMeasurementVertexEdit(restoreOriginal = true) {
     if (!measurementVertexEditState) {
       setMeasurementVertexActionState(false);
@@ -4543,14 +4634,17 @@ window.addEventListener("DOMContentLoaded", () => {
     const { measurement, originalPoints } = measurementVertexEditState;
     clearMeasurementVertexHandles();
     if (restoreOriginal && measurement?.layer && Array.isArray(originalPoints) && originalPoints.length >= 4) {
-      const openOriginal = originalPoints.slice(0, -1);
-      measurement.layer.setLatLngs(openOriginal);
+      measurement.layer.setLatLngs(originalPoints.slice(0, -1));
       refreshMeasurementStats(measurement);
       updateMeasureSummaryBanner();
       renderMeasureList();
       applyMeasurementLayerFilter();
     }
     measurementVertexEditState = null;
+    if (deleteMeasureVertexMode) {
+      deleteMeasureVertexMode.classList.remove("active");
+      deleteMeasureVertexMode.textContent = "頂点削除";
+    }
     setMeasurementVertexActionState(false);
   }
 
@@ -4559,6 +4653,10 @@ window.addEventListener("DOMContentLoaded", () => {
     const measurement = measurementVertexEditState.measurement;
     clearMeasurementVertexHandles();
     measurementVertexEditState = null;
+    if (deleteMeasureVertexMode) {
+      deleteMeasureVertexMode.classList.remove("active");
+      deleteMeasureVertexMode.textContent = "頂点削除";
+    }
     setMeasurementVertexActionState(false);
     if (measurement) {
       refreshMeasurementStats(measurement);
@@ -4571,36 +4669,14 @@ window.addEventListener("DOMContentLoaded", () => {
   function beginMeasurementVertexEdit(measurement) {
     if (!measurement?.layer) return;
     if (measurementVertexEditState) cancelMeasurementVertexEdit(true);
-
     const normalized = normalizePolygonPoints(getLatLngsFromLayer(measurement.layer));
     if (normalized.length < 4) return;
-    const originalPoints = cloneLatLngPoints(normalized);
-    const openPoints = originalPoints.slice(0, -1);
-    const markers = openPoints.map((point, index) => {
-      const marker = L.marker(point, {
-        draggable: true,
-        keyboard: false,
-        zIndexOffset: 1200,
-        icon: L.divIcon({
-          className: "",
-          html: '<div class="measureVertexHandle" title="ドラッグして頂点を移動"></div>',
-          iconSize: [14, 14],
-          iconAnchor: [7, 7]
-        })
-      }).addTo(measureLayer);
-      marker._fireGridMeasureVertexIndex = index;
-      marker.on("drag", () => {
-        if (!measurementVertexEditState || measurementVertexEditState.measurement !== measurement) return;
-        applyMeasurementVertexPositions(measurement, measurementVertexEditState.markers, false);
-      });
-      marker.on("dragend", () => {
-        if (!measurementVertexEditState || measurementVertexEditState.measurement !== measurement) return;
-        applyMeasurementVertexPositions(measurement, measurementVertexEditState.markers, true);
-      });
-      return marker;
-    });
-
-    measurementVertexEditState = { measurement, originalPoints, markers };
+    measurementVertexEditState = {
+      measurement,
+      originalPoints: cloneLatLngPoints(normalized),
+      markers: [], midpointMarkers: [], deleteMode: false
+    };
+    rebuildMeasurementVertexHandles();
     setMeasurementVertexActionState(true);
   }
 
@@ -5692,6 +5768,13 @@ window.addEventListener("DOMContentLoaded", () => {
     startMeasureVertexEdit.addEventListener("click", () => {
       if (!selectedMeasurement) return;
       beginMeasurementVertexEdit(selectedMeasurement);
+    });
+  }
+
+  if (deleteMeasureVertexMode) {
+    deleteMeasureVertexMode.addEventListener("click", () => {
+      if (!measurementVertexEditState) return;
+      setMeasurementVertexDeleteMode(!measurementVertexEditState.deleteMode);
     });
   }
 
