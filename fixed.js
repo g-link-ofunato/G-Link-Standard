@@ -409,6 +409,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const measureShapeCount = document.getElementById("measureShapeCount");
   const measureIndividualCards = document.getElementById("measureIndividualCards");
   const measureSummaryBanner = document.getElementById("measureSummaryBanner");
+  const measureSummaryCloseBtn = document.getElementById("measureSummaryCloseBtn");
  
  
  
@@ -460,6 +461,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let measureFreehandLine = null;
   let measurements = [];
   let measureSerial = 1;
+  let measureSummaryManuallyHidden = false;
  
   let pins = [];
   let selectedPin = null;
@@ -2200,6 +2202,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     if (panelId === "historyPanel") {
       renderActivityHistory();
+    }
+    if (panelId === "measurePanel") {
+      measureSummaryManuallyHidden = false;
+      updateMeasureSummaryBanner();
     }
   }
  
@@ -4333,9 +4339,13 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function updateMeasureSummaryBanner() {
     const hasMeasurements = measurements.length > 0;
+    if (!hasMeasurements) {
+      measureSummaryManuallyHidden = false;
+    }
+    const shouldShow = hasMeasurements && !measureSummaryManuallyHidden;
     if (measureSummaryBanner) {
-      measureSummaryBanner.classList.toggle("is-hidden", !hasMeasurements);
-      measureSummaryBanner.setAttribute("aria-hidden", hasMeasurements ? "false" : "true");
+      measureSummaryBanner.classList.toggle("is-hidden", !shouldShow);
+      measureSummaryBanner.setAttribute("aria-hidden", shouldShow ? "false" : "true");
     }
  
     const totalAreaM2 = measurements.reduce((sum, item) => sum + (item.areaM2 || 0), 0);
@@ -4639,6 +4649,13 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function setupMeasureEvents() {
     if (!measureModeBtn) return;
+
+    if (measureSummaryCloseBtn) {
+      measureSummaryCloseBtn.addEventListener("click", () => {
+        measureSummaryManuallyHidden = true;
+        updateMeasureSummaryBanner();
+      });
+    }
  
     measureModeBtn.addEventListener("click", () => setMeasureMode(true));
     measureModeEndBtn.addEventListener("click", () => setMeasureMode(false));

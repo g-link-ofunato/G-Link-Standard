@@ -902,6 +902,36 @@ body {
   font-size: 15px;
   font-weight: 900;
 }
+
+.measureSummaryHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.measureSummaryCloseBtn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(126, 34, 206, 0.30);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #5b21b6;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.measureSummaryCloseBtn:hover {
+  background: #f3e8ff;
+}
+
+.measureSummaryCloseBtn:focus-visible {
+  outline: 2px solid #7e22ce;
+  outline-offset: 2px;
+}
  
 .measureSummaryHeaderCount {
   color: #111827;

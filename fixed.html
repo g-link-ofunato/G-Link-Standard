@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build2105">
+  <link rel="stylesheet" href="fixed.css?v=Build1541">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -671,7 +671,10 @@
   <div id="measureSummaryBanner" class="measureSummaryBanner is-hidden" aria-hidden="true">
     <div class="measureSummaryHeader">
       <div class="measureSummaryHeaderTitle">計測結果</div>
-      <div class="measureSummaryHeaderCount">図形数：<strong><span id="measureShapeCount">0</span></strong> 個</div>
+      <div class="measureSummaryHeaderActions">
+        <div class="measureSummaryHeaderCount">図形数：<strong><span id="measureShapeCount">0</span></strong> 個</div>
+        <button id="measureSummaryCloseBtn" class="measureSummaryCloseBtn" type="button" aria-label="計測結果を閉じる" title="計測結果を閉じる">×</button>
+      </div>
     </div>
  
     <div class="measureSummaryBlock totalBlock">
@@ -852,7 +855,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1517"></script>
+  <script src="fixed.js?v=Build1541"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
