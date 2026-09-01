@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1552">
+  <link rel="stylesheet" href="fixed.css?v=Build1559">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -878,7 +878,16 @@
     <input id="measureEditWeight" type="range" min="1" max="10" value="4">
 
     <div class="buttonRow shapeButtonRow">
+      <button id="startMeasureVertexEdit" type="button">頂点編集</button>
       <button id="saveMeasureEdit" type="button">保存</button>
+    </div>
+
+    <div id="measureVertexEditActions" class="buttonRow shapeButtonRow" style="display:none;">
+      <button id="saveMeasureVertexEdit" type="button">頂点保存</button>
+      <button id="cancelMeasureVertexEdit" type="button">キャンセル</button>
+    </div>
+
+    <div class="buttonRow shapeButtonRow">
       <button id="deleteMeasureEdit" type="button" class="dangerButton">削除</button>
       <button id="closeMeasureEdit" type="button">閉じる</button>
     </div>
@@ -887,7 +896,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1552"></script>
+  <script src="fixed.js?v=Build1559"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>

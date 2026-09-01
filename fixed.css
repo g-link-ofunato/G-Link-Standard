@@ -3642,3 +3642,20 @@ body {
 .coordSearchAction:hover {
   background: #1d4ed8;
 }
+
+
+/* 計測図形 頂点編集 */
+.measureVertexHandle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: #ffffff;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  cursor: move;
+}
+
+#measureVertexEditActions {
+  margin-top: 8px;
+}
