@@ -406,7 +406,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     try { body = await response.json(); } catch (error) {}
     if (!response.ok) throw new Error(body.message || `ライブ共有データを取得できません（HTTP ${response.status}）`);
     diag("ライブ共有取得", true, `更新=${body.updatedAt || "-"}`);
-    window.__gLinkLiveShareMeta = {shareId:id, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
+    window.__gLinkLiveShareMeta = {shareId:id, status:body.status || "active", stoppedAt:body.stoppedAt || null, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
     sendLiveViewerHeartbeat();
     return expandCompactViewerData(body.payload);
   }
@@ -1185,6 +1185,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   function updateLiveMeta(meta, changed=false) {
     const updatedAt = meta?.updatedAt || "";
     if (liveUpdatedAt) liveUpdatedAt.textContent = `最終更新：${formatLiveClock(updatedAt)}`;
+    if (meta?.status === "stopped") {
+      setLiveConnection("online", "共有停止");
+      showLiveStatus(`この共有は指揮本部により停止されました。表示中の情報は最終送信時点（${formatLiveClock(updatedAt)}）のものです。`, "info", false);
+      if (liveTimer) clearInterval(liveTimer);
+      liveTimer = null;
+      if (autoRefreshSelect) autoRefreshSelect.disabled = true;
+      if (liveHeartbeatTimer) clearInterval(liveHeartbeatTimer);
+      liveHeartbeatTimer = null;
+      return;
+    }
+    if (autoRefreshSelect) autoRefreshSelect.disabled = false;
     setLiveConnection("online", "オンライン");
     if (changed) showLiveStatus(`最新情報を反映しました（${formatLiveClock(updatedAt)}）`);
   }
@@ -1452,6 +1463,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (liveTimer) clearInterval(liveTimer);
     liveTimer = null;
     if (!liveId || !autoRefreshSelect) return;
+    if (window.__gLinkLiveShareMeta?.status === "stopped") {
+      setLiveConnection("online", "共有停止");
+      autoRefreshSelect.disabled = true;
+      return;
+    }
     const seconds = Number(autoRefreshSelect.value || 0);
     try { localStorage.setItem(LIVE_INTERVAL_KEY, String(seconds)); } catch (error) {}
     if (seconds <= 0) {

@@ -1858,16 +1858,16 @@ window.addEventListener("DOMContentLoaded", () => {
     const active = Boolean(liveShareState?.shareId && liveShareState?.active !== false);
     setLiveBadge(active ? "active" : "stopped", active ? "接続中" : "停止中");
     if (liveShareUpdatedAt) {
-      liveShareUpdatedAt.textContent = active ? `最終送信：${formatLiveTime(liveShareState.updatedAt)}` : "ライブ共有は開始されていません。";
+      liveShareUpdatedAt.textContent = liveShareState?.shareId ? `最終送信：${formatLiveTime(liveShareState.updatedAt)}` : "ライブ共有は開始されていません。";
     }
     if (liveAutoSendRow) liveAutoSendRow.hidden = !active;
     if (liveShareMetrics) liveShareMetrics.hidden = !active;
-    if (liveLastSentAt) liveLastSentAt.textContent = active && liveShareState.updatedAt ? formatLiveTime(liveShareState.updatedAt) : "-";
+    if (liveLastSentAt) liveLastSentAt.textContent = liveShareState?.updatedAt ? formatLiveTime(liveShareState.updatedAt) : "-";
     if (startLiveShareBtn) startLiveShareBtn.hidden = active;
     if (updateLiveShareBtn) updateLiveShareBtn.hidden = !active;
     if (stopLiveShareBtn) stopLiveShareBtn.hidden = !active;
-    if (liveShareOutput) liveShareOutput.hidden = !active;
-    if (active) {
+    if (liveShareOutput) liveShareOutput.hidden = !liveShareState?.shareId;
+    if (liveShareState?.shareId) {
       const url = liveShareState.viewerUrl || makeLiveViewerUrl(liveShareState.shareId);
       if (shareUrlInput) shareUrlInput.value = url;
       renderShareQr(url);
@@ -1952,14 +1952,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   async function stopLiveShare() {
     if (!liveShareState?.shareId || liveShareRequestInFlight) return;
-    if (!window.confirm("ライブ共有を停止しますか？停止後は同じURLで閲覧できなくなります。")) return;
+    if (!window.confirm("ライブ共有を停止しますか？停止後も閲覧ページには最終送信時点の情報が表示されますが、それ以降の更新は反映されません。")) return;
     liveShareRequestInFlight = true;
     if (stopLiveShareBtn) stopLiveShareBtn.disabled = true;
     try {
       await callLiveShareApi("/api/app/live-share/stop", {shareId:liveShareState.shareId});
       stopLiveShareBackgroundTasks();
-      saveLiveShareState(null);
-      setShareStatus("ライブ共有を停止しました。", false);
+      saveLiveShareState({...liveShareState, active:false, stoppedAt:new Date().toISOString()});
+      setShareStatus("ライブ共有を停止しました。閲覧ページは最終送信時点の情報を保持します。", false);
     } catch (error) {
       console.error("ライブ共有停止に失敗しました。", error);
       if (error.status === 404) saveLiveShareState(null);
