@@ -3714,3 +3714,21 @@ body {
 .measureVertexHelp > div + div {
   margin-top: 2px;
 }
+
+/* 図形ドラッグ形状編集 Build1117 */
+.shape-resize-handle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: #ffffff;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  cursor: grab;
+}
+.shape-resize-handle:active { cursor: grabbing; }
+#shapeGeometryEditActions { margin-top: 8px; width: 100%; }
+.shapeGeometryHelp { margin: 6px 0 8px; font-size: 11px; line-height: 1.5; color: #475569; }
+#shapeGeometryEditActions .buttonRow { width: 100%; }
+#shapeGeometryEditActions button { white-space: nowrap; }
+#startShapeGeometryEdit.active { background: #2563eb; color: #fff; border-color: #2563eb; }

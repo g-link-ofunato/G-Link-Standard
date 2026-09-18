@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1058">
+  <link rel="stylesheet" href="fixed.css?v=Build1117">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -841,11 +841,20 @@
     </select>
  
     <div class="buttonRow shapeButtonRow">
+      <button id="startShapeGeometryEdit" type="button">形状編集</button>
       <button id="saveShapeEdit">保存</button>
       <button id="copyShapeEdit">コピー</button>
       <button id="duplicateShapeEdit">複製</button>
     </div>
  
+    <div id="shapeGeometryEditActions" style="display:none;">
+      <div class="shapeGeometryHelp">ハンドルをドラッグして大きさ・形状を変更します。</div>
+      <div class="buttonRow shapeButtonRow">
+        <button id="saveShapeGeometryEdit" type="button">形状保存</button>
+        <button id="cancelShapeGeometryEdit" type="button">キャンセル</button>
+      </div>
+    </div>
+
     <div class="buttonRow shapeButtonRow">
       <button id="deleteShapeEdit">削除</button>
       <button id="closeShapeEdit">閉じる</button>
@@ -906,7 +915,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1058"></script>
+  <script src="fixed.js?v=Build1117"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>

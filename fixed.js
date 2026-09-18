@@ -335,6 +335,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const shapeEditOpacity = document.getElementById("shapeEditOpacity");
   const shapeEditOpacityValue = document.getElementById("shapeEditOpacityValue");
   const shapeEditFillMode = document.getElementById("shapeEditFillMode");
+  const startShapeGeometryEdit = document.getElementById("startShapeGeometryEdit");
+  const shapeGeometryEditActions = document.getElementById("shapeGeometryEditActions");
+  const saveShapeGeometryEdit = document.getElementById("saveShapeGeometryEdit");
+  const cancelShapeGeometryEdit = document.getElementById("cancelShapeGeometryEdit");
   const saveShapeEdit = document.getElementById("saveShapeEdit");
   const copyShapeEdit = document.getElementById("copyShapeEdit");
   const duplicateShapeEdit = document.getElementById("duplicateShapeEdit");
@@ -529,6 +533,7 @@ window.addEventListener("DOMContentLoaded", () => {
     ...(session.layerVisibility && typeof session.layerVisibility === "object" ? session.layerVisibility : {})
   };
   let selectedShape = null;
+  let shapeGeometryEditState = null;
   let selectedMeasurement = null;
   let measurementVertexEditState = null;
   let copiedShapeData = null;
@@ -3663,7 +3668,137 @@ window.addEventListener("DOMContentLoaded", () => {
     return layer;
   }
  
+
+  function cloneShapeGeometry(layer) {
+    if (!layer || !layer._fireGridMeta) return null;
+    const type = layer._fireGridMeta.type;
+    if (type === "circle" && layer.getLatLng) {
+      return { type, center: cloneLatLng(layer.getLatLng()), radius: layer.getRadius() };
+    }
+    if (type === "arrow" && layer._fireGridArrowLine) {
+      const pts = layer._fireGridArrowLine.getLatLngs();
+      return { type, start: cloneLatLng(pts[0]), end: cloneLatLng(pts[1]) };
+    }
+    if (layer.getLatLngs) return { type, latlngs: cloneLatLngs(layer.getLatLngs()) };
+    return null;
+  }
+
+  function restoreShapeGeometry(layer, geometry) {
+    if (!layer || !geometry) return;
+    if (geometry.type === "circle") {
+      layer.setLatLng(geometry.center);
+      layer.setRadius(geometry.radius);
+      return;
+    }
+    if (geometry.type === "arrow" && layer._fireGridArrowLine) {
+      updateArrowGeometry(layer, geometry.start, geometry.end);
+      return;
+    }
+    if (layer.setLatLngs && geometry.latlngs) layer.setLatLngs(cloneLatLngs(geometry.latlngs));
+  }
+
+  function updateArrowGeometry(layer, start, end) {
+    if (!layer || !layer._fireGridArrowLine) return;
+    const meta = layer._fireGridMeta;
+    layer._fireGridArrowLine.setLatLngs([start, end]);
+    const angle = getBearingDegrees(start, end);
+    layer._fireGridArrowAngle = angle;
+    if (layer._fireGridArrowHead) layer.removeLayer(layer._fireGridArrowHead);
+    const newHead = createArrowHead(end, angle, meta.color);
+    layer._fireGridArrowHead = newHead;
+    layer.addLayer(newHead);
+    attachShapeEvents(newHead, meta, layer);
+  }
+
+  function firstShapeRing(layer) {
+    if (!layer || !layer.getLatLngs) return [];
+    const raw = layer.getLatLngs();
+    if (!Array.isArray(raw)) return [];
+    if (raw.length && Array.isArray(raw[0])) return raw[0].map(cloneLatLng);
+    return raw.map(cloneLatLng);
+  }
+
+  function makeShapeHandle(latlng, onDrag) {
+    const icon = L.divIcon({ className: "", html: '<div class="shape-resize-handle"></div>', iconSize: [14,14], iconAnchor: [7,7] });
+    const marker = L.marker(latlng, { icon, draggable: true, keyboard: false, zIndexOffset: 1200 }).addTo(map);
+    marker.on("dragstart", () => { map.dragging.disable(); window.fireGridSuppressNextClick = true; });
+    marker.on("drag", e => onDrag(e.target.getLatLng()));
+    marker.on("dragend", () => { map.dragging.enable(); refreshShapeGeometryHandles(); setTimeout(() => { window.fireGridSuppressNextClick = false; }, 250); });
+    return marker;
+  }
+
+  function clearShapeGeometryHandles() {
+    if (!shapeGeometryEditState) return;
+    (shapeGeometryEditState.handles || []).forEach(h => { if (map.hasLayer(h)) map.removeLayer(h); });
+    shapeGeometryEditState.handles = [];
+  }
+
+  function refreshShapeGeometryHandles() {
+    if (!shapeGeometryEditState || !shapeGeometryEditState.layer) return;
+    clearShapeGeometryHandles();
+    const layer = shapeGeometryEditState.layer;
+    const meta = layer._fireGridMeta || {};
+    const handles = shapeGeometryEditState.handles;
+
+    if (meta.type === "circle" && layer.getLatLng && layer.getBounds) {
+      const center = layer.getLatLng();
+      const handlePoint = L.latLng(center.lat, layer.getBounds().getEast());
+      handles.push(makeShapeHandle(handlePoint, ll => layer.setRadius(Math.max(1, map.distance(center, ll)))));
+      return;
+    }
+
+    if (meta.type === "arrow" && layer._fireGridArrowLine) {
+      const pts = layer._fireGridArrowLine.getLatLngs().map(cloneLatLng);
+      handles.push(makeShapeHandle(pts[0], ll => updateArrowGeometry(layer, ll, layer._fireGridArrowLine.getLatLngs()[1])));
+      handles.push(makeShapeHandle(pts[1], ll => updateArrowGeometry(layer, layer._fireGridArrowLine.getLatLngs()[0], ll)));
+      return;
+    }
+
+    const pts = firstShapeRing(layer);
+    if (!pts.length) return;
+    pts.forEach((pt, index) => {
+      handles.push(makeShapeHandle(pt, ll => {
+        const current = firstShapeRing(layer);
+        if (meta.type === "rectangle" && current.length >= 4) {
+          const opposite = current[(index + 2) % 4];
+          layer.setBounds(L.latLngBounds(opposite, ll));
+        } else {
+          current[index] = ll;
+          layer.setLatLngs(current);
+        }
+      }));
+    });
+  }
+
+  function startShapeGeometryEditing() {
+    if (!selectedShape || !selectedShape._fireGridMeta) return;
+    const type = selectedShape._fireGridMeta.type;
+    if (type === "freehand") {
+      alert("フリーハンド図形のドラッグ形状編集は次段階で対応します。");
+      return;
+    }
+    if (shapeGeometryEditState) cancelShapeGeometryEditing();
+    shapeGeometryEditState = { layer: selectedShape, original: cloneShapeGeometry(selectedShape), handles: [] };
+    if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "block";
+    if (startShapeGeometryEdit) startShapeGeometryEdit.classList.add("active");
+    refreshShapeGeometryHandles();
+  }
+
+  function finishShapeGeometryEditing(save) {
+    if (!shapeGeometryEditState) return;
+    const state = shapeGeometryEditState;
+    clearShapeGeometryHandles();
+    if (!save) restoreShapeGeometry(state.layer, state.original);
+    shapeGeometryEditState = null;
+    if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
+    if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
+    if (state.layer) selectShape(state.layer);
+  }
+
+  function cancelShapeGeometryEditing() { finishShapeGeometryEditing(false); }
+
   function copySelectedShape() {
+    if (shapeGeometryEditState) cancelShapeGeometryEditing();
     if (!selectedShape) {
       alert("コピーする図形を右クリックで選択してください。");
       return;
@@ -3727,6 +3862,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function startShapeDrag(layer, e) {
+    if (shapeGeometryEditState) return;
     if (drawSettings.type !== "none") return;
  
     const originalEvent = e.originalEvent;
@@ -3870,6 +4006,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function selectShape(layer) {
+    if (shapeGeometryEditState && shapeGeometryEditState.layer !== layer) cancelShapeGeometryEditing();
     if (measureEditPanel) measureEditPanel.style.display = "none";
     clearSelectedMeasurementStyle();
     clearSelectedShapeStyle();
@@ -5311,6 +5448,12 @@ window.addEventListener("DOMContentLoaded", () => {
  
     if ((e.key === "Delete" || e.key === "Backspace") && selectedShape) {
       e.preventDefault();
+      if (shapeGeometryEditState) {
+        clearShapeGeometryHandles();
+        shapeGeometryEditState = null;
+        if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
+        if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
+      }
       drawingLayer.removeLayer(selectedShape);
       drawings = drawings.filter(d => d.layer !== selectedShape);
       applyDrawingLayerFilter();
@@ -5715,12 +5858,22 @@ window.addEventListener("DOMContentLoaded", () => {
     shapeEditOpacityValue.textContent = shapeEditOpacity.value;
   });
  
+  if (startShapeGeometryEdit) startShapeGeometryEdit.addEventListener("click", startShapeGeometryEditing);
+  if (saveShapeGeometryEdit) saveShapeGeometryEdit.addEventListener("click", () => finishShapeGeometryEditing(true));
+  if (cancelShapeGeometryEdit) cancelShapeGeometryEdit.addEventListener("click", cancelShapeGeometryEditing);
+
   copyShapeEdit.addEventListener("click", copySelectedShape);
  
   duplicateShapeEdit.addEventListener("click", duplicateSelectedShape);
  
   saveShapeEdit.addEventListener("click", () => {
     if (!selectedShape || !selectedShape._fireGridMeta) return;
+    if (shapeGeometryEditState) {
+      clearShapeGeometryHandles();
+      shapeGeometryEditState = null;
+      if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
+      if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
+    }
  
     const meta = selectedShape._fireGridMeta;
     meta.color = shapeEditColor.value;
@@ -5744,6 +5897,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const result = confirm("この図形を削除しますか？");
     if (!result) return;
  
+    if (shapeGeometryEditState) {
+      clearShapeGeometryHandles();
+      shapeGeometryEditState = null;
+      if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
+      if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
+    }
     drawingLayer.removeLayer(selectedShape);
     drawings = drawings.filter(d => d.layer !== selectedShape);
     applyDrawingLayerFilter();
@@ -5752,6 +5911,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
  
   closeShapeEdit.addEventListener("click", () => {
+    if (shapeGeometryEditState) cancelShapeGeometryEditing();
     shapeEditPanel.style.display = "none";
     clearSelectedShapeStyle();
   });
