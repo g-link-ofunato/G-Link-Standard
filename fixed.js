@@ -3773,32 +3773,27 @@ window.addEventListener("DOMContentLoaded", () => {
   function startShapeGeometryEditing() {
     if (!selectedShape || !selectedShape._fireGridMeta) return;
     const type = selectedShape._fireGridMeta.type;
-    if (type === "freehand") {
-      alert("フリーハンド図形のドラッグ形状編集は次段階で対応します。");
-      return;
-    }
-    if (shapeGeometryEditState) cancelShapeGeometryEditing();
+    if (type === "freehand") return;
+    if (shapeGeometryEditState) cancelShapeGeometryEditing(false);
     shapeGeometryEditState = { layer: selectedShape, original: cloneShapeGeometry(selectedShape), handles: [] };
     if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "block";
-    if (startShapeGeometryEdit) startShapeGeometryEdit.classList.add("active");
     refreshShapeGeometryHandles();
   }
 
-  function finishShapeGeometryEditing(save) {
+  function finishShapeGeometryEditing(save, reopen = true) {
     if (!shapeGeometryEditState) return;
     const state = shapeGeometryEditState;
     clearShapeGeometryHandles();
     if (!save) restoreShapeGeometry(state.layer, state.original);
     shapeGeometryEditState = null;
     if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
-    if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
-    if (state.layer) selectShape(state.layer);
+    if (state.layer && reopen) selectShape(state.layer);
   }
 
-  function cancelShapeGeometryEditing() { finishShapeGeometryEditing(false); }
+  function cancelShapeGeometryEditing(reopen = true) { finishShapeGeometryEditing(false, reopen); }
 
   function copySelectedShape() {
-    if (shapeGeometryEditState) cancelShapeGeometryEditing();
+    if (shapeGeometryEditState) cancelShapeGeometryEditing(false);
     if (!selectedShape) {
       alert("コピーする図形を右クリックで選択してください。");
       return;
@@ -4006,7 +4001,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function selectShape(layer) {
-    if (shapeGeometryEditState && shapeGeometryEditState.layer !== layer) cancelShapeGeometryEditing();
+    if (shapeGeometryEditState && shapeGeometryEditState.layer !== layer) cancelShapeGeometryEditing(false);
     if (measureEditPanel) measureEditPanel.style.display = "none";
     clearSelectedMeasurementStyle();
     clearSelectedShapeStyle();
@@ -4039,6 +4034,8 @@ window.addEventListener("DOMContentLoaded", () => {
     shapeEditFillMode.value = meta.fillMode;
  
     shapeEditPanel.style.display = "block";
+    // Build1126: 図形を選択した時点で形状編集ハンドルを自動表示
+    if (meta.type !== "freehand" && !shapeGeometryEditState) startShapeGeometryEditing();
   }
  
   function attachShapeEvents(layer, meta, targetLayer = layer) {
@@ -5452,8 +5449,7 @@ window.addEventListener("DOMContentLoaded", () => {
         clearShapeGeometryHandles();
         shapeGeometryEditState = null;
         if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
-        if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
-      }
+        }
       drawingLayer.removeLayer(selectedShape);
       drawings = drawings.filter(d => d.layer !== selectedShape);
       applyDrawingLayerFilter();
@@ -5858,7 +5854,6 @@ window.addEventListener("DOMContentLoaded", () => {
     shapeEditOpacityValue.textContent = shapeEditOpacity.value;
   });
  
-  if (startShapeGeometryEdit) startShapeGeometryEdit.addEventListener("click", startShapeGeometryEditing);
   if (saveShapeGeometryEdit) saveShapeGeometryEdit.addEventListener("click", () => finishShapeGeometryEditing(true));
   if (cancelShapeGeometryEdit) cancelShapeGeometryEdit.addEventListener("click", cancelShapeGeometryEditing);
 
@@ -5872,7 +5867,6 @@ window.addEventListener("DOMContentLoaded", () => {
       clearShapeGeometryHandles();
       shapeGeometryEditState = null;
       if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
-      if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
     }
  
     const meta = selectedShape._fireGridMeta;
@@ -5901,7 +5895,6 @@ window.addEventListener("DOMContentLoaded", () => {
       clearShapeGeometryHandles();
       shapeGeometryEditState = null;
       if (shapeGeometryEditActions) shapeGeometryEditActions.style.display = "none";
-      if (startShapeGeometryEdit) startShapeGeometryEdit.classList.remove("active");
     }
     drawingLayer.removeLayer(selectedShape);
     drawings = drawings.filter(d => d.layer !== selectedShape);
@@ -5911,7 +5904,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
  
   closeShapeEdit.addEventListener("click", () => {
-    if (shapeGeometryEditState) cancelShapeGeometryEditing();
+    if (shapeGeometryEditState) cancelShapeGeometryEditing(false);
     shapeEditPanel.style.display = "none";
     clearSelectedShapeStyle();
   });
