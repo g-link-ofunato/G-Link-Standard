@@ -158,6 +158,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       .replace(/'/g, "&#39;");
   }
 
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, "&#96;");
+  }
+
+  function getSafeImageDataUrl(value) {
+    const dataUrl = String(value || "").trim();
+    if (!dataUrl) return "";
+    return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(dataUrl) ? dataUrl : "";
+  }
+
   function normalizeShareText(value) {
     return String(value || "").trim().replace(/\s+/g, "");
   }
@@ -489,7 +499,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function pinPopup(data, number) {
     const type = pinLabels[normalizePinType(data.type)] || "火災";
-    const attachment = data.attachmentDataUrl ? `<br><img src="${data.attachmentDataUrl}" style="width:180px;max-width:100%;margin-top:6px;border-radius:4px;">` : "";
+    const safeAttachmentDataUrl = getSafeImageDataUrl(data.attachmentDataUrl);
+    const attachment = safeAttachmentDataUrl ? `<br><img src="${escapeAttr(safeAttachmentDataUrl)}" style="width:180px;max-width:100%;margin-top:6px;border-radius:4px;">` : "";
     return `
       <b>№${escapeHtml(number)} ${escapeHtml(type)}</b><br>
       ${data.completed ? "【活動完了】<br>" : ""}

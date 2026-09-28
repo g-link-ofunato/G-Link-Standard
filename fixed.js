@@ -4196,6 +4196,12 @@ window.addEventListener("DOMContentLoaded", () => {
   function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, "&#96;");
   }
+
+  function getSafeImageDataUrl(value) {
+    const dataUrl = String(value || "").trim();
+    if (!dataUrl) return "";
+    return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(dataUrl) ? dataUrl : "";
+  }
  
   function applyMeasurementStyle(item) {
     if (!item || !item.layer) return;
@@ -6393,8 +6399,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const attachmentText = data.attachmentName
       ? `<div class="pinInfoRow pinInfoWrap">添付：${safe(data.attachmentName)}</div>`
       : "";
-    const imageHtml = data.attachmentDataUrl
-      ? `<div class="pinInfoImage"><img src="${data.attachmentDataUrl}" alt="添付画像"></div>`
+    const safeAttachmentDataUrl = getSafeImageDataUrl(data.attachmentDataUrl);
+    const imageHtml = safeAttachmentDataUrl
+      ? `<div class="pinInfoImage"><img src="${escapeAttr(safeAttachmentDataUrl)}" alt="添付画像"></div>`
       : "";
 
     return `
@@ -6451,8 +6458,9 @@ window.addEventListener("DOMContentLoaded", () => {
     attachmentInfo.textContent = data.attachmentName ? "添付済み：" + data.attachmentName : "添付なし";
     if (removeAttachmentBtn) removeAttachmentBtn.style.display = data.attachmentDataUrl ? "block" : "none";
  
-    if (data.attachmentDataUrl) {
-      attachmentPreview.src = data.attachmentDataUrl;
+    const safeAttachmentDataUrl = getSafeImageDataUrl(data.attachmentDataUrl);
+    if (safeAttachmentDataUrl) {
+      attachmentPreview.src = safeAttachmentDataUrl;
       attachmentPreview.style.display = "block";
     } else {
       attachmentPreview.removeAttribute("src");
