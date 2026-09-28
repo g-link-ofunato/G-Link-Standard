@@ -6629,7 +6629,11 @@ window.addEventListener("DOMContentLoaded", () => {
         const div = document.createElement("div");
         div.className = `historyItem activityItem status-${item.status}`;
         const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
-        div.innerHTML = `<b>№${getHistoryPinNo(item)}　${item.typeLabel}　${item.gridNo || "-"}</b><div class="historyTime">活動状態：${item.statusLabel}<br>覚知：${item.awarenessLabel || "-"}<br>完了：${item.completedLabel || "-"}</div><div class="historyMeta">座標：${coordinateText}<br>災害番号：${item.incidentNo || "-"}<br>概要：${item.summary || "-"}<br>出動部隊：${String(item.units || "").trim() || "未入力"}<br>傷病者人数：${item.injured || 0}</div>`;
+        const safeHistoryValue = (value, fallback = "-") => {
+          const text = String(value ?? "").trim();
+          return escapeHtml(text || fallback);
+        };
+        div.innerHTML = `<b>№${safeHistoryValue(getHistoryPinNo(item), "-")}　${safeHistoryValue(item.typeLabel, "-")}　${safeHistoryValue(item.gridNo, "-")}</b><div class="historyTime">活動状態：${safeHistoryValue(item.statusLabel, "-")}<br>覚知：${safeHistoryValue(item.awarenessLabel, "-")}<br>完了：${safeHistoryValue(item.completedLabel, "-")}</div><div class="historyMeta">座標：${safeHistoryValue(coordinateText, "-")}<br>災害番号：${safeHistoryValue(item.incidentNo, "-")}<br>概要：${safeHistoryValue(item.summary, "-")}<br>出動部隊：${safeHistoryValue(item.units, "未入力")}<br>傷病者人数：${safeHistoryValue(item.injured, "0")}</div>`;
         div.addEventListener("click", e => {
           e.stopPropagation();
           showHistoryContextMenu(item, e);
