@@ -162,10 +162,25 @@ window.addEventListener("DOMContentLoaded", async () => {
     return escapeHtml(value).replace(/`/g, "&#96;");
   }
 
+  const ATTACHMENT_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+
+  function getImageDataUrlByteLength(dataUrl) {
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex < 0) return Number.POSITIVE_INFINITY;
+    const base64 = dataUrl.slice(commaIndex + 1).replace(/\s/g, "");
+    if (!base64 || !/^[a-z0-9+/]*={0,2}$/i.test(base64)) return Number.POSITIVE_INFINITY;
+    const padding = base64.endsWith("==") ? 2 : (base64.endsWith("=") ? 1 : 0);
+    return Math.floor(base64.length * 3 / 4) - padding;
+  }
+
   function getSafeImageDataUrl(value) {
     const dataUrl = String(value || "").trim();
     if (!dataUrl) return "";
-    return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(dataUrl) ? dataUrl : "";
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=\s]+)$/i);
+    if (!match) return "";
+    if (!ATTACHMENT_ALLOWED_MIME_TYPES.has(match[1].toLowerCase())) return "";
+    return getImageDataUrlByteLength(dataUrl) <= ATTACHMENT_MAX_BYTES ? dataUrl : "";
   }
 
   function normalizeShareText(value) {

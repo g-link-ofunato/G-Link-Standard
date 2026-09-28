@@ -4232,10 +4232,25 @@ window.addEventListener("DOMContentLoaded", () => {
     return escapeHtml(value).replace(/`/g, "&#96;");
   }
 
+  const ATTACHMENT_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+
+  function getImageDataUrlByteLength(dataUrl) {
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex < 0) return Number.POSITIVE_INFINITY;
+    const base64 = dataUrl.slice(commaIndex + 1).replace(/\s/g, "");
+    if (!base64 || !/^[a-z0-9+/]*={0,2}$/i.test(base64)) return Number.POSITIVE_INFINITY;
+    const padding = base64.endsWith("==") ? 2 : (base64.endsWith("=") ? 1 : 0);
+    return Math.floor(base64.length * 3 / 4) - padding;
+  }
+
   function getSafeImageDataUrl(value) {
     const dataUrl = String(value || "").trim();
     if (!dataUrl) return "";
-    return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(dataUrl) ? dataUrl : "";
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=\s]+)$/i);
+    if (!match) return "";
+    if (!ATTACHMENT_ALLOWED_MIME_TYPES.has(match[1].toLowerCase())) return "";
+    return getImageDataUrlByteLength(dataUrl) <= ATTACHMENT_MAX_BYTES ? dataUrl : "";
   }
  
   function applyMeasurementStyle(item) {
@@ -7009,8 +7024,15 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
  
-    if (!file.type.startsWith("image/")) {
-      alert("画像ファイルを選択してください。");
+    const normalizedMimeType = String(file.type || "").toLowerCase();
+    if (!ATTACHMENT_ALLOWED_MIME_TYPES.has(normalizedMimeType)) {
+      alert("添付できる画像は JPEG・PNG・WebP のみです。");
+      attachment.value = "";
+      pendingAttachment = null;
+      return;
+    }
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > ATTACHMENT_MAX_BYTES) {
+      alert("添付画像は1ファイル5MB以下にしてください。");
       attachment.value = "";
       pendingAttachment = null;
       return;
@@ -7019,9 +7041,16 @@ window.addEventListener("DOMContentLoaded", () => {
     const reader = new FileReader();
  
     reader.onload = () => {
-      pendingAttachment = { name: file.name, dataUrl: reader.result };
+      const safeDataUrl = getSafeImageDataUrl(reader.result);
+      if (!safeDataUrl) {
+        alert("添付画像を安全に読み込めませんでした。JPEG・PNG・WebP（5MB以下）を選択してください。");
+        attachment.value = "";
+        pendingAttachment = null;
+        return;
+      }
+      pendingAttachment = { name: file.name, dataUrl: safeDataUrl };
       attachmentInfo.textContent = "選択中：" + file.name;
-      attachmentPreview.src = reader.result;
+      attachmentPreview.src = safeDataUrl;
       attachmentPreview.style.display = "block";
       if (removeAttachmentBtn) removeAttachmentBtn.style.display = "block";
     };
@@ -7748,7 +7777,14 @@ window.addEventListener("DOMContentLoaded", () => {
     runSection("pins", () => {
       pinLayer.clearLayers();
       pins = [];
-      (Array.isArray(data.pins) ? data.pins : []).forEach(createPinFromData);
+      (Array.isArray(data.pins) ? data.pins : []).forEach(pinData => {
+        if (pinData && typeof pinData === "object" && pinData.attachmentDataUrl) {
+          const safeAttachment = getSafeImageDataUrl(pinData.attachmentDataUrl);
+          pinData = { ...pinData, attachmentDataUrl: safeAttachment };
+          if (!safeAttachment) pinData.attachmentName = "";
+        }
+        createPinFromData(pinData);
+      });
     });
 
     runSection("drawings", () => {
