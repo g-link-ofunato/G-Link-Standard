@@ -13,6 +13,13 @@
   const ONBOARDED_KEY='gLink_organizationPasswordConfigured';
   const SAVE_LICENSE_PREF_KEY='gLink_standardSaveLicenseId';
   const LOCATION_PREF_KEY='gLink_standardRecordLocation';
+  // SEC-10: 災害・活動情報は認証セッション終了時に端末から消去する。
+  // 表示設定・グリッド設定・保存済み.glLinkファイル等の利用者設定は対象外。
+  const SENSITIVE_PROJECT_STORAGE_KEYS=[
+    'disasterSession','gLink_workingData','gLink_returnBackupData','gLink_returnFromSaveCenter',
+    'gLink_pendingRestoreData','gLink_saveCenterData','gLink_header','gLink_launcherHeader',
+    'glinkViewerLastData','gLinkLiveShareState','gLink_restoreDiagnostics','glinkLastSessionSavedAt'
+  ];
   let gate=null,statusBar=null,currentState=null;
   let activityBound=false,activityTimer=null,lastActivitySyncAt=0,lastActivityStoredAt=0,activitySyncInFlight=false;
 
@@ -24,12 +31,19 @@
   }
   function saveState(state){clearState(false);currentState={...state,remember:false,storage:'session'};persistState(currentState);}
   function clearState(stopMonitoring=true){try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}try{localStorage.removeItem(LEGACY_LOCAL_AUTH_KEY);}catch(e){}currentState=null;if(stopMonitoring&&activityTimer){clearInterval(activityTimer);activityTimer=null;}}
+  function clearSensitiveProjectStorage(){
+    SENSITIVE_PROJECT_STORAGE_KEYS.forEach(key=>{
+      try{sessionStorage.removeItem(key);}catch(e){}
+      try{localStorage.removeItem(key);}catch(e){}
+    });
+  }
+  function clearAuthAndProjectData(stopMonitoring=true){clearState(stopMonitoring);clearSensitiveProjectStorage();}
   function readSavedLicenseId(){try{return localStorage.getItem(SAVED_LICENSE_KEY)||'';}catch(e){return '';}}
   function saveLicensePreference(enabled,licenseId=''){writePreference(SAVE_LICENSE_PREF_KEY,enabled);try{if(enabled&&/^GL-\d{6}$/.test(licenseId))localStorage.setItem(SAVED_LICENSE_KEY,licenseId);else localStorage.removeItem(SAVED_LICENSE_KEY);}catch(e){}}
   function lastActivityTime(state){const value=Date.parse(state?.lastActivityAt||'');return Number.isFinite(value)?value:0;}
   function isInactive(state){const last=lastActivityTime(state);return Boolean(last&&Date.now()-last>=INACTIVITY_LIMIT_MS);}
   function inactivityMessage(){return '24時間利用がなかったため、自動ログアウトしました。再度ログインしてください。';}
-  async function expireForInactivity(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}showLogin(inactivityMessage());}
+  async function expireForInactivity(){const state=currentState||readState();clearAuthAndProjectData();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}showLogin(inactivityMessage());}
   async function syncActivity(force=false){
     const state=currentState;
     if(!state?.token||state.offline||activitySyncInFlight)return;
@@ -46,7 +60,7 @@
         persistState(currentState);
       }
     }catch(error){
-      if(error.status===401){clearState();showLogin(inactivityMessage());}
+      if(error.status===401){clearAuthAndProjectData();showLogin(inactivityMessage());}
     }finally{activitySyncInFlight=false;}
   }
   function markActivity(){
@@ -121,7 +135,7 @@
     logoutIcon.setAttribute('aria-label','ログアウト');
     logoutIcon.title='ログアウト';
     logoutIcon.addEventListener('click',()=>{
-      if(window.confirm('G-Linkからログアウトしますか？')) logout();
+      if(window.confirm('G-Linkからログアウトしますか？\n端末内に一時保存されている災害・活動データも削除されます。必要なデータは事前に.glLinkファイル等で保存してください。')) logout();
     });
     rail.appendChild(logoutIcon);
     statusBar=rail;
@@ -130,7 +144,7 @@
   function offlineRemaining(state){const left=Math.max(0,OFFLINE_GRACE_MS-(Date.now()-Date.parse(state.lastValidatedAt||0)));const h=Math.floor(left/3600000);const m=Math.floor((left%3600000)/60000);return `${h}時間${m}分`;}
   function canOffline(state){const t=Date.parse(state?.lastValidatedAt||'');return Boolean(state?.token&&Number.isFinite(t)&&Date.now()-t<=OFFLINE_GRACE_MS&&state?.organization?.standard);}
   function activate(state,offline=false){currentState={...state,offline};try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}showApp();showStatus(state,offline);window.GLinkLicense={authenticated:true,offline,organization:state.organization,commandEnabled:Boolean(state.organization?.command&&!offline),portalBase:PORTAL_BASE,build:BUILD};bindActivityMonitor();window.dispatchEvent(new CustomEvent('glink-license-ready',{detail:window.GLinkLicense}));}
-  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()};saveState(next);activate(next,false);}catch(error){if(error.status){clearState();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
+  async function validate(state){try{const response=await api('/api/app/auth/validate',{method:'GET',headers:{Authorization:`Bearer ${state.token}`}});const data=await parseResponse(response);const next={...state,organization:data.organization,expiresAt:data.sessionExpiresAt,lastValidatedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()};saveState(next);activate(next,false);}catch(error){if(error.status){clearAuthAndProjectData();showLogin(error.message||'再ログインしてください。');return;}if(canOffline(state)){activate(state,true);return;}showLogin('Portalへ接続できず、72時間のオフライン猶予も終了しています。通信環境を確認してください。');}}
   async function login(event){
     event.preventDefault();
     const button=gate.querySelector('#glinkAuthSubmit');
@@ -182,9 +196,9 @@
       button.disabled=false;
     }
   }
-  async function logout(){const state=currentState||readState();clearState();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}location.reload();}
+  async function logout(){const state=currentState||readState();clearAuthAndProjectData();try{if(state?.token)await api('/api/app/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${state.token}`}});}catch(e){}location.reload();}
   function decodeTransfer(value){try{let b=value.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const binary=atob(b);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));}catch(e){return null;}}
   function readTransfer(){const match=location.hash.match(/(?:^#|&)glinkAuthTransfer=([^&]+)/);if(!match)return null;const state=decodeTransfer(decodeURIComponent(match[1]));history.replaceState(null,'',location.pathname+location.search);return state;}
-  async function boot(){try{localStorage.removeItem(LEGACY_LOCAL_AUTH_KEY);}catch(e){}hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState({...transfer,remember:false});try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){showLogin();return;}if(isInactive(state)){clearState();showLogin(inactivityMessage());return;}await validate(state);}
+  async function boot(){try{localStorage.removeItem(LEGACY_LOCAL_AUTH_KEY);}catch(e){}hideApp();createGate();const transfer=readTransfer();if(transfer?.token&&transfer?.organization){saveState({...transfer,remember:false});try{localStorage.setItem(ONBOARDED_KEY,'1');}catch(e){}activate(transfer,false);return;}const state=readState();if(!state){clearSensitiveProjectStorage();showLogin();return;}if(isInactive(state)){clearAuthAndProjectData();showLogin(inactivityMessage());return;}await validate(state);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
