@@ -254,6 +254,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const startLiveShareBtn = document.getElementById("startLiveShareBtn");
   const updateLiveShareBtn = document.getElementById("updateLiveShareBtn");
   const stopLiveShareBtn = document.getElementById("stopLiveShareBtn");
+  const endLiveShareBtn = document.getElementById("endLiveShareBtn");
   const liveShareOutput = document.getElementById("liveShareOutput");
   const liveShareStateBadge = document.getElementById("liveShareStateBadge");
   const liveShareUpdatedAt = document.getElementById("liveShareUpdatedAt");
@@ -1871,6 +1872,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (startLiveShareBtn) startLiveShareBtn.hidden = active;
     if (updateLiveShareBtn) updateLiveShareBtn.hidden = !active;
     if (stopLiveShareBtn) stopLiveShareBtn.hidden = !active;
+    if (endLiveShareBtn) endLiveShareBtn.hidden = !liveShareState?.shareId;
     if (liveShareOutput) liveShareOutput.hidden = !liveShareState?.shareId;
     if (liveShareState?.shareId) {
       const url = liveShareState.viewerUrl || makeLiveViewerUrl(liveShareState.shareId);
@@ -1972,6 +1974,38 @@ window.addEventListener("DOMContentLoaded", () => {
     } finally {
       liveShareRequestInFlight = false;
       if (stopLiveShareBtn) stopLiveShareBtn.disabled = false;
+    }
+  }
+
+  async function endLiveShare() {
+    if (!liveShareState?.shareId || liveShareRequestInFlight) return;
+    const confirmed = window.confirm(
+      "共有を完全終了しますか？\n\n完全終了すると、現在の共有URL・QRコードからは閲覧できなくなり、サーバー上の共有データも削除されます。\nこの操作は元に戻せません。"
+    );
+    if (!confirmed) return;
+    liveShareRequestInFlight = true;
+    if (endLiveShareBtn) endLiveShareBtn.disabled = true;
+    if (stopLiveShareBtn) stopLiveShareBtn.disabled = true;
+    if (updateLiveShareBtn) updateLiveShareBtn.disabled = true;
+    try {
+      await callLiveShareApi("/api/app/live-share/end", {shareId:liveShareState.shareId});
+      stopLiveShareBackgroundTasks();
+      saveLiveShareState(null);
+      setShareStatus("共有を完全終了しました。以前の共有URL・QRコードからは閲覧できません。", false);
+    } catch (error) {
+      console.error("ライブ共有の完全終了に失敗しました。", error);
+      if (error.status === 404) {
+        stopLiveShareBackgroundTasks();
+        saveLiveShareState(null);
+        setShareStatus("共有はすでに終了しています。", false);
+      } else {
+        setShareStatus(error.message || "共有の完全終了に失敗しました。", true);
+      }
+    } finally {
+      liveShareRequestInFlight = false;
+      if (endLiveShareBtn) endLiveShareBtn.disabled = false;
+      if (stopLiveShareBtn) stopLiveShareBtn.disabled = false;
+      if (updateLiveShareBtn) updateLiveShareBtn.disabled = false;
     }
   }
 
@@ -2177,6 +2211,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (startLiveShareBtn) startLiveShareBtn.addEventListener("click", startLiveShare);
     if (updateLiveShareBtn) updateLiveShareBtn.addEventListener("click", updateLiveShare);
     if (stopLiveShareBtn) stopLiveShareBtn.addEventListener("click", stopLiveShare);
+    if (endLiveShareBtn) endLiveShareBtn.addEventListener("click", endLiveShare);
     if (copyShareUrlBtn) {
       copyShareUrlBtn.addEventListener("click", copyShareUrl);
     }
