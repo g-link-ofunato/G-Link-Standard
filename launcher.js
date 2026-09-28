@@ -217,6 +217,12 @@
 
   function readGlinkProjectFile(file) {
     if (!file) return;
+    const GLINK_MAX_BYTES = 50 * 1024 * 1024;
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > GLINK_MAX_BYTES) {
+      if (glinkProjectStatus) glinkProjectStatus.textContent = "読み込みに失敗しました。";
+      alert(".glinkファイルは50MB以下にしてください。");
+      return;
+    }
     const reader = new FileReader();
     if (glinkProjectStatus) glinkProjectStatus.textContent = "読み込み中です…";
     reader.onload = () => {

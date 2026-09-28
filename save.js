@@ -1684,6 +1684,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function readGlinkFile(file) {
     if (!file) return;
+    const GLINK_MAX_BYTES = 50 * 1024 * 1024;
+    if (!Number.isFinite(file.size) || file.size <= 0 || file.size > GLINK_MAX_BYTES) {
+      alert(".glinkファイルは50MB以下にしてください。");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       try {
