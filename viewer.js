@@ -432,7 +432,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!response.ok) throw new Error(body.message || `ライブ共有データを取得できません（HTTP ${response.status}）`);
     diag("ライブ共有取得", true, `更新=${body.updatedAt || "-"}`);
     window.__gLinkLiveShareMeta = {shareId:id, status:body.status || "active", stoppedAt:body.stoppedAt || null, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
-    sendLiveViewerHeartbeat();
     return expandCompactViewerData(body.payload);
   }
 
@@ -1551,7 +1550,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     updateLiveMeta(window.__gLinkLiveShareMeta || {}, false);
     scheduleLiveRefresh();
     sendLiveViewerHeartbeat();
-    liveHeartbeatTimer = setInterval(sendLiveViewerHeartbeat, 30000);
+    liveHeartbeatTimer = setInterval(sendLiveViewerHeartbeat, 120000);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) { refreshLiveData(); sendLiveViewerHeartbeat(); }
     });

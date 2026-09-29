@@ -5,7 +5,7 @@
   const OFFLINE_GRACE_MS=72*60*60*1000;
   const INACTIVITY_LIMIT_MS=24*60*60*1000;
   const HEARTBEAT_INTERVAL_MS=60*1000;
-  const ACTIVITY_SYNC_INTERVAL_MS=60*1000;
+  const ACTIVITY_SYNC_INTERVAL_MS=15*60*1000;
   const ACTIVITY_STORAGE_INTERVAL_MS=30*1000;
   const SAVED_LICENSE_KEY='gLink_standardSavedLicenseId';
   const LEGACY_LOCAL_AUTH_KEY='gLink_standardAuthRemembered';
@@ -21,7 +21,7 @@
     'glinkViewerLastData','gLinkLiveShareState','gLink_restoreDiagnostics','glinkLastSessionSavedAt'
   ];
   let gate=null,statusBar=null,currentState=null;
-  let activityBound=false,activityTimer=null,lastActivitySyncAt=0,lastActivityStoredAt=0,activitySyncInFlight=false;
+  let activityBound=false,activityTimer=null,lastActivitySyncAt=0,lastActivityStoredAt=0,activitySyncInFlight=false,activityPending=false;
 
   function readState(){try{const raw=sessionStorage.getItem(SESSION_KEY);return raw?{...JSON.parse(raw),remember:false,storage:'session'}:null;}catch(e){return null;}}
   function persistState(state){
@@ -47,6 +47,7 @@
   async function syncActivity(force=false){
     const state=currentState;
     if(!state?.token||state.offline||activitySyncInFlight)return;
+    if(!force&&!activityPending)return;
     const now=Date.now();
     if(!force&&now-lastActivitySyncAt<ACTIVITY_SYNC_INTERVAL_MS)return;
     lastActivitySyncAt=now;activitySyncInFlight=true;
@@ -57,6 +58,7 @@
         currentState.expiresAt=data.sessionExpiresAt||currentState.expiresAt;
         currentState.lastActivityAt=new Date().toISOString();
         lastActivityStoredAt=Date.now();
+        activityPending=false;
         persistState(currentState);
       }
     }catch(error){
@@ -65,19 +67,26 @@
   }
   function markActivity(){
     if(!currentState||currentState.offline)return;
+    const now=Date.now();
+    currentState.lastActivityAt=new Date(now).toISOString();
+    activityPending=true;
+    if(now-lastActivityStoredAt>=ACTIVITY_STORAGE_INTERVAL_MS){
+      lastActivityStoredAt=now;
+      persistState(currentState);
+    }
     syncActivity(false);
   }
   function heartbeat(){
     if(!currentState||currentState.offline)return;
     if(isInactive(currentState)){expireForInactivity();return;}
-    syncActivity(true);
+    syncActivity(false);
   }
   function bindActivityMonitor(){
     if(activityBound)return;activityBound=true;
     ['pointerdown','keydown','input','change','touchstart'].forEach(name=>document.addEventListener(name,markActivity,{capture:true,passive:true}));
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});
     window.addEventListener('online',heartbeat);
-    window.addEventListener('pagehide',()=>{if(currentState)syncActivity(true);});
+    window.addEventListener('pagehide',()=>{if(currentState)syncActivity(false);});
     activityTimer=setInterval(heartbeat,HEARTBEAT_INTERVAL_MS);
     heartbeat();
   }
