@@ -369,6 +369,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const pinLatLng = document.getElementById("pinLatLng");
   const gridNo = document.getElementById("gridNo");
   const incidentNo = document.getElementById("incidentNo");
+  const disasterArea = document.getElementById("disasterArea");
   const summary = document.getElementById("summary");
   const units = document.getElementById("units");
   const injuredCount = document.getElementById("injuredCount");
@@ -403,6 +404,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const historyEditCompleted = document.getElementById("historyEditCompleted");
   const historyEditGridNo = document.getElementById("historyEditGridNo");
   const historyEditIncidentNo = document.getElementById("historyEditIncidentNo");
+  const historyEditDisasterArea = document.getElementById("historyEditDisasterArea");
   const historyEditSummary = document.getElementById("historyEditSummary");
   const historyEditUnits = document.getElementById("historyEditUnits");
   const historyEditInjured = document.getElementById("historyEditInjured");
@@ -1556,7 +1558,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(p.incidentNo, 60),
       compactText(p.summary, 180),
       compactText(p.units, 120),
-      p.injured ?? 0
+      p.injured ?? 0,
+      compactText(p.disasterArea, 80)
     ];
   }
 
@@ -1607,7 +1610,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(item?.incidentNo, 60),
       compactText(item?.summary, 180),
       compactText(item?.units, 120),
-      item?.injured ?? 0
+      item?.injured ?? 0,
+      compactText(item?.disasterArea, 80)
     ];
   }
 
@@ -6471,6 +6475,7 @@ window.addEventListener("DOMContentLoaded", () => {
         <div class="pinInfoRow pinInfoNoWrap">座標：${safe(formatLatLngPair(data.lat, data.lng))}</div>
         <div class="pinInfoRow pinInfoNoWrap">グリッド番号：${safe(data.gridNo || "-")}</div>
         <div class="pinInfoRow pinInfoNoWrap">災害番号：${safe(data.incidentNo || "-")}</div>
+        <div class="pinInfoRow pinInfoWrap">災害地区：${safe(data.disasterArea || "-")}</div>
         <div class="pinInfoRow pinInfoWrap">概要：${safe(data.summary || "-")}</div>
         <div class="pinInfoRow pinInfoWrap">出動部隊：${safe(data.units || "-")}</div>
         <div class="pinInfoRow pinInfoNoWrap">傷病者人数：${safe(data.injured || 0)}</div>
@@ -6508,6 +6513,7 @@ window.addEventListener("DOMContentLoaded", () => {
     updatePinLatLngField(data);
     gridNo.value = data.gridNo || "";
     incidentNo.value = data.incidentNo || "";
+    disasterArea.value = data.disasterArea || "";
     summary.value = data.summary || "";
     units.value = data.units || "";
     injuredCount.value = data.injured || 0;
@@ -6578,6 +6584,7 @@ window.addEventListener("DOMContentLoaded", () => {
       lat: pin.data.lat,
       lng: pin.data.lng,
       incidentNo: pin.data.incidentNo,
+      disasterArea: pin.data.disasterArea,
       summary: pin.data.summary,
       units: pin.data.units,
       injured: pin.data.injured
@@ -6601,6 +6608,7 @@ window.addEventListener("DOMContentLoaded", () => {
     item.lat = pin.data.lat;
     item.lng = pin.data.lng;
     item.incidentNo = pin.data.incidentNo;
+    item.disasterArea = pin.data.disasterArea;
     item.summary = pin.data.summary;
     item.units = pin.data.units;
     item.injured = pin.data.injured;
@@ -6699,7 +6707,7 @@ window.addEventListener("DOMContentLoaded", () => {
           const text = String(value ?? "").trim();
           return escapeHtml(text || fallback);
         };
-        div.innerHTML = `<b>№${safeHistoryValue(getHistoryPinNo(item), "-")}　${safeHistoryValue(item.typeLabel, "-")}　${safeHistoryValue(item.gridNo, "-")}</b><div class="historyTime">活動状態：${safeHistoryValue(item.statusLabel, "-")}<br>覚知：${safeHistoryValue(item.awarenessLabel, "-")}<br>完了：${safeHistoryValue(item.completedLabel, "-")}</div><div class="historyMeta">座標：${safeHistoryValue(coordinateText, "-")}<br>災害番号：${safeHistoryValue(item.incidentNo, "-")}<br>概要：${safeHistoryValue(item.summary, "-")}<br>出動部隊：${safeHistoryValue(item.units, "未入力")}<br>傷病者人数：${safeHistoryValue(item.injured, "0")}</div>`;
+        div.innerHTML = `<b>№${safeHistoryValue(getHistoryPinNo(item), "-")}　${safeHistoryValue(item.typeLabel, "-")}　${safeHistoryValue(item.gridNo, "-")}</b><div class="historyTime">活動状態：${safeHistoryValue(item.statusLabel, "-")}<br>覚知：${safeHistoryValue(item.awarenessLabel, "-")}<br>完了：${safeHistoryValue(item.completedLabel, "-")}</div><div class="historyMeta">座標：${safeHistoryValue(coordinateText, "-")}<br>災害番号：${safeHistoryValue(item.incidentNo, "-")}<br>災害地区：${safeHistoryValue(item.disasterArea, "-")}<br>概要：${safeHistoryValue(item.summary, "-")}<br>出動部隊：${safeHistoryValue(item.units, "未入力")}<br>傷病者人数：${safeHistoryValue(item.injured, "0")}</div>`;
         div.addEventListener("click", e => {
           e.stopPropagation();
           showHistoryContextMenu(item, e);
@@ -6771,6 +6779,7 @@ window.addEventListener("DOMContentLoaded", () => {
     historyEditCompleted.value = item.completedLabel || "";
     historyEditGridNo.value = item.gridNo || "";
     historyEditIncidentNo.value = item.incidentNo || "";
+    historyEditDisasterArea.value = item.disasterArea || "";
     historyEditSummary.value = item.summary || "";
     historyEditUnits.value = item.units || "";
     historyEditInjured.value = item.injured || 0;
@@ -6793,6 +6802,7 @@ window.addEventListener("DOMContentLoaded", () => {
     target.completedLabel = historyEditCompleted.value;
     target.gridNo = historyEditGridNo.value;
     target.incidentNo = historyEditIncidentNo.value;
+    target.disasterArea = historyEditDisasterArea.value;
     target.summary = historyEditSummary.value;
     target.units = historyEditUnits.value;
     target.injured = parseInt(historyEditInjured.value, 10) || 0;
@@ -6803,6 +6813,7 @@ window.addEventListener("DOMContentLoaded", () => {
       pin.data.completedLabel = target.completedLabel;
       pin.data.gridNo = target.gridNo;
       pin.data.incidentNo = target.incidentNo;
+      pin.data.disasterArea = target.disasterArea;
       pin.data.summary = target.summary;
       pin.data.units = target.units;
       pin.data.injured = target.injured;
@@ -6929,6 +6940,7 @@ window.addEventListener("DOMContentLoaded", () => {
       lng: latlng.lng,
       gridNo: getGridNumber(latlng),
       incidentNo: "",
+      disasterArea: "",
       summary: "",
       units: "",
       injured: 0,
@@ -7072,6 +7084,7 @@ window.addEventListener("DOMContentLoaded", () => {
     selectedPin.data.type = normalizePinType(pinType.value);
     selectedPin.data.gridNo = gridNo.value;
     selectedPin.data.incidentNo = incidentNo.value;
+    selectedPin.data.disasterArea = disasterArea.value;
     selectedPin.data.summary = summary.value;
     selectedPin.data.units = units.value;
     selectedPin.data.injured = parseInt(injuredCount.value) || 0;
@@ -7583,6 +7596,7 @@ window.addEventListener("DOMContentLoaded", () => {
         "覚知日時",
         "完了日時",
         "災害番号",
+        "災害地区",
         "概要",
         "出動部隊",
         "傷病者人数"
@@ -7967,7 +7981,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function exportActivityHistoryCsv() {
-    const rows = [["No", "№", "活動状態", "種別", "覚知日時", "完了日時", "グリッド", "座標", "災害番号", "概要", "出動部隊", "傷病者人数"]];
+    const rows = [["No", "№", "活動状態", "種別", "覚知日時", "完了日時", "グリッド", "座標", "災害番号", "災害地区", "概要", "出動部隊", "傷病者人数"]];
     pins.map(makeHistoryItemFromPin).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0)).forEach((item, index) => {
       const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "";
       rows.push([
@@ -7980,6 +7994,7 @@ window.addEventListener("DOMContentLoaded", () => {
         item.gridNo || "",
         coordinateText,
         item.incidentNo || "",
+        item.disasterArea || "",
         item.summary || "",
         item.units || "",
         item.injured ?? 0
