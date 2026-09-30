@@ -575,6 +575,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
   let baseTileLayer = L.tileLayer(selectedLayer.url, {
     maxZoom: selectedLayer.maxZoom,
+
+    // 淡色地図を通常の濃度で表示する。
+    opacity: 1,
+
     minZoom: 2,
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
     crossOrigin: true
@@ -1432,6 +1436,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
     baseTileLayer = L.tileLayer(nextLayer.url, {
       maxZoom: nextLayer.maxZoom,
+
+      // 淡色地図を通常の濃度で表示する。
+      opacity: 1,
+
       minZoom: 2,
       attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
       crossOrigin: true
