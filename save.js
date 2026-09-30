@@ -887,7 +887,7 @@ window.addEventListener("DOMContentLoaded", () => {
       activityStatusSummary.innerHTML = `<span>未対応：${counts.unassigned}件</span><span>活動中：${counts.active}件</span><span>活動完了：${counts.completed}件</span>`;
     }
     if (!list.length) {
-      historyPreviewRows.innerHTML = `<tr><td colspan="11">活動情報はありません。</td></tr>`;
+      historyPreviewRows.innerHTML = `<tr><td colspan="12">活動情報はありません。</td></tr>`;
       return;
     }
 
@@ -907,6 +907,7 @@ window.addEventListener("DOMContentLoaded", () => {
         <td>${escapeHtml(item.awarenessLabel || "-")}</td>
         <td>${escapeHtml(item.completedLabel || "-")}</td>
         <td>${escapeHtml(item.incidentNo || "-")}</td>
+        <td>${escapeHtml(item.disasterArea || "-")}</td>
         <td>${escapeHtml(item.summary || "-")}</td>
         <td>${escapeHtml(String(item.units || "").trim() || "未入力")}</td>
         <td>${escapeHtml(item.injured ?? 0)}</td>
@@ -1009,7 +1010,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     if (csvIncludeHistory.checked) {
       rows.push(["活動一覧"]);
-      rows.push(["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "概要", "出動部隊", "傷病者人数"]);
+      rows.push(["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "災害地区", "概要", "出動部隊", "傷病者人数"]);
       const list = buildActivityListFromPins();
       list.forEach((item, index) => rows.push([
         getHistoryPinNo(item, index),
@@ -1020,6 +1021,7 @@ window.addEventListener("DOMContentLoaded", () => {
         item.awarenessLabel || "",
         item.completedLabel || "",
         item.incidentNo || "",
+        item.disasterArea || "",
         item.summary || "",
         item.units || "",
         item.injured ?? 0
@@ -1259,7 +1261,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(p.incidentNo, 60),
       compactText(p.summary, 180),
       compactText(p.units, 120),
-      p.injured ?? 0
+      p.injured ?? 0,
+      compactText(p.disasterArea, 80)
     ];
   }
 
@@ -1310,7 +1313,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(item?.incidentNo, 60),
       compactText(item?.summary, 180),
       compactText(item?.units, 120),
-      item?.injured ?? 0
+      item?.injured ?? 0,
+      compactText(item?.disasterArea, 80)
     ];
   }
 

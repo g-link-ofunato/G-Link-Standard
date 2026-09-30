@@ -317,7 +317,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       incidentNo: value[8] || "",
       summary: value[9] || "",
       units: value[10] || "",
-      injured: value[11] ?? 0
+      injured: value[11] ?? 0,
+      disasterArea: value[12] || ""
     };
   }
 
@@ -368,7 +369,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       incidentNo: value[7] || "",
       summary: value[8] || "",
       units: value[9] || "",
-      injured: value[10] ?? 0
+      injured: value[10] ?? 0,
+      disasterArea: value[11] || ""
     };
   }
 
@@ -523,6 +525,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       座標：${escapeHtml(formatLatLng(data))}<br>
       グリッド番号：${escapeHtml(data.gridNo || "-")}<br>
       災害番号：${escapeHtml(data.incidentNo || "-")}<br>
+      災害地区：${escapeHtml(data.disasterArea || "-")}<br>
       概要：${escapeHtml(data.summary || "-")}<br>
       出動部隊：${escapeHtml(data.units || "-")}<br>
       傷病者人数：${escapeHtml(data.injured || 0)}
@@ -930,7 +933,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(pinLabels[normalizePinType(item.type)] || item.type || "-")}</td>
         <td>${escapeHtml(item.awarenessLabel || "-")}</td>
         <td>${escapeHtml(item.completedLabel || "-")}</td>
-        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(String(item.units || "").trim() || "未入力")}<br>傷病者人数：${escapeHtml(item.injured ?? 0)}</td>
+        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>災害地区：${escapeHtml(item.disasterArea || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(String(item.units || "").trim() || "未入力")}<br>傷病者人数：${escapeHtml(item.injured ?? 0)}</td>
       </tr>`).join("")}</tbody></table>`;
   }
 
