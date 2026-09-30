@@ -81,7 +81,10 @@ window.addEventListener("DOMContentLoaded", () => {
     currentBaseLayer = L.tileLayer(layerInfo.url, {
       maxZoom: layerInfo.maxZoom,
       minZoom: 2,
-      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+      // 2026-09 GSI中・小縮尺タイル更新後も、災害情報・グリッドを読み取りやすくする。
+      // PNGタイル内の記号だけを除去することはできないため、淡色地図のみ背景濃度を抑える。
+      opacity: type === "pale" ? 0.58 : 1
     }).addTo(map);
  
     currentBaseLayer.bringToBack();

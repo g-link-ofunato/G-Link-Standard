@@ -1234,7 +1234,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       maxZoom: layer.maxZoom,
       minZoom: 2,
       attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
-      crossOrigin: true
+      crossOrigin: true,
+      // 指揮本部と同じ淡色地図の視認性を現場閲覧モードにも適用する。
+      opacity: layerType === "pale" ? 0.58 : 1
     }).addTo(map);
     currentLayerType = layerType;
   }

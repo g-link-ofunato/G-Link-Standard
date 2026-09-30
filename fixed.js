@@ -575,6 +575,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
   let baseTileLayer = L.tileLayer(selectedLayer.url, {
     maxZoom: selectedLayer.maxZoom,
+    // GSI中・小縮尺タイルの情報量増加対策：淡色地図だけ背景濃度を抑える。
+    opacity: selectedMapType === "pale" ? 0.58 : 1,
     minZoom: 2,
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
     crossOrigin: true
@@ -1432,6 +1434,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
     baseTileLayer = L.tileLayer(nextLayer.url, {
       maxZoom: nextLayer.maxZoom,
+      // GSI中・小縮尺タイルの情報量増加対策：淡色地図だけ背景濃度を抑える。
+      opacity: nextType === "pale" ? 0.58 : 1,
       minZoom: 2,
       attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
       crossOrigin: true
