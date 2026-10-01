@@ -766,3 +766,37 @@ button { cursor: pointer; }
   word-break: keep-all !important;
   overflow-wrap: normal !important;
 }
+
+/* 2026-10-01: 情報ページ上端欠け・ページボタン幅統一 */
+/* 高さがプレビュー領域を超える情報ページを中央寄せすると、上端（ヘッダー・凡例）が領域外へ押し出されるため上端基準に固定する。 */
+.infoPage,
+.continuationInfoPage {
+  align-self: flex-start !important;
+}
+
+/* ページ数が3以上でも各ページボタンを1・2ページ目と同じ幅に保つ。 */
+.pagePreviewStrip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+.pagePreviewStrip .pageThumb {
+  flex: 0 0 230px !important;
+  width: 230px !important;
+}
+.pagePreviewStrip .pagePreviewNote {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+@media (max-width: 1250px) {
+  .pagePreviewStrip {
+    flex-wrap: wrap !important;
+  }
+  .pagePreviewStrip .pageThumb {
+    flex: 1 1 calc(50% - 6px) !important;
+    width: auto !important;
+  }
+  .pagePreviewStrip .pagePreviewNote {
+    flex: 0 0 100% !important;
+  }
+}
