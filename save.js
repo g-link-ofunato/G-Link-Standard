@@ -120,8 +120,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const historyPreviewRows = document.getElementById("historyPreviewRows");
   const activityStatusSummary = document.getElementById("activityStatusSummary");
   const pagePreviewStrip = document.getElementById("pagePreviewStrip");
-  const FIRST_HISTORY_ROWS_PER_PAGE = 12;
-  const HISTORY_ROWS_PER_PAGE = 20;
   const glinkLoadBtn = document.getElementById("glinkLoadBtn");
   const glinkLoadInput = document.getElementById("glinkLoadInput");
  
@@ -936,37 +934,123 @@ window.addEventListener("DOMContentLoaded", () => {
     return table;
   }
 
-  function rebuildContinuationPages(list) {
-    previewCanvas.querySelectorAll(".continuationInfoPage").forEach(el => el.remove());
-    if (!list || list.length <= FIRST_HISTORY_ROWS_PER_PAGE) return;
-    for (let start = FIRST_HISTORY_ROWS_PER_PAGE; start < list.length; start += HISTORY_ROWS_PER_PAGE) {
-      const chunk = list.slice(start, start + HISTORY_ROWS_PER_PAGE);
-      const article = document.createElement("article");
-      article.className = "paperPreview infoPage continuationInfoPage hidden";
-
-      const header = document.createElement("div");
-      header.className = "infoPageHeader";
-      const systemLabel = document.createElement("div");
-      systemLabel.className = "systemLabel";
-      systemLabel.textContent = "G-Link〈災害情報共有システム〉";
-      const heading = document.createElement("h2");
-      heading.textContent = "活動一覧（続き）";
-      header.append(systemLabel, heading);
-
-      const section = document.createElement("section");
-      section.className = "infoSection continuationHistorySection";
-      section.dataset.section = "history";
-      const sectionHeading = document.createElement("h3");
-      sectionHeading.textContent = `活動一覧　${start + 1}～${start + chunk.length}件目`;
-      section.append(sectionHeading, buildActivityTableElement(chunk, start));
-
-      const note = document.createElement("p");
-      note.className = "paperNote";
-      note.textContent = "※活動一覧の続きです。";
-      article.append(header, section, note);
-      previewCanvas.appendChild(article);
+  function measurePageWhileHidden(page, callback) {
+    if (!page) return callback();
+    const wasHidden = page.classList.contains("hidden");
+    const previous = {
+      display: page.style.display,
+      visibility: page.style.visibility,
+      position: page.style.position,
+      left: page.style.left,
+      top: page.style.top,
+      zIndex: page.style.zIndex
+    };
+    if (wasHidden) page.classList.remove("hidden");
+    page.style.display = "block";
+    page.style.visibility = "hidden";
+    page.style.position = "fixed";
+    page.style.left = "-10000px";
+    page.style.top = "0";
+    page.style.zIndex = "-1";
+    try {
+      return callback();
+    } finally {
+      if (wasHidden) page.classList.add("hidden");
+      page.style.display = previous.display;
+      page.style.visibility = previous.visibility;
+      page.style.position = previous.position;
+      page.style.left = previous.left;
+      page.style.top = previous.top;
+      page.style.zIndex = previous.zIndex;
     }
+  }
+
+  function pageContentFits(page) {
+    return measurePageWhileHidden(page, () => page.scrollHeight <= page.clientHeight + 1);
+  }
+
+  function fitHistoryRowsToPage(page, tbody, rows, startIndex) {
+    if (!rows.length) {
+      tbody.replaceChildren();
+      return 0;
+    }
+
+    // 実際の用紙高さ・ヘッダー・凡例・計測図形の高さを使って、
+    // そのページに収まる最大行数を二分探索する。固定件数では分割しない。
+    let low = 1;
+    let high = rows.length;
+    let best = 0;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      tbody.replaceChildren(...rows.slice(0, mid).map((item, i) => buildHistoryRowElement(item, startIndex + i)));
+      if (pageContentFits(page)) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    // 1行でも収まらない特殊ケースでは、情報消失を避けるため1行を残す。
+    const count = Math.max(1, best);
+    tbody.replaceChildren(...rows.slice(0, count).map((item, i) => buildHistoryRowElement(item, startIndex + i)));
+    return count;
+  }
+
+  function createContinuationPage(startIndex) {
+    const article = document.createElement("article");
+    article.className = "paperPreview infoPage continuationInfoPage hidden";
+
+    const header = document.createElement("div");
+    header.className = "infoPageHeader";
+    const systemLabel = document.createElement("div");
+    systemLabel.className = "systemLabel";
+    systemLabel.textContent = "G-Link〈災害情報共有システム〉";
+    const heading = document.createElement("h2");
+    heading.textContent = "活動一覧（続き）";
+    header.append(systemLabel, heading);
+
+    const section = document.createElement("section");
+    section.className = "infoSection continuationHistorySection";
+    section.dataset.section = "history";
+    const sectionHeading = document.createElement("h3");
+    const table = buildActivityTableElement([], startIndex);
+    section.append(sectionHeading, table);
+
+    const note = document.createElement("p");
+    note.className = "paperNote";
+    note.textContent = "※活動一覧の続きです。";
+    article.append(header, section, note);
+    previewCanvas.appendChild(article);
     applyPaperPreviewRatio();
+    return { article, sectionHeading, tbody: table.querySelector("tbody") };
+  }
+
+  function rebuildActivityPagination(list) {
+    previewCanvas.querySelectorAll(".continuationInfoPage").forEach(el => el.remove());
+    const historySection = historyPreviewRows?.closest(".infoSection");
+    if (!historySection || historySection.style.display === "none") {
+      historyPreviewRows.replaceChildren();
+      return;
+    }
+
+    applyPaperPreviewRatio();
+    if (!list.length) {
+      historyPreviewRows.innerHTML = `<tr><td colspan="12">活動情報はありません。</td></tr>`;
+      return;
+    }
+
+    let start = 0;
+    const firstCount = fitHistoryRowsToPage(infoPage, historyPreviewRows, list, 0);
+    start += firstCount;
+
+    while (start < list.length) {
+      const remaining = list.slice(start);
+      const { article, sectionHeading, tbody } = createContinuationPage(start);
+      const count = fitHistoryRowsToPage(article, tbody, remaining, start);
+      sectionHeading.textContent = `活動一覧　${start + 1}～${start + count}件目`;
+      start += count;
+    }
   }
 
   function reflectHistoryRows() {
@@ -976,14 +1060,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (activityStatusSummary) {
       activityStatusSummary.innerHTML = `<span>未対応：${counts.unassigned}件</span><span>活動中：${counts.active}件</span><span>活動完了：${counts.completed}件</span>`;
     }
-    if (!list.length) {
-      historyPreviewRows.innerHTML = `<tr><td colspan="12">活動情報はありません。</td></tr>`;
-      rebuildContinuationPages([]);
-      rebuildPageThumbs();
-      return;
-    }
-    historyPreviewRows.replaceChildren(...list.slice(0, FIRST_HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowElement(item, index)));
-    rebuildContinuationPages(list);
+    rebuildActivityPagination(list);
     rebuildPageThumbs();
   }
  
@@ -1019,6 +1096,8 @@ window.addEventListener("DOMContentLoaded", () => {
     } else {
       infoPageTitle.textContent = titleInput.value || getHeader().disasterName || "保存情報";
     }
+    // 表示項目のON/OFFで使用可能な縦幅が変わるため、その都度実寸で再改ページする。
+    rebuildActivityPagination(buildActivityListFromPins());
     rebuildPageThumbs();
     updatePageThumbs();
   }
