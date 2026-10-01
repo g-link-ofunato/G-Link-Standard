@@ -817,3 +817,65 @@ button { cursor: pointer; }
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
+
+
+/* 2026-10-02: 保存センター全ページ共通フィット表示 */
+/* 情報ページを中央寄せすると、用紙が表示領域より高い場合に上端（ヘッダー・凡例）が画面外へ切れる。 */
+.previewCanvas {
+  align-items: flex-start !important;
+}
+
+/* 地図・情報・CSVを同じ用紙サイズとして扱う。 */
+.paperPreview {
+  flex: 0 0 auto !important;
+  max-width: 1120px !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+.infoPage,
+.continuationInfoPage {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* 情報ページは限られた用紙内に収めるため、余白をわずかに圧縮する。 */
+.infoPage {
+  padding: 16px 20px !important;
+}
+.infoPageHeader {
+  padding-bottom: 6px !important;
+  margin-bottom: 8px !important;
+}
+.infoPage h2 {
+  font-size: 20px !important;
+}
+.infoSection {
+  margin: 8px 0 10px !important;
+}
+.infoSection h3 {
+  margin-bottom: 5px !important;
+  font-size: 15px !important;
+}
+.infoTable {
+  font-size: 11px !important;
+}
+.infoTable th,
+.infoTable td {
+  padding: 4px 5px !important;
+}
+.activityTable {
+  font-size: 9.5px !important;
+}
+.activityTable th,
+.activityTable td {
+  padding: 3px 3px !important;
+}
+.legendGrid {
+  gap: 4px 10px !important;
+  font-size: 11px !important;
+}
+.paperNote {
+  margin-top: 8px !important;
+  font-size: 10px !important;
+}

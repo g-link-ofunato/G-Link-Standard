@@ -120,6 +120,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const historyPreviewRows = document.getElementById("historyPreviewRows");
   const activityStatusSummary = document.getElementById("activityStatusSummary");
   const pagePreviewStrip = document.getElementById("pagePreviewStrip");
+  const FIRST_HISTORY_ROWS_PER_PAGE = 12;
   const HISTORY_ROWS_PER_PAGE = 20;
   const glinkLoadBtn = document.getElementById("glinkLoadBtn");
   const glinkLoadInput = document.getElementById("glinkLoadInput");
@@ -372,31 +373,30 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function applyPaperPreviewRatio() {
-    if (!mapPage || !previewCanvas) return;
- 
-    // Version1.6.3 Build012
-    // PDF保存・PNG保存の白背面を、選択中の用紙サイズと向きの比率で表示する。
-    // 保存対象画像そのものは変更せず、保存センター上のプレビュー表示だけを調整する。
+    if (!previewCanvas) return;
+
+    // 2026-10-02: 地図・情報・CSVの全ページを同じ用紙比率／同じ表示倍率でプレビューする。
+    // ページごとに表示寸法が変わると、情報ページだけ拡大され上端が画面外へ押し出されるため、
+    // 現在のプレビュー領域に収まる共通サイズを算出して全 paperPreview に適用する。
     const size = getPaperSizeMm();
     const ratio = size.width / size.height;
-    mapPage.style.setProperty("--paper-preview-ratio", `${size.width} / ${size.height}`);
- 
-    if (currentMode === "csv") return;
- 
     const canvasRect = previewCanvas.getBoundingClientRect();
     const maxW = Math.max(320, canvasRect.width - 28);
     const maxH = Math.max(320, canvasRect.height - 28);
     const maxPaperW = 1120;
     let targetW = Math.min(maxW, maxPaperW);
     let targetH = targetW / ratio;
- 
+
     if (targetH > maxH) {
       targetH = maxH;
       targetW = targetH * ratio;
     }
- 
-    mapPage.style.width = `${Math.floor(targetW)}px`;
-    mapPage.style.height = `${Math.floor(targetH)}px`;
+
+    previewCanvas.querySelectorAll(".paperPreview").forEach(page => {
+      page.style.setProperty("--paper-preview-ratio", `${size.width} / ${size.height}`);
+      page.style.width = `${Math.floor(targetW)}px`;
+      page.style.height = `${Math.floor(targetH)}px`;
+    });
   }
  
    function safeFileName(name) {
@@ -938,8 +938,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function rebuildContinuationPages(list) {
     previewCanvas.querySelectorAll(".continuationInfoPage").forEach(el => el.remove());
-    if (!list || list.length <= HISTORY_ROWS_PER_PAGE) return;
-    for (let start = HISTORY_ROWS_PER_PAGE; start < list.length; start += HISTORY_ROWS_PER_PAGE) {
+    if (!list || list.length <= FIRST_HISTORY_ROWS_PER_PAGE) return;
+    for (let start = FIRST_HISTORY_ROWS_PER_PAGE; start < list.length; start += HISTORY_ROWS_PER_PAGE) {
       const chunk = list.slice(start, start + HISTORY_ROWS_PER_PAGE);
       const article = document.createElement("article");
       article.className = "paperPreview infoPage continuationInfoPage hidden";
@@ -966,6 +966,7 @@ window.addEventListener("DOMContentLoaded", () => {
       article.append(header, section, note);
       previewCanvas.appendChild(article);
     }
+    applyPaperPreviewRatio();
   }
 
   function reflectHistoryRows() {
@@ -981,7 +982,7 @@ window.addEventListener("DOMContentLoaded", () => {
       rebuildPageThumbs();
       return;
     }
-    historyPreviewRows.replaceChildren(...list.slice(0, HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowElement(item, index)));
+    historyPreviewRows.replaceChildren(...list.slice(0, FIRST_HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowElement(item, index)));
     rebuildContinuationPages(list);
     rebuildPageThumbs();
   }
