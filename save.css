@@ -129,7 +129,7 @@ button { cursor: pointer; }
 .mapPreviewImage.is-hidden { display: none !important; }
 .mapPreviewFallback.is-hidden { display: none !important; }
 .csvMode .mapOnlyPage { display: none !important; }
-.csvMode .infoPage { display: block !important; }
+.csvMode .infoPage:not(.hidden) { display: block !important; }
 .csvTargetNotice { margin: 0 0 12px; padding: 10px 12px; background:#eef6ff; border:1px solid #c5dcf7; border-radius:6px; font-size:13px; }
 @media (max-height: 820px) {
   .brand { padding: 14px 20px 16px; }
@@ -767,36 +767,53 @@ button { cursor: pointer; }
   overflow-wrap: normal !important;
 }
 
-/* 2026-10-01: 情報ページ上端欠け・ページボタン幅統一 */
-/* 高さがプレビュー領域を超える情報ページを中央寄せすると、上端（ヘッダー・凡例）が領域外へ押し出されるため上端基準に固定する。 */
-.infoPage,
-.continuationInfoPage {
-  align-self: flex-start !important;
+/* 2026-10-02: 保存センターのページ表示を分離して安定化 */
+/* ページ本体の表示/非表示は .hidden を優先し、CSVでも選択中の1ページだけを表示する。 */
+.csvMode .infoPage.hidden,
+.csvMode .continuationInfoPage.hidden {
+  display: none !important;
 }
 
-/* ページ数が3以上でも各ページボタンを1・2ページ目と同じ幅に保つ。 */
+/* ページ切替ボタンは最大5列。6ページ目以降は自動的に次の行へ送る。 */
 .pagePreviewStrip {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+  gap: 10px !important;
 }
 .pagePreviewStrip .pageThumb {
-  flex: 0 0 230px !important;
-  width: 230px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 64px !important;
+  padding: 8px 10px !important;
+  gap: 7px !important;
+  overflow: hidden !important;
+}
+.pagePreviewStrip .pageThumbNo {
+  flex: 0 0 26px !important;
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 12px !important;
+}
+.pagePreviewStrip .pageThumbLabel {
+  min-width: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: clamp(11px, 0.78vw, 14px) !important;
 }
 .pagePreviewStrip .pagePreviewNote {
-  flex: 1 1 auto !important;
+  grid-column: 1 / -1 !important;
+  width: auto !important;
   min-width: 0 !important;
 }
-@media (max-width: 1250px) {
+@media (max-width: 1450px) {
   .pagePreviewStrip {
-    flex-wrap: wrap !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
-  .pagePreviewStrip .pageThumb {
-    flex: 1 1 calc(50% - 6px) !important;
-    width: auto !important;
-  }
-  .pagePreviewStrip .pagePreviewNote {
-    flex: 0 0 100% !important;
+}
+@media (max-width: 1180px) {
+  .pagePreviewStrip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }

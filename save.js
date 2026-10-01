@@ -1031,6 +1031,11 @@ window.addEventListener("DOMContentLoaded", () => {
     return currentMode === "csv" ? infos : [mapPage, ...infos];
   }
 
+  function toCircledNumber(value) {
+    const circled = ["", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
+    return circled[value] || String(value);
+  }
+
   function rebuildPageThumbs() {
     if (!pagePreviewStrip) return;
     pagePreviewStrip.querySelectorAll(".pageThumb").forEach(el => el.remove());
@@ -1042,7 +1047,9 @@ window.addEventListener("DOMContentLoaded", () => {
       btn.className = "pageThumb";
       btn.dataset.page = String(i + 1);
       const isMap = currentMode !== "csv" && i === 0;
-      btn.innerHTML = `<span class="pageThumbNo">${i + 1}</span><span class="pageThumbLabel">${i + 1}ページ目（${isMap ? "地図" : (i <= (currentMode === "csv" ? 0 : 1) ? "情報" : "活動一覧・続き")}）</span>`;
+      const infoNo = currentMode === "csv" ? i + 1 : i;
+      const pageLabel = isMap ? "地図" : `情報${toCircledNumber(infoNo)}`;
+      btn.innerHTML = `<span class="pageThumbNo">${i + 1}</span><span class="pageThumbLabel">${i + 1}ページ目（${pageLabel}）</span>`;
       btn.addEventListener("click", () => showPage(i + 1));
       pagePreviewStrip.insertBefore(btn, note || null);
     });
@@ -1064,6 +1071,13 @@ window.addEventListener("DOMContentLoaded", () => {
     [mapPage, ...getInfoPages()].forEach(page => page.classList.add("hidden"));
     const target = pages[currentPage - 1];
     if (target) target.classList.remove("hidden");
+
+    // ページ切替時は前ページのスクロール位置を引き継がない。
+    // 情報ページ上端（ヘッダー・凡例）や地図上端が画面外に残ることを防ぐ。
+    if (previewCanvas) {
+      previewCanvas.scrollTop = 0;
+      previewCanvas.scrollLeft = 0;
+    }
     updatePageThumbs();
     if (target === mapPage && previewMap) {
       setTimeout(() => {
