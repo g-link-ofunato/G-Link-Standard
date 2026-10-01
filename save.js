@@ -119,7 +119,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const measurementPreviewRows = document.getElementById("measurementPreviewRows");
   const historyPreviewRows = document.getElementById("historyPreviewRows");
   const activityStatusSummary = document.getElementById("activityStatusSummary");
-  const pageThumbs = document.querySelectorAll(".pageThumb[data-page]");
+  const pagePreviewStrip = document.getElementById("pagePreviewStrip");
+  const HISTORY_ROWS_PER_PAGE = 20;
   const glinkLoadBtn = document.getElementById("glinkLoadBtn");
   const glinkLoadInput = document.getElementById("glinkLoadInput");
  
@@ -879,6 +880,94 @@ window.addEventListener("DOMContentLoaded", () => {
     })).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0));
   }
 
+  function appendHistoryCell(row, value, className = "") {
+    const cell = document.createElement("td");
+    if (className) cell.className = className;
+    cell.textContent = value == null ? "" : String(value);
+    row.appendChild(cell);
+    return cell;
+  }
+
+  function buildHistoryRowElement(item, index) {
+    const row = document.createElement("tr");
+    const stateClass = `activityState-${item.status}`;
+    appendHistoryCell(row, getHistoryPinNo(item, index), stateClass);
+    appendHistoryCell(row, item.statusLabel, stateClass);
+    appendHistoryCell(row, item.typeLabel || item.type || "-");
+    appendHistoryCell(row, item.gridNo || "-");
+
+    const coordinateCell = document.createElement("td");
+    const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
+    const coordinateParts = coordinateText === "-" ? ["-"] : coordinateText.split(/,\s*/);
+    coordinateCell.textContent = coordinateParts[0] || "-";
+    if (coordinateParts.length >= 2) {
+      coordinateCell.appendChild(document.createElement("br"));
+      coordinateCell.appendChild(document.createTextNode(coordinateParts.slice(1).join(", ")));
+    }
+    row.appendChild(coordinateCell);
+
+    appendHistoryCell(row, item.awarenessLabel || "-");
+    appendHistoryCell(row, item.completedLabel || "-");
+    appendHistoryCell(row, item.incidentNo || "-");
+    appendHistoryCell(row, item.disasterArea || "-");
+    appendHistoryCell(row, item.summary || "-");
+    appendHistoryCell(row, String(item.units || "").trim() || "未入力");
+    appendHistoryCell(row, item.injured ?? 0);
+    return row;
+  }
+
+  function buildActivityTableElement(rows, startIndex) {
+    const table = document.createElement("table");
+    table.className = "infoTable activityTable";
+
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "災害地区", "概要", "出動部隊", "傷病者人数"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    rows.forEach((item, i) => tbody.appendChild(buildHistoryRowElement(item, startIndex + i)));
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function rebuildContinuationPages(list) {
+    previewCanvas.querySelectorAll(".continuationInfoPage").forEach(el => el.remove());
+    if (!list || list.length <= HISTORY_ROWS_PER_PAGE) return;
+    for (let start = HISTORY_ROWS_PER_PAGE; start < list.length; start += HISTORY_ROWS_PER_PAGE) {
+      const chunk = list.slice(start, start + HISTORY_ROWS_PER_PAGE);
+      const article = document.createElement("article");
+      article.className = "paperPreview infoPage continuationInfoPage hidden";
+
+      const header = document.createElement("div");
+      header.className = "infoPageHeader";
+      const systemLabel = document.createElement("div");
+      systemLabel.className = "systemLabel";
+      systemLabel.textContent = "G-Link〈災害情報共有システム〉";
+      const heading = document.createElement("h2");
+      heading.textContent = "活動一覧（続き）";
+      header.append(systemLabel, heading);
+
+      const section = document.createElement("section");
+      section.className = "infoSection continuationHistorySection";
+      section.dataset.section = "history";
+      const sectionHeading = document.createElement("h3");
+      sectionHeading.textContent = `活動一覧　${start + 1}～${start + chunk.length}件目`;
+      section.append(sectionHeading, buildActivityTableElement(chunk, start));
+
+      const note = document.createElement("p");
+      note.className = "paperNote";
+      note.textContent = "※活動一覧の続きです。";
+      article.append(header, section, note);
+      previewCanvas.appendChild(article);
+    }
+  }
+
   function reflectHistoryRows() {
     const list = buildActivityListFromPins();
     const counts = { unassigned: 0, active: 0, completed: 0 };
@@ -888,31 +977,13 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     if (!list.length) {
       historyPreviewRows.innerHTML = `<tr><td colspan="12">活動情報はありません。</td></tr>`;
+      rebuildContinuationPages([]);
+      rebuildPageThumbs();
       return;
     }
-
-    historyPreviewRows.innerHTML = list.slice(0, 20).map((item, index) => {
-      const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
-      const coordinateParts = coordinateText === "-" ? ["-"] : coordinateText.split(/,\s*/);
-      const coordinateHtml = coordinateParts.length >= 2
-        ? `${escapeHtml(coordinateParts[0])}<br>${escapeHtml(coordinateParts.slice(1).join(", "))}`
-        : escapeHtml(coordinateText);
-      const stateClass = `activityState-${item.status}`;
-      return `<tr>
-        <td class="${stateClass}">${escapeHtml(getHistoryPinNo(item, index))}</td>
-        <td class="${stateClass}">${escapeHtml(item.statusLabel)}</td>
-        <td>${escapeHtml(item.typeLabel || item.type || "-")}</td>
-        <td>${escapeHtml(item.gridNo || "-")}</td>
-        <td>${coordinateHtml}</td>
-        <td>${escapeHtml(item.awarenessLabel || "-")}</td>
-        <td>${escapeHtml(item.completedLabel || "-")}</td>
-        <td>${escapeHtml(item.incidentNo || "-")}</td>
-        <td>${escapeHtml(item.disasterArea || "-")}</td>
-        <td>${escapeHtml(item.summary || "-")}</td>
-        <td>${escapeHtml(String(item.units || "").trim() || "未入力")}</td>
-        <td>${escapeHtml(item.injured ?? 0)}</td>
-      </tr>`;
-    }).join("");
+    historyPreviewRows.replaceChildren(...list.slice(0, HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowElement(item, index)));
+    rebuildContinuationPages(list);
+    rebuildPageThumbs();
   }
  
   function updateInfoSections() {
@@ -944,34 +1015,57 @@ window.addEventListener("DOMContentLoaded", () => {
  
     if (isCsv) {
       infoPageTitle.textContent = "CSVプレビュー";
-      pageIndicator.textContent = "1 / 1";
     } else {
       infoPageTitle.textContent = titleInput.value || getHeader().disasterName || "保存情報";
-      pageIndicator.textContent = currentPage + " / 2";
     }
+    rebuildPageThumbs();
+    updatePageThumbs();
   }
  
+  function getInfoPages() {
+    return [infoPage, ...Array.from(previewCanvas.querySelectorAll(".continuationInfoPage"))];
+  }
+
+  function getVisiblePages() {
+    const infos = getInfoPages();
+    return currentMode === "csv" ? infos : [mapPage, ...infos];
+  }
+
+  function rebuildPageThumbs() {
+    if (!pagePreviewStrip) return;
+    pagePreviewStrip.querySelectorAll(".pageThumb").forEach(el => el.remove());
+    const note = pagePreviewStrip.querySelector(".pagePreviewNote");
+    const pages = getVisiblePages();
+    pages.forEach((page, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pageThumb";
+      btn.dataset.page = String(i + 1);
+      const isMap = currentMode !== "csv" && i === 0;
+      btn.innerHTML = `<span class="pageThumbNo">${i + 1}</span><span class="pageThumbLabel">${i + 1}ページ目（${isMap ? "地図" : (i <= (currentMode === "csv" ? 0 : 1) ? "情報" : "活動一覧・続き")}）</span>`;
+      btn.addEventListener("click", () => showPage(i + 1));
+      pagePreviewStrip.insertBefore(btn, note || null);
+    });
+    if (currentPage > pages.length) currentPage = Math.max(1, pages.length);
+    updatePageThumbs();
+  }
+
   function updatePageThumbs() {
-    pageThumbs.forEach(btn => {
+    const pages = getVisiblePages();
+    pagePreviewStrip?.querySelectorAll(".pageThumb[data-page]").forEach(btn => {
       btn.classList.toggle("active", Number(btn.dataset.page) === currentPage);
     });
+    pageIndicator.textContent = `${Math.min(currentPage, Math.max(1, pages.length))} / ${Math.max(1, pages.length)}`;
   }
- 
+
   function showPage(pageNo) {
-    if (currentMode === "csv") {
-      currentPage = 2;
-      mapPage.classList.add("hidden");
-      infoPage.classList.remove("hidden");
-      pageIndicator.textContent = "1 / 1";
-      updatePageThumbs();
-      return;
-    }
-    currentPage = Math.max(1, Math.min(2, pageNo));
-    mapPage.classList.toggle("hidden", currentPage !== 1);
-    infoPage.classList.toggle("hidden", currentPage !== 2);
-    pageIndicator.textContent = currentPage + " / 2";
+    const pages = getVisiblePages();
+    currentPage = Math.max(1, Math.min(Math.max(1, pages.length), pageNo));
+    [mapPage, ...getInfoPages()].forEach(page => page.classList.add("hidden"));
+    const target = pages[currentPage - 1];
+    if (target) target.classList.remove("hidden");
     updatePageThumbs();
-    if (currentPage === 1 && previewMap) {
+    if (target === mapPage && previewMap) {
       setTimeout(() => {
         previewMap.invalidateSize();
         applyPaperPreviewRatio();
@@ -1183,14 +1277,15 @@ window.addEventListener("DOMContentLoaded", () => {
     pdf.addImage(mapCanvas.toDataURL("image/png"), "PNG", 0, 0, paper.width, paper.height, undefined, "FAST");
  
     if (hasPdfInfoPage()) {
-      pdf.addPage(getSelectedPaperSizeKey().toLowerCase(), paper.orientation === "portrait" ? "p" : "l");
-      const infoCanvas = await capturePreviewElement(infoPage);
-      const ratio = Math.min(paper.width / infoCanvas.width, paper.height / infoCanvas.height);
-      const drawW = infoCanvas.width * ratio;
-      const drawH = infoCanvas.height * ratio;
-      const x = (paper.width - drawW) / 2;
-      const y = 0;
-      pdf.addImage(infoCanvas.toDataURL("image/png"), "PNG", x, y, drawW, drawH, undefined, "FAST");
+      for (const page of getInfoPages()) {
+        pdf.addPage(getSelectedPaperSizeKey().toLowerCase(), paper.orientation === "portrait" ? "p" : "l");
+        const infoCanvas = await capturePreviewElement(page);
+        const ratio = Math.min(paper.width / infoCanvas.width, paper.height / infoCanvas.height);
+        const drawW = infoCanvas.width * ratio;
+        const drawH = infoCanvas.height * ratio;
+        const x = (paper.width - drawW) / 2;
+        pdf.addImage(infoCanvas.toDataURL("image/png"), "PNG", x, 0, drawW, drawH, undefined, "FAST");
+      }
     }
  
     return pdf.output("blob");
@@ -1591,7 +1686,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (createdUnitInput) createdUnitInput.addEventListener("input", syncHeaderInputsFromSaveCenter);
   prevPageBtn.addEventListener("click", () => showPage(currentPage - 1));
   nextPageBtn.addEventListener("click", () => showPage(currentPage + 1));
-  pageThumbs.forEach(btn => btn.addEventListener("click", () => showPage(Number(btn.dataset.page || 1))));
+  rebuildPageThumbs();
   function closeSaveCenter() {
     // Build018：保存センターは新しいタブで開くため、戻る処理ではなくこのタブを閉じる。
     // 元の指揮本部モードは別タブで開いたままなので、作業状態はそのまま維持される。
