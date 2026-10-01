@@ -880,36 +880,60 @@ window.addEventListener("DOMContentLoaded", () => {
     })).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0));
   }
 
-  function buildHistoryRowHtml(item, index) {
-    const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
-    const coordinateParts = coordinateText === "-" ? ["-"] : coordinateText.split(/,\s*/);
-    const coordinateHtml = coordinateParts.length >= 2
-      ? `${escapeHtml(coordinateParts[0])}<br>${escapeHtml(coordinateParts.slice(1).join(", "))}`
-      : escapeHtml(coordinateText);
-    const stateClass = `activityState-${item.status}`;
-    return `<tr>
-      <td class="${stateClass}">${escapeHtml(getHistoryPinNo(item, index))}</td>
-      <td class="${stateClass}">${escapeHtml(item.statusLabel)}</td>
-      <td>${escapeHtml(item.typeLabel || item.type || "-")}</td>
-      <td>${escapeHtml(item.gridNo || "-")}</td>
-      <td>${coordinateHtml}</td>
-      <td>${escapeHtml(item.awarenessLabel || "-")}</td>
-      <td>${escapeHtml(item.completedLabel || "-")}</td>
-      <td>${escapeHtml(item.incidentNo || "-")}</td>
-      <td>${escapeHtml(item.disasterArea || "-")}</td>
-      <td>${escapeHtml(item.summary || "-")}</td>
-      <td>${escapeHtml(String(item.units || "").trim() || "未入力")}</td>
-      <td>${escapeHtml(item.injured ?? 0)}</td>
-    </tr>`;
+  function appendHistoryCell(row, value, className = "") {
+    const cell = document.createElement("td");
+    if (className) cell.className = className;
+    cell.textContent = value == null ? "" : String(value);
+    row.appendChild(cell);
+    return cell;
   }
 
-  function activityTableHtml(rows, startIndex) {
-    return `<table class="infoTable activityTable">
-      <thead><tr>
-        <th>№</th><th>活動状態</th><th>種別</th><th>グリッド番号</th><th>座標</th><th>覚知日時</th><th>完了日時</th><th>災害番号</th><th>災害地区</th><th>概要</th><th>出動部隊</th><th>傷病者人数</th>
-      </tr></thead>
-      <tbody>${rows.map((item, i) => buildHistoryRowHtml(item, startIndex + i)).join("")}</tbody>
-    </table>`;
+  function buildHistoryRowElement(item, index) {
+    const row = document.createElement("tr");
+    const stateClass = `activityState-${item.status}`;
+    appendHistoryCell(row, getHistoryPinNo(item, index), stateClass);
+    appendHistoryCell(row, item.statusLabel, stateClass);
+    appendHistoryCell(row, item.typeLabel || item.type || "-");
+    appendHistoryCell(row, item.gridNo || "-");
+
+    const coordinateCell = document.createElement("td");
+    const coordinateText = (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "-";
+    const coordinateParts = coordinateText === "-" ? ["-"] : coordinateText.split(/,\s*/);
+    coordinateCell.textContent = coordinateParts[0] || "-";
+    if (coordinateParts.length >= 2) {
+      coordinateCell.appendChild(document.createElement("br"));
+      coordinateCell.appendChild(document.createTextNode(coordinateParts.slice(1).join(", ")));
+    }
+    row.appendChild(coordinateCell);
+
+    appendHistoryCell(row, item.awarenessLabel || "-");
+    appendHistoryCell(row, item.completedLabel || "-");
+    appendHistoryCell(row, item.incidentNo || "-");
+    appendHistoryCell(row, item.disasterArea || "-");
+    appendHistoryCell(row, item.summary || "-");
+    appendHistoryCell(row, String(item.units || "").trim() || "未入力");
+    appendHistoryCell(row, item.injured ?? 0);
+    return row;
+  }
+
+  function buildActivityTableElement(rows, startIndex) {
+    const table = document.createElement("table");
+    table.className = "infoTable activityTable";
+
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "災害地区", "概要", "出動部隊", "傷病者人数"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    rows.forEach((item, i) => tbody.appendChild(buildHistoryRowElement(item, startIndex + i)));
+    table.appendChild(tbody);
+    return table;
   }
 
   function rebuildContinuationPages(list) {
@@ -919,13 +943,27 @@ window.addEventListener("DOMContentLoaded", () => {
       const chunk = list.slice(start, start + HISTORY_ROWS_PER_PAGE);
       const article = document.createElement("article");
       article.className = "paperPreview infoPage continuationInfoPage hidden";
-      article.innerHTML = `
-        <div class="infoPageHeader"><div class="systemLabel">G-Link〈災害情報共有システム〉</div><h2>活動一覧（続き）</h2></div>
-        <section class="infoSection continuationHistorySection" data-section="history">
-          <h3>活動一覧　${start + 1}～${start + chunk.length}件目</h3>
-          ${activityTableHtml(chunk, start)}
-        </section>
-        <p class="paperNote">※活動一覧の続きです。</p>`;
+
+      const header = document.createElement("div");
+      header.className = "infoPageHeader";
+      const systemLabel = document.createElement("div");
+      systemLabel.className = "systemLabel";
+      systemLabel.textContent = "G-Link〈災害情報共有システム〉";
+      const heading = document.createElement("h2");
+      heading.textContent = "活動一覧（続き）";
+      header.append(systemLabel, heading);
+
+      const section = document.createElement("section");
+      section.className = "infoSection continuationHistorySection";
+      section.dataset.section = "history";
+      const sectionHeading = document.createElement("h3");
+      sectionHeading.textContent = `活動一覧　${start + 1}～${start + chunk.length}件目`;
+      section.append(sectionHeading, buildActivityTableElement(chunk, start));
+
+      const note = document.createElement("p");
+      note.className = "paperNote";
+      note.textContent = "※活動一覧の続きです。";
+      article.append(header, section, note);
       previewCanvas.appendChild(article);
     }
   }
@@ -943,7 +981,7 @@ window.addEventListener("DOMContentLoaded", () => {
       rebuildPageThumbs();
       return;
     }
-    historyPreviewRows.innerHTML = list.slice(0, HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowHtml(item, index)).join("");
+    historyPreviewRows.replaceChildren(...list.slice(0, HISTORY_ROWS_PER_PAGE).map((item, index) => buildHistoryRowElement(item, index)));
     rebuildContinuationPages(list);
     rebuildPageThumbs();
   }
