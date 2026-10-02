@@ -952,3 +952,9 @@ button { cursor: pointer; }
   margin-top: 4px !important;
   font-size: 7px !important;
 }
+
+/* 2026-10-02: .glinkファイル保存はページ/倍率プレビューを持たないため、ナビゲーションを完全に非表示にする。 */
+body.glinkFileMode .pagePreviewStrip,
+body.glinkFileMode .previewControls {
+  display: none !important;
+}
