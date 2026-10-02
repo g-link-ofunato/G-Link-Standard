@@ -390,10 +390,16 @@ window.addEventListener("DOMContentLoaded", () => {
     const targetW = Math.min(maxW, maxPaperW);
     const targetH = targetW / ratio;
 
+    // 表示倍率はページ分割や用紙寸法には影響させず、プレビューの見た目だけを拡大する。
+    // 50%を現在のフィット表示（基準）とし、75%/100%はそれぞれ1.5倍/2倍で表示する。
+    const zoomPercent = parseInt(zoomSelect?.value || "50", 10);
+    const previewZoom = Number.isFinite(zoomPercent) ? Math.max(0.5, zoomPercent / 50) : 1;
+
     previewCanvas.querySelectorAll(".paperPreview").forEach(page => {
       page.style.setProperty("--paper-preview-ratio", `${size.width} / ${size.height}`);
       page.style.width = `${Math.floor(targetW)}px`;
       page.style.height = `${Math.floor(targetH)}px`;
+      page.style.zoom = String(previewZoom);
     });
   }
  
