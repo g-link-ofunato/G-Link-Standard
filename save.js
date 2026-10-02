@@ -1182,6 +1182,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (glinkNoPreviewPanel) glinkNoPreviewPanel.classList.toggle("hidden", mode !== "glink");
     if (glinkLoadBtn) glinkLoadBtn.classList.toggle("hidden", mode !== "glink");
     if (previewCanvas) previewCanvas.classList.toggle("hidden", mode === "glink");
+    // .glinkファイル保存はページプレビューを持たないため、ページ選択ボタンも表示しない。
+    if (pagePreviewStrip) pagePreviewStrip.classList.toggle("hidden", mode === "glink");
     applyPaperPreviewRatio();
     reflectMapPreviewImage();
  
