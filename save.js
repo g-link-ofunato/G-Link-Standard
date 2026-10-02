@@ -377,6 +377,8 @@ window.addEventListener("DOMContentLoaded", () => {
     // ページごとに表示寸法が変わると、情報ページだけ拡大され上端が画面外へ押し出されるため、
     // 現在のプレビュー領域に収まる共通サイズを算出して全 paperPreview に適用する。
     const size = getPaperSizeMm();
+    // 縦向きでは12列の活動一覧を列ごと潰さず、文字・余白を縮小して用紙幅へ収める。
+    document.body.classList.toggle("portraitPaper", size.orientation === "portrait");
     const ratio = size.width / size.height;
     const canvasRect = previewCanvas.getBoundingClientRect();
     const maxW = Math.max(320, canvasRect.width - 28);
@@ -1752,8 +1754,14 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   menuButtons.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
-  if (paperSizeSelect) paperSizeSelect.addEventListener("change", applyPaperPreviewRatio);
-  orientationInputs.forEach(input => input.addEventListener("change", applyPaperPreviewRatio));
+  if (paperSizeSelect) paperSizeSelect.addEventListener("change", () => {
+    applyPaperPreviewRatio();
+    updateInfoSections();
+  });
+  orientationInputs.forEach(input => input.addEventListener("change", () => {
+    applyPaperPreviewRatio();
+    updateInfoSections();
+  }));
   if (zoomSelect) zoomSelect.addEventListener("change", applyPaperPreviewRatio);
   window.addEventListener("resize", applyPaperPreviewRatio);
   window.addEventListener("resize", adjustMapPrintHeaderNoWrap);
