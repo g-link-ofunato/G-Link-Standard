@@ -879,3 +879,76 @@ button { cursor: pointer; }
   margin-top: 8px !important;
   font-size: 10px !important;
 }
+
+
+/* 2026-10-02: 縦向き情報ページの12列一覧を用紙幅へ縮小 */
+/* 横向き用の列比率は維持し、縦向きだけ文字・セル余白を縮めて列潰れを防ぐ。 */
+.portraitPaper .infoPage {
+  padding: 10px 12px !important;
+}
+.portraitPaper .infoPageHeader {
+  padding-bottom: 4px !important;
+  margin-bottom: 5px !important;
+}
+.portraitPaper .systemLabel {
+  font-size: 8px !important;
+}
+.portraitPaper .infoPage h2 {
+  font-size: 14px !important;
+  margin-top: 2px !important;
+}
+.portraitPaper .infoSection {
+  margin: 5px 0 6px !important;
+}
+.portraitPaper .infoSection h3 {
+  margin-bottom: 3px !important;
+  padding-left: 5px !important;
+  border-left-width: 3px !important;
+  font-size: 10px !important;
+}
+.portraitPaper .infoTable {
+  table-layout: fixed !important;
+  font-size: 7px !important;
+}
+.portraitPaper .infoTable th,
+.portraitPaper .infoTable td {
+  padding: 2px 2px !important;
+  line-height: 1.15 !important;
+}
+.portraitPaper .activityTable {
+  table-layout: fixed !important;
+  font-size: 5.5px !important;
+}
+.portraitPaper .activityTable th,
+.portraitPaper .activityTable td {
+  padding: 1px 1px !important;
+  line-height: 1.12 !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+/* 状態・種別・番号・日時等は1文字ずつの縦潰れを防ぐ。 */
+.portraitPaper .activityTable th,
+.portraitPaper .activityTable td:nth-child(1),
+.portraitPaper .activityTable td:nth-child(2),
+.portraitPaper .activityTable td:nth-child(3),
+.portraitPaper .activityTable td:nth-child(4),
+.portraitPaper .activityTable td:nth-child(6),
+.portraitPaper .activityTable td:nth-child(7),
+.portraitPaper .activityTable td:nth-child(8),
+.portraitPaper .activityTable td:nth-child(11),
+.portraitPaper .activityTable td:nth-child(12) {
+  white-space: nowrap !important;
+}
+.portraitPaper .legendGrid {
+  gap: 2px 6px !important;
+  font-size: 7px !important;
+}
+.portraitPaper .legendCircle {
+  width: 8px !important;
+  height: 8px !important;
+  margin-right: 3px !important;
+}
+.portraitPaper .paperNote {
+  margin-top: 4px !important;
+  font-size: 7px !important;
+}
