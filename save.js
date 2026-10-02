@@ -380,15 +380,15 @@ window.addEventListener("DOMContentLoaded", () => {
     const ratio = size.width / size.height;
     const canvasRect = previewCanvas.getBoundingClientRect();
     const maxW = Math.max(320, canvasRect.width - 28);
-    const maxH = Math.max(320, canvasRect.height - 28);
     const maxPaperW = 1120;
-    let targetW = Math.min(maxW, maxPaperW);
-    let targetH = targetW / ratio;
 
-    if (targetH > maxH) {
-      targetH = maxH;
-      targetW = targetH * ratio;
-    }
+    // ページ数が増えると下部のページボタン領域が高くなり、previewCanvas の高さが縮む。
+    // その高さを用紙寸法の計算に使うと、向き変更のたびに「用紙が縮む→1ページの行数が減る
+    // →ページ数が増える→さらに用紙が縮む」という循環が起きる。
+    // 用紙寸法はプレビュー領域の「幅」だけから決定し、ページボタン数の影響を受けないようにする。
+    // 高さが表示領域を超える場合は previewCanvas 自体のスクロールで閲覧する。
+    const targetW = Math.min(maxW, maxPaperW);
+    const targetH = targetW / ratio;
 
     previewCanvas.querySelectorAll(".paperPreview").forEach(page => {
       page.style.setProperty("--paper-preview-ratio", `${size.width} / ${size.height}`);
