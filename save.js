@@ -77,7 +77,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const closeBtn = document.getElementById("closeBtn");
   const titleInput = document.getElementById("titleInput");
   const createdUnitInput = document.getElementById("createdUnitInput");
-  const paperSizeSelect = document.getElementById("paperSize");
   const orientationInputs = document.querySelectorAll('input[name="orientation"]');
   const zoomSelect = document.getElementById("zoomSelect");
  
@@ -344,10 +343,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
  
+  // 保存センターの出力用紙はA3固定。向きのみ利用者が選択する。
   function getSelectedPaperSizeKey() {
-    const text = paperSizeSelect ? String(paperSizeSelect.value || paperSizeSelect.options?.[paperSizeSelect.selectedIndex]?.text || "") : "A3";
-    const match = text.match(/A[0-4]/i);
-    return match ? match[0].toUpperCase() : "A3";
+    return "A3";
   }
  
   function getSelectedOrientationKey() {
@@ -1754,10 +1752,6 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   menuButtons.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
-  if (paperSizeSelect) paperSizeSelect.addEventListener("change", () => {
-    applyPaperPreviewRatio();
-    updateInfoSections();
-  });
   orientationInputs.forEach(input => input.addEventListener("change", () => {
     applyPaperPreviewRatio();
     updateInfoSections();
