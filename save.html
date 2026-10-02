@@ -61,11 +61,10 @@
               <button id="prevPageBtn">‹</button>
               <span class="pageBox" id="pageIndicator">1 / 2</span>
               <button id="nextPageBtn">›</button>
-              <select id="zoomSelect">
-                <option>50%</option>
-                <option>75%</option>
-                <option>100%</option>
-              </select>
+              <label class="zoomInputWrap" for="zoomSelect" title="プレビュー倍率（50～150%）">
+                <input id="zoomSelect" type="number" min="50" max="150" step="1" value="100" inputmode="numeric" aria-label="プレビュー倍率">
+                <span>%</span>
+              </label>
             </div>
           </div>
  
