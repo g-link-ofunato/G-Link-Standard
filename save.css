@@ -958,3 +958,31 @@ body.glinkFileMode .pagePreviewStrip,
 body.glinkFileMode .previewControls {
   display: none !important;
 }
+
+
+/* 2026-10-02: プレビュー倍率を50～150%で直接入力できるようにする。 */
+.zoomInputWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  white-space: nowrap;
+}
+.zoomInputWrap #zoomSelect {
+  width: 54px;
+  min-width: 0;
+  height: 28px;
+  padding: 2px 2px 2px 4px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  text-align: right;
+}
+.zoomInputWrap span {
+  font-size: 13px;
+  color: #334155;
+}

@@ -391,9 +391,10 @@ window.addEventListener("DOMContentLoaded", () => {
     const targetH = targetW / ratio;
 
     // 表示倍率はページ分割や用紙寸法には影響させず、プレビューの見た目だけを拡大する。
-    // 50%を現在のフィット表示（基準）とし、75%/100%はそれぞれ1.5倍/2倍で表示する。
-    const zoomPercent = parseInt(zoomSelect?.value || "50", 10);
-    const previewZoom = Number.isFinite(zoomPercent) ? Math.max(0.5, zoomPercent / 50) : 1;
+    // 現在のフィット表示を100%とし、50～150%の範囲で自由に指定できる。
+    const rawZoomPercent = Number.parseFloat(zoomSelect?.value || "100");
+    const zoomPercent = Number.isFinite(rawZoomPercent) ? Math.min(150, Math.max(50, rawZoomPercent)) : 100;
+    const previewZoom = zoomPercent / 100;
 
     previewCanvas.querySelectorAll(".paperPreview").forEach(page => {
       page.style.setProperty("--paper-preview-ratio", `${size.width} / ${size.height}`);
@@ -1764,7 +1765,15 @@ window.addEventListener("DOMContentLoaded", () => {
     applyPaperPreviewRatio();
     updateInfoSections();
   }));
-  if (zoomSelect) zoomSelect.addEventListener("change", applyPaperPreviewRatio);
+  if (zoomSelect) {
+    // 入力中は即時に見た目だけ拡大・縮小する。ページ分割は再計算しない。
+    zoomSelect.addEventListener("input", applyPaperPreviewRatio);
+    zoomSelect.addEventListener("change", () => {
+      const value = Number.parseFloat(zoomSelect.value);
+      zoomSelect.value = String(Number.isFinite(value) ? Math.min(150, Math.max(50, value)) : 100);
+      applyPaperPreviewRatio();
+    });
+  }
   window.addEventListener("resize", applyPaperPreviewRatio);
   window.addEventListener("resize", adjustMapPrintHeaderNoWrap);
   [includeHeader, includeHeaderSection, includeLegend, includeMeasurements, includeHistory, csvIncludeHistory, csvIncludeMeasurements].forEach(input => {
