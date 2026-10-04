@@ -754,13 +754,61 @@ window.addEventListener("DOMContentLoaded", async () => {
     const landslideLegend = `<section class="viewerHazardLegend"><b>土砂災害</b>${active.includes("debrisFlow")?'<span class="vhs1">土石流</span>':''}${active.includes("steepSlope")?'<span class="vhs2">急傾斜地</span>':''}${active.includes("landslide")?'<span class="vhs3">地すべり</span>':''}</section>`;
     dock.innerHTML = `${hasFlood && !closed.has("flood") ? floodLegend : ""}${hasLandslide && !closed.has("landslide") ? landslideLegend : ""}${hasTsunami && !closed.has("tsunami") ? floodLegend.replace("浸水深","津波 浸水深") : ""}`;
     dock.hidden = !dock.innerHTML;
-    const pos = settings.legendPosition;
-    if (pos && Number.isFinite(Number(pos.left)) && Number.isFinite(Number(pos.top))) {
-      dock.style.left = `${Math.max(0, Number(pos.left))}px`;
-      dock.style.top = `${Math.max(0, Number(pos.top))}px`;
+    const configuredPos = settings.legendPosition;
+    if (!viewerHazardLegendPosition && configuredPos && Number.isFinite(Number(configuredPos.left)) && Number.isFinite(Number(configuredPos.top))) {
+      viewerHazardLegendPosition = { left: Math.max(0, Number(configuredPos.left)), top: Math.max(0, Number(configuredPos.top)) };
+    }
+    if (viewerHazardLegendPosition) {
+      dock.style.left = `${viewerHazardLegendPosition.left}px`;
+      dock.style.top = `${viewerHazardLegendPosition.top}px`;
       dock.style.right = "auto";
       dock.style.bottom = "auto";
     }
+    setupViewerHazardLegendDrag(dock);
+  }
+
+  function setupViewerHazardLegendDrag(dock) {
+    if (!dock || dock.dataset.dragReady === "1") return;
+    dock.dataset.dragReady = "1";
+    L.DomEvent.disableClickPropagation(dock);
+    L.DomEvent.disableScrollPropagation(dock);
+
+    dock.addEventListener("pointerdown", event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      const area = document.getElementById("viewerMapArea");
+      if (!area) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const areaRect = area.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      const offsetX = event.clientX - dockRect.left;
+      const offsetY = event.clientY - dockRect.top;
+      dock.setPointerCapture?.(event.pointerId);
+      dock.classList.add("isDragging");
+
+      const move = moveEvent => {
+        const maxLeft = Math.max(0, areaRect.width - dock.offsetWidth);
+        const maxTop = Math.max(0, areaRect.height - dock.offsetHeight);
+        const left = Math.max(0, Math.min(maxLeft, moveEvent.clientX - areaRect.left - offsetX));
+        const top = Math.max(0, Math.min(maxTop, moveEvent.clientY - areaRect.top - offsetY));
+        viewerHazardLegendPosition = { left, top };
+        dock.style.left = `${left}px`;
+        dock.style.top = `${top}px`;
+        dock.style.right = "auto";
+        dock.style.bottom = "auto";
+      };
+      const end = endEvent => {
+        dock.classList.remove("isDragging");
+        try { dock.releasePointerCapture?.(endEvent.pointerId); } catch (_) {}
+        dock.removeEventListener("pointermove", move);
+        dock.removeEventListener("pointerup", end);
+        dock.removeEventListener("pointercancel", end);
+      };
+      dock.addEventListener("pointermove", move);
+      dock.addEventListener("pointerup", end);
+      dock.addEventListener("pointercancel", end);
+    });
   }
 
   function getViewerColumnName(index) {
@@ -1161,6 +1209,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   let viewerGpsMarker = null;
   let viewerGpsAccuracyCircle = null;
   let viewerGpsHasCentered = false;
+  let viewerHazardLegendPosition = null;
 
   function getLiveViewerId() {
     try {
@@ -1238,8 +1287,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       minZoom: 2,
       attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
       crossOrigin: true,
-      // 指揮本部と同じ淡色地図の視認性を現場閲覧モードにも適用する。
-      opacity: layerType === "pale" ? 0.58 : 1
+      // 指揮本部モードと同じ通常濃度で表示し、Viewerだけ地図が白く曇る状態を防ぐ。
+      opacity: 1
     }).addTo(map);
     currentLayerType = layerType;
   }
@@ -1443,10 +1492,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     (data.pins || []).forEach((pin, index) => {
       if (!pinVisibleInViewer(pin) || typeof pin.lat !== "number" || typeof pin.lng !== "number") return;
+      const pinNumber = pin.number || pin.pinNo || index + 1;
       const marker = L.marker([pin.lat, pin.lng], {
-        icon: createPinIcon(pin.type, pin.completed, index + 1, pin.units)
+        icon: createPinIcon(pin.type, pin.completed, pinNumber, pin.units)
       }).addTo(map);
-      marker.bindPopup(pinPopup(pin, index + 1));
+      marker.bindPopup(pinPopup(pin, pinNumber));
     });
 
     if (viewerLayerVisibility.tracks !== false) renderTracks(map, data);
