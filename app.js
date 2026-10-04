@@ -65,7 +65,9 @@ window.addEventListener("DOMContentLoaded", () => {
   };
  
   const map = L.map("map", {
-    zoomControl: false
+    zoomControl: false,
+    zoomSnap: 0.25,
+    zoomDelta: 0.25
   }).setView([35.6749, 139.7509], 13);
  
   let currentBaseLayer = null;
