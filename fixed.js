@@ -548,6 +548,8 @@ window.addEventListener("DOMContentLoaded", () => {
     dragging: true,
     touchZoom: true,
     scrollWheelZoom: true,
+    zoomSnap: 0.25,
+    zoomDelta: 0.25,
     doubleClickZoom: true,
     boxZoom: true,
     keyboard: true,

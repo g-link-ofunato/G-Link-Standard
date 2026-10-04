@@ -1520,6 +1520,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   diag("地図生成開始", true);
   map = L.map("viewerMap", {
     zoomControl: true,
+    zoomSnap: 0.25,
+    zoomDelta: 0.25,
     attributionControl: true
   }).setView(center, Number(data.session?.zoom || 14));
   setupViewerPanels(map);
