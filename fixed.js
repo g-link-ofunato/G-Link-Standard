@@ -1613,7 +1613,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(item?.summary, 180),
       compactText(item?.units, 120),
       item?.injured ?? 0,
-      compactText(item?.disasterArea, 80)
+      compactText(item?.disasterArea, 80),
+      item?.completed ? 1 : 0
     ];
   }
 

@@ -370,7 +370,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       summary: value[8] || "",
       units: value[9] || "",
       injured: value[10] ?? 0,
-      disasterArea: value[11] || ""
+      disasterArea: value[11] || "",
+      // Build互換: 新形式は活動完了フラグを末尾に保持する。
+      // 旧共有データでは完了日時がある場合も完了として復元する。
+      completed: value.length >= 13 ? value[12] === 1 : !!String(value[6] || "").trim()
     };
   }
 
