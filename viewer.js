@@ -961,7 +961,13 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function renderHistory(data) {
     const box = document.getElementById("viewerHistory");
-    const rows = Array.isArray(data.pins) ? [...data.pins] : [];
+    // 活動一覧はピン配列の表示順ではなく、指揮本部で保持している活動履歴を使用する。
+    // activityHistory には対応するピン№（pinNo）が保存されているため、
+    // 現場閲覧モードでも地図上のピン№と同じ番号を表示できる。
+    const historySource = Array.isArray(data.activityHistory) && data.activityHistory.length
+      ? data.activityHistory
+      : (Array.isArray(data.pins) ? data.pins : []);
+    const rows = [...historySource];
     const priority = { unassigned: 0, active: 1, completed: 2 };
     rows.sort((a, b) => {
       const statusDiff = priority[getViewerActivityStatus(a)] - priority[getViewerActivityStatus(b)];
