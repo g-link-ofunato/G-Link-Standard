@@ -152,8 +152,8 @@ window.addEventListener("DOMContentLoaded", () => {
     },
     png: {
       title: "保存センター - PNG保存プレビュー",
-      lead: "指揮本部モードの地図画面を画像として保存します。",
-      previewTitle: "PNGプレビュー（地図全面）",
+      lead: "1ページ目の地図と、2ページ目以降の選択した情報をページごとにPNG画像として保存します。",
+      previewTitle: "PNGプレビュー（地図＋情報ページ）",
       settingsTitle: "PNG設定",
       saveLabel: "🖼 PNGを保存",
       extension: "png"
@@ -1339,8 +1339,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof html2canvas !== "function") {
       throw new Error("html2canvasが読み込まれていません。");
     }
+    // キャプチャ中に updateInfoSections() を実行すると、情報ページの再改ページ処理により
+    // continuationInfoPage が作り直され、html2canvas が受け取った要素参照がDOMから外れる。
+    // その結果 "Unable to find element in cloned iframe" となるため、
+    // ページ構成の更新は保存処理の開始時に一度だけ行い、ここではDOMを変更しない。
     applyPaperPreviewRatio();
-    updateInfoSections();
     await new Promise(resolve => setTimeout(resolve, 80));
     return temporarilyShowForCapture(element, async () => {
       return await html2canvas(element, {
@@ -1354,9 +1357,76 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
  
-  async function createPngBlobFromPreview() {
-    const canvas = await capturePreviewElement(mapPage);
-    return new Promise(resolve => canvas.toBlob(blob => resolve(blob), "image/png"));
+  function canvasToPngBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error("PNGデータを作成できませんでした。"));
+      }, "image/png");
+    });
+  }
+
+  async function createPngPagesFromPreview() {
+    // 保存開始前に一度だけページ構成を確定する。
+    updateInfoSections();
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const pages = [mapPage, ...getInfoPages()];
+    const results = [];
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await capturePreviewElement(pages[i]);
+      const blob = await canvasToPngBlob(canvas);
+      results.push({
+        blob,
+        label: i === 0 ? "地図" : `情報${toCircledNumber(i)}`
+      });
+    }
+    return results;
+  }
+
+  function downloadBlobWithoutAlert(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  async function savePngPages(pages, suggestedName) {
+    const baseName = String(suggestedName || "G-Link_PNG.png").replace(/\.png$/i, "");
+
+    // Chrome/Edge等では保存先フォルダーを一度だけ選択し、全ページをまとめて保存する。
+    if (window.showDirectoryPicker && window.isSecureContext) {
+      try {
+        const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+        for (let i = 0; i < pages.length; i++) {
+          const fileName = `${baseName}_${String(i + 1).padStart(2, "0")}_${pages[i].label}.png`;
+          const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(pages[i].blob);
+          await writable.close();
+        }
+        alert(`${pages.length}ページのPNGを保存しました。`);
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+        console.warn("PNGのフォルダー保存に失敗したため、通常ダウンロードに切り替えます。", err);
+      }
+    }
+
+    // フォルダー選択APIが利用できない環境では、ページごとに通常ダウンロードする。
+    pages.forEach((page, i) => {
+      const fileName = `${baseName}_${String(i + 1).padStart(2, "0")}_${page.label}.png`;
+      downloadBlobWithoutAlert(page.blob, fileName);
+    });
+    alert(`${pages.length}ページのPNG保存を開始しました。ブラウザのダウンロード欄を確認してください。`);
   }
  
   function hasPdfInfoPage() {
@@ -1364,6 +1434,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   async function createPdfBlobFromPreview() {
+    // 情報ページの再改ページはキャプチャ前に一度だけ実行する。
+    // capturePreviewElement() 内ではDOMを再構築しない。
+    updateInfoSections();
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const jsPdfNamespace = window.jspdf || window.jsPDF;
     const JsPDF = jsPdfNamespace?.jsPDF || jsPdfNamespace;
     if (!JsPDF) throw new Error("jsPDFが読み込まれていません。");
@@ -1737,9 +1812,9 @@ window.addEventListener("DOMContentLoaded", () => {
       }
  
       if (currentMode === "png") {
-        const pngBlob = await createPngBlobFromPreview();
-        if (!pngBlob) throw new Error("PNGデータを作成できませんでした。");
-        await saveBlobWithPicker(pngBlob, suggestedName);
+        const pngPages = await createPngPagesFromPreview();
+        if (!pngPages.length) throw new Error("PNGデータを作成できませんでした。");
+        await savePngPages(pngPages, suggestedName);
         return;
       }
  
