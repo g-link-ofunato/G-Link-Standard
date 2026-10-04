@@ -6506,7 +6506,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof applyPinLayerFilter === "function") applyPinLayerFilter();
   }
  
-  function openEditPanel(pin) {
+  function openEditPanel(pin, options = {}) {
     selectedPin = pin;
     const data = pin.data;
     pendingAttachment = null;
@@ -6535,6 +6535,16 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     editPanel.style.display = "block";
+
+    // 新規ピン作成時は日本語入力欄へフォーカスを戻す。
+    // ブラウザからIME自体を強制ONにはできないため、地図クリック後に
+    // 日本語テキスト入力コンテキストへ速やかに復帰させる。
+    if (options.focusJapaneseInput && disasterArea) {
+      window.requestAnimationFrame(() => {
+        try { disasterArea.focus({ preventScroll: true }); }
+        catch (_) { disasterArea.focus(); }
+      });
+    }
   }
  
   function showPinContextMenu(pin, originalEvent) {
@@ -6964,7 +6974,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     pins.push(marker);
     applyPinLayerFilter();
-    openEditPanel(marker);
+    openEditPanel(marker, { focusJapaneseInput: true });
   }
  
   map.on("click", e => {
