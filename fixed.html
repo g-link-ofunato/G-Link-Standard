@@ -125,18 +125,13 @@
  
       <div class="panelContent" id="vehiclePanel">
         <h3>車両リスト</h3>
-        <div class="vehicleNotice">CSVは入力候補としてこのブラウザ内に一時保持します。第1段階ではピン情報との連動は行いません。</div>
+        <div class="vehicleNotice">CSVは入力候補としてこのブラウザ内に一時保持します。ピン情報の出動部隊から登録車両を選択できます。</div>
         <div class="vehicleActionGrid">
           <button id="vehicleTemplateBtn" type="button">CSV様式をダウンロード</button>
           <button id="vehicleImportBtn" type="button">CSVを読み込む</button>
           <button id="vehicleExportBtn" type="button">現在の車両リストをCSV出力</button>
         </div>
         <input id="vehicleCsvFileInput" type="file" accept=".csv,text/csv" hidden>
-        <div class="vehiclePasteBlock">
-          <label for="vehicleCsvPaste">CSVデータを貼り付け</label>
-          <textarea id="vehicleCsvPaste" rows="5" placeholder="都道府県,所属,管轄,車両,人員"></textarea>
-          <button id="vehiclePasteImportBtn" type="button">貼り付け内容を読み込む</button>
-        </div>
         <div id="vehicleImportStatus" class="vehicleImportStatus" aria-live="polite"></div>
         <div class="vehicleSearchBlock">
           <label for="vehicleSearchInput">車両検索</label>
@@ -767,7 +762,10 @@
     <textarea id="summary" rows="4" lang="ja" inputmode="text" placeholder="災害概要を入力してください"></textarea>
  
     <label>出動部隊</label>
-    <input id="units" type="text" lang="ja" inputmode="text">
+    <button id="selectVehiclesBtn" type="button" class="selectVehiclesBtn">車両を選択</button>
+    <div id="selectedVehiclesSummary" class="selectedVehiclesSummary">選択車両なし</div>
+    <label class="subFieldLabel" for="units">その他の部隊（自由入力）</label>
+    <input id="units" type="text" lang="ja" inputmode="text" placeholder="CSVにない部隊等を入力">
  
     <label>傷病者人数</label>
     <input id="injuredCount" type="number" min="0" value="0">
@@ -785,6 +783,20 @@
     </div>
   </div>
  
+  <div id="vehicleSelectModal" class="vehicleSelectModal" hidden>
+    <div class="vehicleSelectDialog" role="dialog" aria-modal="true" aria-labelledby="vehicleSelectTitle">
+      <div class="vehicleSelectHeader"><h3 id="vehicleSelectTitle">出動車両を選択</h3><button id="closeVehicleSelectBtn" type="button" aria-label="閉じる">×</button></div>
+      <input id="vehicleSelectSearch" type="search" placeholder="都道府県・所属・管轄・車両で検索">
+      <div class="vehicleSelectHelp">複数選択できます。活動中の車両は選択できません。人員は今回の活動人数に変更できます。</div>
+      <div id="vehicleSelectList" class="vehicleSelectList"></div>
+      <div class="vehicleSelectFooter">
+        <div id="vehicleSelectTotal" class="vehicleSelectTotal">0台／0名</div>
+        <button id="applyVehicleSelectionBtn" type="button">選択した車両を追加</button>
+        <button id="cancelVehicleSelectionBtn" type="button">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <div id="historyEditPanel">
     <h3>活動情報編集</h3>
  

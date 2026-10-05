@@ -372,6 +372,15 @@ window.addEventListener("DOMContentLoaded", () => {
   const disasterArea = document.getElementById("disasterArea");
   const summary = document.getElementById("summary");
   const units = document.getElementById("units");
+  const selectVehiclesBtn = document.getElementById("selectVehiclesBtn");
+  const selectedVehiclesSummary = document.getElementById("selectedVehiclesSummary");
+  const vehicleSelectModal = document.getElementById("vehicleSelectModal");
+  const vehicleSelectSearch = document.getElementById("vehicleSelectSearch");
+  const vehicleSelectList = document.getElementById("vehicleSelectList");
+  const vehicleSelectTotal = document.getElementById("vehicleSelectTotal");
+  const applyVehicleSelectionBtn = document.getElementById("applyVehicleSelectionBtn");
+  const cancelVehicleSelectionBtn = document.getElementById("cancelVehicleSelectionBtn");
+  const closeVehicleSelectBtn = document.getElementById("closeVehicleSelectBtn");
   const injuredCount = document.getElementById("injuredCount");
   const attachment = document.getElementById("attachment");
   const attachmentInfo = document.getElementById("attachmentInfo");
@@ -1401,8 +1410,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const vehicleImportBtn = document.getElementById("vehicleImportBtn");
   const vehicleExportBtn = document.getElementById("vehicleExportBtn");
   const vehicleCsvFileInput = document.getElementById("vehicleCsvFileInput");
-  const vehicleCsvPaste = document.getElementById("vehicleCsvPaste");
-  const vehiclePasteImportBtn = document.getElementById("vehiclePasteImportBtn");
   const vehicleImportStatus = document.getElementById("vehicleImportStatus");
   const vehicleSearchInput = document.getElementById("vehicleSearchInput");
   const vehicleListCount = document.getElementById("vehicleListCount");
@@ -1516,16 +1523,23 @@ window.addEventListener("DOMContentLoaded", () => {
     vehicleListCount.textContent = `車両リスト ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
     if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。"}</div>`; return; }
     const table = document.createElement("table"); table.className = "vehicleListTable";
-    table.innerHTML = "<thead><tr><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>操作</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
     const tbody = document.createElement("tbody");
+    const activeAssignments = getActiveVehicleAssignments();
     filtered.forEach(({ v, index }) => {
       const tr = document.createElement("tr");
       [v.prefecture, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
+      const activeNo = activeAssignments.get(vehicleKey(v));
+      const stateTd = document.createElement("td"); stateTd.textContent = activeNo ? `活動中 No.${activeNo}` : "待機"; stateTd.className = activeNo ? "vehicleStateActive" : "vehicleStateReady"; tr.appendChild(stateTd);
       const action = document.createElement("td"); action.className = "vehicleActions";
       const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "編集";
       edit.addEventListener("click", () => editVehicle(index));
       const del = document.createElement("button"); del.type = "button"; del.textContent = "削除";
-      del.addEventListener("click", () => { if (confirm(`${v.vehicle} を車両リストから削除しますか？`)) { vehicleList.splice(index, 1); saveVehicleListSession(); renderVehicleList(); } });
+      del.addEventListener("click", () => {
+        const activeNo = getActiveVehicleAssignments().get(vehicleKey(v));
+        if (activeNo) return alert(`${v.vehicle} はNo.${activeNo}で活動中のため削除できません。`);
+        if (confirm(`${v.vehicle} を車両リストから削除しますか？`)) { vehicleList.splice(index, 1); saveVehicleListSession(); renderVehicleList(); }
+      });
       action.append(edit, del); tr.appendChild(action); tbody.appendChild(tr);
     });
     table.appendChild(tbody); vehicleListTableWrap.replaceChildren(table);
@@ -1563,9 +1577,132 @@ window.addEventListener("DOMContentLoaded", () => {
       try { importVehicleText(await file.text()); } catch (_) { setVehicleStatus("CSVファイルを読み込めませんでした。", "error"); }
       vehicleCsvFileInput.value = "";
     });
-    vehiclePasteImportBtn?.addEventListener("click", () => importVehicleText(vehicleCsvPaste?.value || ""));
     vehicleSearchInput?.addEventListener("input", renderVehicleList);
   }
+
+  let editVehicleSelection = [];
+  let pendingVehicleSelection = [];
+
+  function cloneAssignedVehicles(list) {
+    return (Array.isArray(list) ? list : []).map(v => ({
+      prefecture: normalizeVehicle(v.prefecture),
+      organization: normalizeVehicle(v.organization),
+      jurisdiction: normalizeVehicle(v.jurisdiction),
+      vehicle: normalizeVehicle(v.vehicle),
+      personnel: Math.max(0, Number.parseInt(v.personnel, 10) || 0)
+    })).filter(v => v.vehicle);
+  }
+
+  function getActiveVehicleAssignments(excludePin = null) {
+    const active = new Map();
+    pins.forEach(pin => {
+      if (!pin || pin === excludePin || pin.data?.completed) return;
+      cloneAssignedVehicles(pin.data?.assignedVehicles).forEach(v => {
+        active.set(vehicleKey(v), getPinDisplayNumber(pin));
+      });
+    });
+    return active;
+  }
+
+  function formatAssignedVehicle(v) {
+    return `${v.vehicle}（${v.personnel}名）`;
+  }
+
+  function buildUnitsText(assignedVehicles, freeText) {
+    const vehicleText = cloneAssignedVehicles(assignedVehicles).map(formatAssignedVehicle).join("、");
+    const other = normalizeVehicle(freeText);
+    return [vehicleText, other].filter(Boolean).join("、");
+  }
+
+  function renderSelectedVehiclesSummary(list = editVehicleSelection) {
+    if (!selectedVehiclesSummary) return;
+    const selected = cloneAssignedVehicles(list);
+    if (!selected.length) {
+      selectedVehiclesSummary.textContent = "選択車両なし";
+      return;
+    }
+    selectedVehiclesSummary.replaceChildren();
+    selected.forEach(v => {
+      const row = document.createElement("div"); row.className = "selectedVehicleRow";
+      const name = document.createElement("span"); name.textContent = v.vehicle;
+      const count = document.createElement("span"); count.textContent = `${v.personnel}名`;
+      row.append(name, count); selectedVehiclesSummary.appendChild(row);
+    });
+    const total = document.createElement("div"); total.className = "selectedVehicleTotal";
+    total.textContent = `計 ${selected.length}台／${selected.reduce((sum, v) => sum + v.personnel, 0)}名`;
+    selectedVehiclesSummary.appendChild(total);
+  }
+
+  function updateVehicleSelectionTotal() {
+    if (!vehicleSelectTotal) return;
+    vehicleSelectTotal.textContent = `${pendingVehicleSelection.length}台／${pendingVehicleSelection.reduce((sum, v) => sum + (Number(v.personnel) || 0), 0)}名`;
+  }
+
+  function renderVehicleSelectionList() {
+    if (!vehicleSelectList) return;
+    const query = normalizeVehicle(vehicleSelectSearch?.value).toLocaleLowerCase("ja-JP");
+    const active = getActiveVehicleAssignments(selectedPin);
+    const selectedMap = new Map(pendingVehicleSelection.map(v => [vehicleKey(v), v]));
+    const rows = vehicleList.filter(v => !query || [v.prefecture, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
+    vehicleSelectList.replaceChildren();
+    if (!rows.length) {
+      const empty = document.createElement("div"); empty.className = "vehicleEmpty";
+      empty.textContent = vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。";
+      vehicleSelectList.appendChild(empty); updateVehicleSelectionTotal(); return;
+    }
+    rows.forEach(v => {
+      const key = vehicleKey(v); const busyNo = active.get(key); const selected = selectedMap.get(key);
+      const row = document.createElement("div"); row.className = "vehicleSelectRow" + (busyNo ? " isBusy" : "");
+      const check = document.createElement("input"); check.type = "checkbox"; check.checked = !!selected; check.disabled = !!busyNo;
+      const identity = document.createElement("div"); identity.className = "vehicleSelectIdentity";
+      const strong = document.createElement("strong"); strong.textContent = v.vehicle;
+      const small = document.createElement("small"); small.textContent = [v.prefecture, v.organization, v.jurisdiction].filter(Boolean).join("｜");
+      identity.append(strong, small);
+      const personnel = document.createElement("div"); personnel.className = "vehicleSelectPersonnel";
+      const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.step = "1"; input.value = String(selected?.personnel ?? v.personnel); input.disabled = !!busyNo || !selected;
+      const suffix = document.createElement("span"); suffix.textContent = "名"; personnel.append(input, suffix);
+      const status = document.createElement("div"); status.className = "vehicleSelectStatus " + (busyNo ? "busy" : "ready"); status.textContent = busyNo ? `活動中 No.${busyNo}` : "待機";
+      check.addEventListener("change", () => {
+        if (check.checked) {
+          pendingVehicleSelection.push({ ...v, personnel: Math.max(0, Number.parseInt(input.value, 10) || 0) }); input.disabled = false;
+        } else {
+          pendingVehicleSelection = pendingVehicleSelection.filter(item => vehicleKey(item) !== key); input.disabled = true;
+        }
+        updateVehicleSelectionTotal();
+      });
+      input.addEventListener("input", () => {
+        const item = pendingVehicleSelection.find(item => vehicleKey(item) === key);
+        if (item) item.personnel = Math.max(0, Number.parseInt(input.value, 10) || 0);
+        updateVehicleSelectionTotal();
+      });
+      row.append(check, identity, personnel, status); vehicleSelectList.appendChild(row);
+    });
+    updateVehicleSelectionTotal();
+  }
+
+  function openVehicleSelection() {
+    if (!selectedPin || !vehicleSelectModal) return;
+    pendingVehicleSelection = cloneAssignedVehicles(editVehicleSelection);
+    vehicleSelectSearch.value = "";
+    renderVehicleSelectionList();
+    vehicleSelectModal.hidden = false;
+    window.requestAnimationFrame(() => vehicleSelectSearch?.focus());
+  }
+
+  function closeVehicleSelection() {
+    if (vehicleSelectModal) vehicleSelectModal.hidden = true;
+  }
+
+  selectVehiclesBtn?.addEventListener("click", openVehicleSelection);
+  vehicleSelectSearch?.addEventListener("input", renderVehicleSelectionList);
+  cancelVehicleSelectionBtn?.addEventListener("click", closeVehicleSelection);
+  closeVehicleSelectBtn?.addEventListener("click", closeVehicleSelection);
+  vehicleSelectModal?.addEventListener("click", e => { if (e.target === vehicleSelectModal) closeVehicleSelection(); });
+  applyVehicleSelectionBtn?.addEventListener("click", () => {
+    editVehicleSelection = cloneAssignedVehicles(pendingVehicleSelection);
+    renderSelectedVehiclesSummary(editVehicleSelection);
+    closeVehicleSelection();
+  });
 
   const panelNames = {
     searchPanel: "検索",
@@ -6696,7 +6833,9 @@ window.addEventListener("DOMContentLoaded", () => {
     incidentNo.value = data.incidentNo || "";
     disasterArea.value = data.disasterArea || "";
     summary.value = data.summary || "";
-    units.value = data.units || "";
+    editVehicleSelection = cloneAssignedVehicles(data.assignedVehicles);
+    units.value = data.freeUnits != null ? data.freeUnits : (editVehicleSelection.length ? "" : (data.units || ""));
+    renderSelectedVehiclesSummary(editVehicleSelection);
     injuredCount.value = data.injured || 0;
     attachment.value = "";
  
@@ -6778,6 +6917,8 @@ window.addEventListener("DOMContentLoaded", () => {
       disasterArea: pin.data.disasterArea,
       summary: pin.data.summary,
       units: pin.data.units,
+      freeUnits: pin.data.freeUnits || "",
+      assignedVehicles: cloneAssignedVehicles(pin.data.assignedVehicles),
       injured: pin.data.injured
     };
   }
@@ -6802,6 +6943,8 @@ window.addEventListener("DOMContentLoaded", () => {
     item.disasterArea = pin.data.disasterArea;
     item.summary = pin.data.summary;
     item.units = pin.data.units;
+    item.freeUnits = pin.data.freeUnits || "";
+    item.assignedVehicles = cloneAssignedVehicles(pin.data.assignedVehicles);
     item.injured = pin.data.injured;
     item.completed = !!pin.data.completed;
     item.status = getPinActivityStatus(pin.data);
@@ -6924,6 +7067,7 @@ window.addEventListener("DOMContentLoaded", () => {
     updateHistoryItemFromPin(pin);
     refreshPin(pin);
     renderActivityHistory();
+    renderVehicleList();
     openToolPanel("historyPanel");
  
     if (selectedPin === pin) {
@@ -6941,6 +7085,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pins.forEach(refreshPin);
     applyPinLayerFilter();
     renderActivityHistory();
+    renderVehicleList();
  
     if (selectedPin === pin) {
       selectedPin = null;
@@ -7134,6 +7279,8 @@ window.addEventListener("DOMContentLoaded", () => {
       disasterArea: "",
       summary: "",
       units: "",
+      freeUnits: "",
+      assignedVehicles: [],
       injured: 0,
       attachmentName: "",
       attachmentDataUrl: "",
@@ -7277,7 +7424,9 @@ window.addEventListener("DOMContentLoaded", () => {
     selectedPin.data.incidentNo = incidentNo.value;
     selectedPin.data.disasterArea = disasterArea.value;
     selectedPin.data.summary = summary.value;
-    selectedPin.data.units = units.value;
+    selectedPin.data.assignedVehicles = cloneAssignedVehicles(editVehicleSelection);
+    selectedPin.data.freeUnits = units.value;
+    selectedPin.data.units = buildUnitsText(selectedPin.data.assignedVehicles, selectedPin.data.freeUnits);
     selectedPin.data.injured = parseInt(injuredCount.value) || 0;
  
     if (pendingAttachment) {
@@ -7287,6 +7436,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
     updateHistoryItemFromPin(selectedPin);
     renderActivityHistory();
+    renderVehicleList();
  
     refreshPin(selectedPin);
     editPanel.style.display = "none";
