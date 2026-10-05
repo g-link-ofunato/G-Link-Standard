@@ -425,7 +425,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const mapRect = map.getContainer().getBoundingClientRect();
     const frameRect = frame.getBoundingClientRect();
 
-    diagnosticBody.innerHTML = [
+    const diagnosticLines = [
       `サイズ選択：${paper ? paper.options[paper.selectedIndex]?.textContent + "（" + paper.value + "）" : "取得不可"}`,
       `赤枠内部サイズ：${frame ? (frame.dataset.paper || "未設定") + " / " + (frame.dataset.orientation || "未設定") : "取得不可"}`,
       `グリッド選択：${grid ? grid.value : "取得不可"}m`,
@@ -436,7 +436,12 @@ window.addEventListener("DOMContentLoaded", () => {
       `ツールバー高さ：${toolbarHeight}px`,
       `地図領域：${Math.round(mapRect.width)} × ${Math.round(mapRect.height)}px`,
       `赤枠：${Math.round(frameRect.width)} × ${Math.round(frameRect.height)}px`
-    ].join("<br>");
+    ];
+    diagnosticBody.replaceChildren();
+    diagnosticLines.forEach((entry, index) => {
+      diagnosticBody.append(document.createTextNode(String(entry)));
+      if (index < diagnosticLines.length - 1) diagnosticBody.append(document.createElement("br"));
+    });
   }
  
   function roundScaleDenominator(value) {
