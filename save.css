@@ -748,19 +748,19 @@ button { cursor: pointer; }
 /* 2026-10-01: 大量事案ページング・12列レイアウト最適化 */
 .continuationInfoPage { min-height: calc(100vh - 130px); }
 .continuationHistorySection { margin-top: 0; }
-.activityTable th:nth-child(1), .activityTable td:nth-child(1) { width: 3% !important; }
-.activityTable th:nth-child(2), .activityTable td:nth-child(2) { width: 7% !important; }
-.activityTable th:nth-child(3), .activityTable td:nth-child(3) { width: 5% !important; }
-.activityTable th:nth-child(4), .activityTable td:nth-child(4) { width: 7% !important; }
-.activityTable th:nth-child(5), .activityTable td:nth-child(5) { width: 14% !important; }
+.activityTable th:nth-child(1), .activityTable td:nth-child(1) { width: 2% !important; }
+.activityTable th:nth-child(2), .activityTable td:nth-child(2) { width: 5% !important; }
+.activityTable th:nth-child(3), .activityTable td:nth-child(3) { width: 3% !important; }
+.activityTable th:nth-child(4), .activityTable td:nth-child(4) { width: 5% !important; }
+.activityTable th:nth-child(5), .activityTable td:nth-child(5) { width: 12% !important; }
 .activityTable th:nth-child(6), .activityTable td:nth-child(6) { width: 9% !important; }
 .activityTable th:nth-child(7), .activityTable td:nth-child(7) { width: 9% !important; }
 .activityTable th:nth-child(8), .activityTable td:nth-child(8) { width: 6% !important; }
-.activityTable th:nth-child(9), .activityTable td:nth-child(9) { width: 10% !important; }
-.activityTable th:nth-child(10), .activityTable td:nth-child(10) { width: 13% !important; }
-.activityTable th:nth-child(11), .activityTable td:nth-child(11) { width: 9% !important; }
+.activityTable th:nth-child(9), .activityTable td:nth-child(9) { width: 8% !important; }
+.activityTable th:nth-child(10), .activityTable td:nth-child(10) { width: 24% !important; }
+.activityTable th:nth-child(11), .activityTable td:nth-child(11) { width: 12% !important; }
 .activityTable th:nth-child(12), .activityTable td:nth-child(12) {
-  width: 8% !important;
+  width: 5% !important;
   text-align: center !important;
   white-space: normal !important;
   word-break: keep-all !important;
@@ -999,12 +999,16 @@ body.glinkFileMode .previewControls {
   line-height: 1.35 !important;
 }
 
-/* 2026-10-05: 出動部隊列を拡張し、傷病者人数列を縮小 */
-.activityTable th:nth-child(11),
-.activityTable td:nth-child(11) {
-  width: 13% !important;
-}
-.activityTable th:nth-child(12),
-.activityTable td:nth-child(12) {
-  width: 4% !important;
-}
+/* 2026-10-05: 活動一覧12列の幅を合計100%で再配分 */
+.activityTable th:nth-child(1), .activityTable td:nth-child(1) { width: 2% !important; }
+.activityTable th:nth-child(2), .activityTable td:nth-child(2) { width: 5% !important; }
+.activityTable th:nth-child(3), .activityTable td:nth-child(3) { width: 3% !important; }
+.activityTable th:nth-child(4), .activityTable td:nth-child(4) { width: 5% !important; }
+.activityTable th:nth-child(5), .activityTable td:nth-child(5) { width: 12% !important; }
+.activityTable th:nth-child(6), .activityTable td:nth-child(6) { width: 9% !important; }
+.activityTable th:nth-child(7), .activityTable td:nth-child(7) { width: 9% !important; }
+.activityTable th:nth-child(8), .activityTable td:nth-child(8) { width: 6% !important; }
+.activityTable th:nth-child(9), .activityTable td:nth-child(9) { width: 8% !important; }
+.activityTable th:nth-child(10), .activityTable td:nth-child(10) { width: 24% !important; }
+.activityTable th:nth-child(11), .activityTable td:nth-child(11) { width: 12% !important; }
+.activityTable th:nth-child(12), .activityTable td:nth-child(12) { width: 5% !important; }
