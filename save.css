@@ -998,3 +998,13 @@ body.glinkFileMode .previewControls {
   vertical-align: top !important;
   line-height: 1.35 !important;
 }
+
+/* 2026-10-05: 出動部隊列を拡張し、傷病者人数列を縮小 */
+.activityTable th:nth-child(11),
+.activityTable td:nth-child(11) {
+  width: 13% !important;
+}
+.activityTable th:nth-child(12),
+.activityTable td:nth-child(12) {
+  width: 4% !important;
+}
