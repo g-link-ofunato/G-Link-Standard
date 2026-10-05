@@ -568,6 +568,38 @@ window.addEventListener("DOMContentLoaded", () => {
     if (currentMode === "glink") return "";
     return saveCenterData.mapPreviewImage || "";
   }
+
+  let currentMapPreviewObjectUrl = "";
+
+  function revokeCurrentMapPreviewObjectUrl() {
+    if (!currentMapPreviewObjectUrl) return;
+    URL.revokeObjectURL(currentMapPreviewObjectUrl);
+    currentMapPreviewObjectUrl = "";
+  }
+
+  function createPngPreviewObjectUrl(source) {
+    // CodeQL js/xss-through-dom 対策:
+    // DOM/Storage由来の文字列をそのまま img.src へ戻さず、G-Link自身が生成する
+    // PNG Data URLだけを厳格に受理し、PNG Blobへ復号してからObject URLを使用する。
+    if (typeof source !== "string") return "";
+    const prefix = "data:image/png;base64,";
+    if (!source.startsWith(prefix)) return "";
+
+    const encoded = source.slice(prefix.length);
+    if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return "";
+
+    try {
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    } catch (error) {
+      console.warn("保存センター用の地図プレビュー画像を復元できませんでした。", error);
+      return "";
+    }
+  }
  
   function reflectMapPreviewImage() {
     applyPaperPreviewRatio();
@@ -575,9 +607,13 @@ window.addEventListener("DOMContentLoaded", () => {
     // PDF・PNGは従来どおり印刷/画像保存用の切り出しプレビューを使用し、
     // .glinkファイル保存だけは編集再開を前提に指揮本部モード全体プレビューを表示する。
     const imageSource = getCurrentPreviewImageSource();
- 
-    if (imageSource) {
-      mapPreviewImage.src = imageSource;
+    const previewObjectUrl = imageSource ? createPngPreviewObjectUrl(imageSource) : "";
+
+    revokeCurrentMapPreviewObjectUrl();
+
+    if (previewObjectUrl) {
+      currentMapPreviewObjectUrl = previewObjectUrl;
+      mapPreviewImage.src = previewObjectUrl;
       mapPreviewImage.classList.add("is-visible");
       mapPreviewImage.classList.remove("is-hidden");
       liveMapPreview.classList.remove("is-visible");
