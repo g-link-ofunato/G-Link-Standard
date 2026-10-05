@@ -581,7 +581,7 @@ window.addEventListener("DOMContentLoaded", () => {
       mapPreviewImage.classList.add("is-visible");
       mapPreviewImage.classList.remove("is-hidden");
       liveMapPreview.classList.remove("is-visible");
-      liveMapPreview.innerHTML = "";
+      liveMapPreview.replaceChildren();
       mapPreviewFallback.classList.add("is-hidden");
       return;
     }
@@ -590,7 +590,7 @@ window.addEventListener("DOMContentLoaded", () => {
     mapPreviewImage.classList.remove("is-visible");
     mapPreviewImage.classList.add("is-hidden");
     liveMapPreview.classList.remove("is-visible");
-    liveMapPreview.innerHTML = "";
+    liveMapPreview.replaceChildren();
     mapPreviewFallback.classList.remove("is-hidden");
   }
  
@@ -837,33 +837,51 @@ window.addEventListener("DOMContentLoaded", () => {
       { label: "その他", color: "#16a34a" },
       { label: "活動完了", color: "#000000" }
     ];
- 
+
     const allowedTypes = new Set(["fire", "rescue", "emergency", "other", "completed"]);
     const sourceLegend = Array.isArray(saveCenterData.pinLegend) && saveCenterData.pinLegend.length
       ? saveCenterData.pinLegend
       : fallback;
     const legend = sourceLegend.filter(item => allowedTypes.has(item.type) || ["火災", "救助", "救急", "その他", "活動完了"].includes(item.label));
- 
-    legendPreviewList.innerHTML = (legend.length ? legend : fallback).map(item => {
-      const color = item.color || "#111111";
-      const label = item.label || item.type || "未分類";
-      return `<div><span class="legendCircle" style="background:${escapeHtml(color)};"></span>${escapeHtml(label)}</div>`;
-    }).join("");
+
+    legendPreviewList.replaceChildren();
+    (legend.length ? legend : fallback).forEach(item => {
+      const row = document.createElement("div");
+      const circle = document.createElement("span");
+      circle.className = "legendCircle";
+      const color = typeof item.color === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color) ? item.color : "#111111";
+      circle.style.background = color;
+      row.append(circle, document.createTextNode(String(item.label || item.type || "未分類")));
+      legendPreviewList.append(row);
+    });
   }
- 
+
   function reflectMeasurementRows() {
     const list = Array.isArray(saveCenterData.measurements) ? saveCenterData.measurements : [];
+    measurementPreviewRows.replaceChildren();
     if (!list.length) {
-      measurementPreviewRows.innerHTML = `<tr><td colspan="5">計測図形はありません。</td></tr>`;
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.textContent = "計測図形はありません。";
+      tr.append(td);
+      measurementPreviewRows.append(tr);
       return;
     }
- 
-    measurementPreviewRows.innerHTML = list.map((item, index) => {
+
+    list.forEach((item, index) => {
       const areaM2 = Math.round(Number(item.areaM2 || 0)).toLocaleString("ja-JP");
       const areaHa = Number(item.areaHa || 0).toFixed(3);
       const gridCount = item.gridRange?.gridCount || 0;
-      return `<tr><td>${index + 1}</td><td>${escapeHtml(item.name || "名称未設定")}</td><td>${areaM2}</td><td>${areaHa}</td><td>${gridCount}グリッド</td></tr>`;
-    }).join("");
+      const values = [index + 1, item.name || "名称未設定", areaM2, areaHa, `${gridCount}グリッド`];
+      const tr = document.createElement("tr");
+      values.forEach(value => {
+        const td = document.createElement("td");
+        td.textContent = String(value);
+        tr.append(td);
+      });
+      measurementPreviewRows.append(tr);
+    });
   }
  
   function getActivityStatus(item) {

@@ -1345,7 +1345,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
     const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
     const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
-    body.innerHTML = [
+    const diagnosticLines = [
       `Build：022.9 ヘッダー全項目被り防止・小画面2段表示`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
@@ -1361,7 +1361,12 @@ window.addEventListener("DOMContentLoaded", () => {
       `ヘッダー配置：${window.innerWidth <= 1080 ? "小画面2段" : "標準2段"}`,
       `時刻更新：${headerDateTime && headerDateTime.readOnly ? "ON" : "要確認"}`,
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
-    ].join("<br>");
+    ];
+    body.replaceChildren();
+    diagnosticLines.forEach((entry, index) => {
+      body.append(document.createTextNode(String(entry)));
+      if (index < diagnosticLines.length - 1) body.append(document.createElement("br"));
+    });
   }
 
   function fitHeaderInputWidth(input) {
@@ -4956,60 +4961,139 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function renderMeasureList() {
     if (!measureList) return;
- 
+
+    const createTextDiv = (text) => {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div;
+    };
+    const createStrongLine = (prefix, values) => {
+      const div = document.createElement("div");
+      div.append(document.createTextNode(prefix));
+      values.forEach((value, index) => {
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        div.append(strong);
+        if (index < values.length - 1) div.append(document.createTextNode(" / "));
+      });
+      return div;
+    };
+
+    measureList.replaceChildren();
+    if (measureIndividualCards) measureIndividualCards.replaceChildren();
+
     if (!measurements.length) {
-      measureList.innerHTML = `<p class="emptyMeasure">計測図形はありません。</p>`;
+      const empty = document.createElement("p");
+      empty.className = "emptyMeasure";
+      empty.textContent = "計測図形はありません。";
+      measureList.append(empty);
       if (measureIndividualCards) {
-        measureIndividualCards.innerHTML = `<div class="measureIndividualEmpty">計測図形はありません。</div>`;
+        const cardEmpty = document.createElement("div");
+        cardEmpty.className = "measureIndividualEmpty";
+        cardEmpty.textContent = "計測図形はありません。";
+        measureIndividualCards.append(cardEmpty);
       }
       return;
     }
- 
-    const listHtml = measurements.map(item => `
-      <div class="measureListItem">
-        <div class="measureListItemHeader">
-          <span>${item.number} ${escapeHtml(getMeasurementDisplayName(item))}</span>
-          <button type="button" data-measure-delete="${item.id}">削除</button>
-        </div>
-        <label class="measureNameEditLabel">名称
-          <input class="measureNameInput" type="text" value="${escapeAttr(getMeasurementDisplayName(item))}" data-measure-name="${item.id}" placeholder="名称未設定">
-        </label>
-        <div class="measureMiniStyleRow">
-          <label>線 <input type="color" value="${escapeAttr(item.style.lineColor)}" data-measure-line-color="${item.id}"></label>
-          <label>塗 <input type="color" value="${escapeAttr(item.style.fillColor)}" data-measure-fill-color="${item.id}"></label>
-        </div>
-        <div class="measureMiniStyleRow">
-          <label>透明度 <input type="range" min="5" max="80" value="${Math.round(item.style.opacity * 100)}" data-measure-opacity="${item.id}"></label>
-          <label>線幅 <input type="range" min="1" max="10" value="${item.style.weight}" data-measure-weight="${item.id}"></label>
-        </div>
-        <div>面積：<strong>${formatNumber(item.areaM2)}㎡</strong> / <strong>${formatNumber(item.areaHa, 3)}ha</strong></div>
-        <div>範囲：<strong>${formatNumber(item.gridRange.gridCount)}グリッド</strong></div>
-        <div>概算：${formatNumber(item.gridRange.areaM2)}㎡ / ${formatNumber(item.gridRange.areaHa, 3)}ha</div>
-        <div>グリッド：横${item.gridRange.colSpan} × 縦${item.gridRange.rowSpan}</div>
-      </div>
-    `).join("");
- 
-    measureList.innerHTML = listHtml;
- 
-    if (measureIndividualCards) {
-      measureIndividualCards.innerHTML = measurements.map(item => `
-        <div class="measureIndividualCard" style="--measure-card-color:${escapeAttr(item.style.lineColor)};">
-          <div class="measureIndividualCardHeader">
-            <span>${item.number} ${escapeHtml(getMeasurementDisplayName(item))}</span>
-            <span>${item.type === "freehand" ? "フリーハンド" : "折れ線"}</span>
-          </div>
-          <div class="measureIndividualCardBody">
-            <div>面積：${formatNumber(item.areaM2)}㎡</div>
-            <div>面積：${formatNumber(item.areaHa, 3)}ha</div>
-            <div>範囲：${formatNumber(item.gridRange.gridCount)}グリッド</div>
-            <div>概算：${formatNumber(item.gridRange.areaM2)}㎡</div>
-            <div>概算：${formatNumber(item.gridRange.areaHa, 3)}ha</div>
-            <div>グリッド：横${item.gridRange.colSpan} × 縦${item.gridRange.rowSpan}</div>
-          </div>
-        </div>
-      `).join("");
-    }
- 
+
+    measurements.forEach(item => {
+      const listItem = document.createElement("div");
+      listItem.className = "measureListItem";
+
+      const header = document.createElement("div");
+      header.className = "measureListItemHeader";
+      const title = document.createElement("span");
+      title.textContent = `${item.number} ${getMeasurementDisplayName(item)}`;
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.dataset.measureDelete = String(item.id);
+      deleteButton.textContent = "削除";
+      header.append(title, deleteButton);
+
+      const nameLabel = document.createElement("label");
+      nameLabel.className = "measureNameEditLabel";
+      nameLabel.append(document.createTextNode("名称"));
+      const nameInput = document.createElement("input");
+      nameInput.className = "measureNameInput";
+      nameInput.type = "text";
+      nameInput.value = getMeasurementDisplayName(item);
+      nameInput.dataset.measureName = String(item.id);
+      nameInput.placeholder = "名称未設定";
+      nameLabel.append(nameInput);
+
+      const styleRow = document.createElement("div");
+      styleRow.className = "measureMiniStyleRow";
+      [["線", "measureLineColor", item.style.lineColor], ["塗", "measureFillColor", item.style.fillColor]].forEach(([labelText, dataKey, value]) => {
+        const label = document.createElement("label");
+        label.append(document.createTextNode(`${labelText} `));
+        const input = document.createElement("input");
+        input.type = "color";
+        input.value = value;
+        input.dataset[dataKey] = String(item.id);
+        label.append(input);
+        styleRow.append(label);
+      });
+
+      const rangeRow = document.createElement("div");
+      rangeRow.className = "measureMiniStyleRow";
+      const opacityLabel = document.createElement("label");
+      opacityLabel.append(document.createTextNode("透明度 "));
+      const opacityInput = document.createElement("input");
+      opacityInput.type = "range";
+      opacityInput.min = "5";
+      opacityInput.max = "80";
+      opacityInput.value = String(Math.round(item.style.opacity * 100));
+      opacityInput.dataset.measureOpacity = String(item.id);
+      opacityLabel.append(opacityInput);
+      const weightLabel = document.createElement("label");
+      weightLabel.append(document.createTextNode("線幅 "));
+      const weightInput = document.createElement("input");
+      weightInput.type = "range";
+      weightInput.min = "1";
+      weightInput.max = "10";
+      weightInput.value = String(item.style.weight);
+      weightInput.dataset.measureWeight = String(item.id);
+      weightLabel.append(weightInput);
+      rangeRow.append(opacityLabel, weightLabel);
+
+      listItem.append(
+        header,
+        nameLabel,
+        styleRow,
+        rangeRow,
+        createStrongLine("面積：", [`${formatNumber(item.areaM2)}㎡`, `${formatNumber(item.areaHa, 3)}ha`]),
+        createStrongLine("範囲：", [`${formatNumber(item.gridRange.gridCount)}グリッド`]),
+        createTextDiv(`概算：${formatNumber(item.gridRange.areaM2)}㎡ / ${formatNumber(item.gridRange.areaHa, 3)}ha`),
+        createTextDiv(`グリッド：横${item.gridRange.colSpan} × 縦${item.gridRange.rowSpan}`)
+      );
+      measureList.append(listItem);
+
+      if (measureIndividualCards) {
+        const card = document.createElement("div");
+        card.className = "measureIndividualCard";
+        card.style.setProperty("--measure-card-color", item.style.lineColor);
+        const cardHeader = document.createElement("div");
+        cardHeader.className = "measureIndividualCardHeader";
+        const cardTitle = document.createElement("span");
+        cardTitle.textContent = `${item.number} ${getMeasurementDisplayName(item)}`;
+        const cardType = document.createElement("span");
+        cardType.textContent = item.type === "freehand" ? "フリーハンド" : "折れ線";
+        cardHeader.append(cardTitle, cardType);
+        const cardBody = document.createElement("div");
+        cardBody.className = "measureIndividualCardBody";
+        [
+          `面積：${formatNumber(item.areaM2)}㎡`,
+          `面積：${formatNumber(item.areaHa, 3)}ha`,
+          `範囲：${formatNumber(item.gridRange.gridCount)}グリッド`,
+          `概算：${formatNumber(item.gridRange.areaM2)}㎡`,
+          `概算：${formatNumber(item.gridRange.areaHa, 3)}ha`,
+          `グリッド：横${item.gridRange.colSpan} × 縦${item.gridRange.rowSpan}`
+        ].forEach(text => cardBody.append(createTextDiv(text)));
+        card.append(cardHeader, cardBody);
+        measureIndividualCards.append(card);
+      }
+    });
+
     bindMeasureListEvents();
   }
  
@@ -8534,7 +8618,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const titleRect = titleBar ? titleBar.getBoundingClientRect() : null;
     const fieldsStyle = headerFields ? getComputedStyle(headerFields) : null;
     const overflow = headerFields ? headerFields.scrollWidth > headerFields.clientWidth + 2 : false;
-    body.innerHTML = [
+    const diagnosticLines = [
       `Build：023.1 指揮本部ヘッダー自動折返し判定・白枠幅最適化`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー高さ：${titleRect ? Math.round(titleRect.height) : "取得不可"}px`,
@@ -8551,7 +8635,12 @@ window.addEventListener("DOMContentLoaded", () => {
       line("作成部隊", createdUnitInput),
       line("座標・グリッド", currentInfoPanel),
       `切れ判定：${fields.some(el => el.scrollWidth > el.clientWidth + 2) ? "要確認" : "正常"}`
-    ].join("<br>");
+    ];
+    body.replaceChildren();
+    diagnosticLines.forEach((entry, index) => {
+      body.append(document.createTextNode(String(entry)));
+      if (index < diagnosticLines.length - 1) body.append(document.createElement("br"));
+    });
   }
 
   function fitHeaderInputWidth(input) {
@@ -8663,7 +8752,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const infoWidth = currentInfoPanel ? Math.ceil(currentInfoPanel.scrollWidth) : 0;
     const gap = titleBar ? (parseFloat(getComputedStyle(titleBar).columnGap || "14") || 14) : 14;
     const needed = titleWidth + fieldsWidth + infoWidth + gap * 2 + 100;
-    body.innerHTML = [
+    const diagnosticLines = [
       `Build：023.2 指揮本部ヘッダー実測判定方式`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー表示幅：${barWidth}px`,
@@ -8679,7 +8768,12 @@ window.addEventListener("DOMContentLoaded", () => {
       `座標欄：ラベル余白最小・数値右揃え`,
       `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
-    ].join("<br>");
+    ];
+    body.replaceChildren();
+    diagnosticLines.forEach((entry, index) => {
+      body.append(document.createTextNode(String(entry)));
+      if (index < diagnosticLines.length - 1) body.append(document.createElement("br"));
+    });
   }
 
   function adjustHeaderFieldsNoWrap() {
@@ -8762,7 +8856,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const titleWidth = titleMain ? Math.round(titleMain.getBoundingClientRect().width) : 0;
     const dataRawWidth = headerDataWrap ? Math.round(headerDataWrap.scrollWidth) : 0;
     const dataScaledWidth = Math.round(dataRawWidth * scale);
-    body.innerHTML = [
+    const diagnosticLines = [
       `Build：023.4 指揮本部ヘッダー左寄せ・座標表示最終調整`,
       `画面幅：${window.innerWidth}px`,
       `タイトルバー表示幅：${barWidth}px`,
@@ -8779,7 +8873,12 @@ window.addEventListener("DOMContentLoaded", () => {
       `座標欄：ラベル余白最小・数値右揃え`,
       `ヘッダー配置：左寄せ`,
       `グリッド線色：${gridLineSettings.color}`
-    ].join("<br>");
+    ];
+    body.replaceChildren();
+    diagnosticLines.forEach((entry, index) => {
+      body.append(document.createTextNode(String(entry)));
+      if (index < diagnosticLines.length - 1) body.append(document.createElement("br"));
+    });
   }
 
   function adjustHeaderFieldsNoWrap() {
