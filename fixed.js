@@ -1401,8 +1401,8 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", adjustHeaderFieldsNoWrap);
  
 
-  // 車両リスト（第1段階）: CSVを入力候補としてブラウザ内に一時保持する。
-  // D1・災害データ・ピン情報には保存しない。
+  // 部隊登録: Excel様式（.xlsx）を入力候補としてブラウザ内に一時保持する。
+  // D1・災害データには部隊登録一覧そのものを保存しない。
   const VEHICLE_LIST_SESSION_KEY = "glinkVehicleListV1";
   let vehicleList = [];
 
@@ -1424,11 +1424,19 @@ window.addEventListener("DOMContentLoaded", () => {
       .map(value => normalizeVehicle(value).toLocaleLowerCase("ja-JP")).join("\u001f");
   }
 
+  function normalizeVehicleNo(value) {
+    const text = normalizeVehicle(value);
+    if (!text) return "";
+    const n = Number.parseInt(text, 10);
+    return Number.isFinite(n) && n >= 1 ? String(n) : text;
+  }
+
   function loadVehicleListSession() {
     try {
       const parsed = JSON.parse(sessionStorage.getItem(VEHICLE_LIST_SESSION_KEY) || "[]");
       if (Array.isArray(parsed)) vehicleList = parsed.filter(Boolean).map(v => ({
         prefecture: normalizeVehicle(v.prefecture),
+        no: normalizeVehicleNo(v.no),
         organization: normalizeVehicle(v.organization),
         jurisdiction: normalizeVehicle(v.jurisdiction),
         vehicle: normalizeVehicle(v.vehicle),
@@ -1441,45 +1449,80 @@ window.addEventListener("DOMContentLoaded", () => {
     try { sessionStorage.setItem(VEHICLE_LIST_SESSION_KEY, JSON.stringify(vehicleList)); } catch (_) {}
   }
 
-  function parseCsvRows(text) {
-    const rows = [];
-    let row = [], field = "", quoted = false;
-    const src = String(text || "").replace(/^\uFEFF/, "");
-    for (let i = 0; i < src.length; i += 1) {
-      const ch = src[i];
-      if (quoted) {
-        if (ch === '"' && src[i + 1] === '"') { field += '"'; i += 1; }
-        else if (ch === '"') quoted = false;
-        else field += ch;
-      } else if (ch === '"') quoted = true;
-      else if (ch === ',') { row.push(field); field = ""; }
-      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
-      else if (ch !== '\r') field += ch;
-    }
-    if (field.length || row.length) { row.push(field); rows.push(row); }
-    return rows.filter(r => r.some(cell => String(cell).trim() !== ""));
+  function columnLettersToNumber(letters) {
+    let n = 0;
+    for (const ch of String(letters || "").toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64;
+    return n;
   }
 
-  function parseVehicleCsv(text) {
-    const rows = parseCsvRows(text);
-    if (!rows.length) throw new Error("CSVにデータがありません。");
-    const expected = ["都道府県", "所属", "管轄", "車両", "人員"];
-    const header = rows[0].map(normalizeVehicle);
-    if (expected.some((name, index) => header[index] !== name)) {
-      throw new Error("CSVの1行目を「都道府県,所属,管轄,車両,人員」にしてください。");
+  async function parseVehicleXlsx(file) {
+    if (!window.JSZip) throw new Error("Excel読込機能を初期化できませんでした。");
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const readXml = async path => {
+      const entry = zip.file(path);
+      if (!entry) throw new Error("Excelファイルの構成を確認できませんでした。");
+      return new DOMParser().parseFromString(await entry.async("text"), "application/xml");
+    };
+    const workbook = await readXml("xl/workbook.xml");
+    const rels = await readXml("xl/_rels/workbook.xml.rels");
+    const firstSheet = workbook.querySelector("sheet");
+    if (!firstSheet) throw new Error("Excelにシートがありません。");
+    const relId = firstSheet.getAttribute("r:id") || firstSheet.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    const rel = Array.from(rels.querySelectorAll("Relationship")).find(node => node.getAttribute("Id") === relId);
+    if (!rel) throw new Error("Excelのシート情報を確認できませんでした。");
+    let target = rel.getAttribute("Target") || "worksheets/sheet1.xml";
+    target = target.replace(/^\//, "");
+    const sheetPath = target.startsWith("xl/") ? target : "xl/" + target.replace(/^\.\//, "");
+    const sheet = await readXml(sheetPath);
+
+    let sharedStrings = [];
+    if (zip.file("xl/sharedStrings.xml")) {
+      const shared = await readXml("xl/sharedStrings.xml");
+      sharedStrings = Array.from(shared.querySelectorAll("si")).map(si => Array.from(si.querySelectorAll("t")).map(t => t.textContent || "").join(""));
     }
-    return rows.slice(1).map((r, index) => {
-      const personnelText = normalizeVehicle(r[4]);
-      if (!normalizeVehicle(r[3])) throw new Error(`${index + 2}行目の車両名が空欄です。`);
-      if (personnelText && (!/^\d+$/.test(personnelText) || Number(personnelText) < 0)) {
-        throw new Error(`${index + 2}行目の人員は0以上の整数で入力してください。`);
+    const rows = new Map();
+    for (const cell of sheet.querySelectorAll("c")) {
+      const ref = cell.getAttribute("r") || "";
+      const match = /^([A-Z]+)(\d+)$/.exec(ref);
+      if (!match) continue;
+      const col = columnLettersToNumber(match[1]);
+      const row = Number(match[2]);
+      const type = cell.getAttribute("t") || "";
+      let value = "";
+      if (type === "inlineStr") value = Array.from(cell.querySelectorAll("is t")).map(t => t.textContent || "").join("");
+      else {
+        const raw = cell.querySelector("v")?.textContent || "";
+        value = type === "s" ? (sharedStrings[Number(raw)] ?? "") : raw;
       }
-      return {
-        prefecture: normalizeVehicle(r[0]), organization: normalizeVehicle(r[1]),
-        jurisdiction: normalizeVehicle(r[2]), vehicle: normalizeVehicle(r[3]),
-        personnel: personnelText === "" ? 0 : Number(personnelText)
-      };
-    });
+      if (!rows.has(row)) rows.set(row, []);
+      rows.get(row)[col - 1] = value;
+    }
+    const title = normalizeVehicle(rows.get(1)?.[0]);
+    if (title !== "G-Link　部隊登録様式" && title !== "G-Link 部隊登録様式") throw new Error("1行目を「G-Link　部隊登録様式」にしてください。");
+    const expected = ["都道府県", "№", "所属", "管轄", "車両", "人員"];
+    const header = rows.get(2) || [];
+    if (expected.some((name, index) => normalizeVehicle(header[index]) !== name)) throw new Error("2行目の項目を「都道府県,№,所属,管轄,車両,人員」にしてください。");
+
+    const result = [];
+    const maxRow = Math.max(2, ...rows.keys());
+    for (let rowNo = 3; rowNo <= maxRow; rowNo += 1) {
+      const r = rows.get(rowNo) || [];
+      if (r.slice(6).some(value => normalizeVehicle(value))) throw new Error(`${rowNo}行目のG列以降にデータがあります。A～F列のみ使用してください。`);
+      if (!r.slice(0, 6).some(value => normalizeVehicle(value))) continue;
+      const noText = normalizeVehicle(r[1]);
+      const vehicle = normalizeVehicle(r[4]);
+      const personnelText = normalizeVehicle(r[5]);
+      if (!/^\d+$/.test(noText) || Number(noText) < 1) throw new Error(`${rowNo}行目の№は1以上の整数で入力してください。`);
+      if (!vehicle) throw new Error(`${rowNo}行目の車両名が空欄です。`);
+      if (personnelText && (!/^\d+$/.test(personnelText) || Number(personnelText) < 0)) throw new Error(`${rowNo}行目の人員は0以上の整数で入力してください。`);
+      result.push({
+        prefecture: normalizeVehicle(r[0]), no: String(Number(noText)),
+        organization: normalizeVehicle(r[2]), jurisdiction: normalizeVehicle(r[3]),
+        vehicle, personnel: personnelText === "" ? 0 : Number(personnelText)
+      });
+    }
+    if (!result.length) throw new Error("登録する部隊データがありません。");
+    return result;
   }
 
   function mergeVehicleRows(rows) {
@@ -1500,13 +1543,20 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function downloadVehicleCsv(filename, rows) {
-    const header = ["都道府県", "所属", "管轄", "車両", "人員"];
-    const lines = [header, ...rows.map(v => [v.prefecture, v.organization, v.jurisdiction, v.vehicle, v.personnel])]
+    const header = ["都道府県", "№", "所属", "管轄", "車両", "人員"];
+    const lines = [header, ...rows.map(v => [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle, v.personnel])]
       .map(row => row.map(csvEscape).join(","));
     const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a");
     a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function downloadVehicleTemplate() {
+    const a = document.createElement("a");
+    a.href = "templates/G-Link_部隊登録様式.xlsx";
+    a.download = "G-Link_部隊登録様式.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   function setVehicleStatus(message, kind = "") {
@@ -1519,16 +1569,16 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!vehicleListTableWrap || !vehicleListCount) return;
     const query = normalizeVehicle(vehicleSearchInput?.value).toLocaleLowerCase("ja-JP");
     const filtered = vehicleList.map((v, index) => ({ v, index })).filter(({ v }) =>
-      !query || [v.prefecture, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
+      !query || [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
     vehicleListCount.textContent = `部隊登録 ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
-    if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。"}</div>`; return; }
+    if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録Excelを読み込んでください。"}</div>`; return; }
     const table = document.createElement("table"); table.className = "vehicleListTable";
-    table.innerHTML = "<thead><tr><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>都道府県</th><th>№</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
     const tbody = document.createElement("tbody");
     const activeAssignments = getActiveVehicleAssignments();
     filtered.forEach(({ v, index }) => {
       const tr = document.createElement("tr");
-      [v.prefecture, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
+      [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
       const activeNo = activeAssignments.get(vehicleKey(v));
       const stateTd = document.createElement("td"); stateTd.textContent = activeNo ? `活動中 No.${activeNo}` : "待機"; stateTd.className = activeNo ? "vehicleStateActive" : "vehicleStateReady"; tr.appendChild(stateTd);
       const action = document.createElement("td"); action.className = "vehicleActions";
@@ -1548,33 +1598,35 @@ window.addEventListener("DOMContentLoaded", () => {
   function editVehicle(index) {
     const current = vehicleList[index]; if (!current) return;
     const prefecture = prompt("都道府県", current.prefecture); if (prefecture === null) return;
+    const no = prompt("№", current.no); if (no === null) return;
     const organization = prompt("所属", current.organization); if (organization === null) return;
     const jurisdiction = prompt("管轄", current.jurisdiction); if (jurisdiction === null) return;
     const vehicle = prompt("車両", current.vehicle); if (vehicle === null) return;
     const personnel = prompt("人員", String(current.personnel)); if (personnel === null) return;
+    if (!/^\d+$/.test(normalizeVehicle(no)) || Number(no) < 1) return alert("№は1以上の整数で入力してください。");
     if (!normalizeVehicle(vehicle)) return alert("車両名は必須です。");
     if (!/^\d+$/.test(normalizeVehicle(personnel))) return alert("人員は0以上の整数で入力してください。");
-    const next = { prefecture: normalizeVehicle(prefecture), organization: normalizeVehicle(organization), jurisdiction: normalizeVehicle(jurisdiction), vehicle: normalizeVehicle(vehicle), personnel: Number(personnel) };
+    const next = { prefecture: normalizeVehicle(prefecture), no: String(Number(no)), organization: normalizeVehicle(organization), jurisdiction: normalizeVehicle(jurisdiction), vehicle: normalizeVehicle(vehicle), personnel: Number(personnel) };
     const duplicate = vehicleList.findIndex((v, i) => i !== index && vehicleKey(v) === vehicleKey(next));
     if (duplicate >= 0) return alert("同じ「都道府県・所属・管轄・車両」の車両が既にあります。");
     vehicleList[index] = next; saveVehicleListSession(); renderVehicleList();
   }
 
-  function importVehicleText(text) {
+  async function importVehicleXlsx(file) {
     try {
-      const rows = parseVehicleCsv(text); const result = mergeVehicleRows(rows);
+      const rows = await parseVehicleXlsx(file); const result = mergeVehicleRows(rows);
       setVehicleStatus(`読込完了：新規 ${result.added}台／更新 ${result.updated}台／合計 ${vehicleList.length}台`, "success");
-    } catch (error) { setVehicleStatus(error?.message || "CSVを読み込めませんでした。", "error"); }
+    } catch (error) { setVehicleStatus(error?.message || "Excelファイルを読み込めませんでした。", "error"); }
   }
 
   function setupVehicleListEvents() {
     loadVehicleListSession(); renderVehicleList();
-    vehicleTemplateBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_部隊登録様式.csv", []));
+    vehicleTemplateBtn?.addEventListener("click", downloadVehicleTemplate);
     vehicleExportBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_現在の部隊登録.csv", vehicleList));
     vehicleImportBtn?.addEventListener("click", () => vehicleCsvFileInput?.click());
     vehicleCsvFileInput?.addEventListener("change", async () => {
       const file = vehicleCsvFileInput.files?.[0]; if (!file) return;
-      try { importVehicleText(await file.text()); } catch (_) { setVehicleStatus("CSVファイルを読み込めませんでした。", "error"); }
+      await importVehicleXlsx(file);
       vehicleCsvFileInput.value = "";
     });
     vehicleSearchInput?.addEventListener("input", renderVehicleList);
@@ -1586,6 +1638,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function cloneAssignedVehicles(list) {
     return (Array.isArray(list) ? list : []).map(v => ({
       prefecture: normalizeVehicle(v.prefecture),
+      no: normalizeVehicleNo(v.no),
       organization: normalizeVehicle(v.organization),
       jurisdiction: normalizeVehicle(v.jurisdiction),
       vehicle: normalizeVehicle(v.vehicle),
@@ -1643,11 +1696,11 @@ window.addEventListener("DOMContentLoaded", () => {
     const query = normalizeVehicle(vehicleSelectSearch?.value).toLocaleLowerCase("ja-JP");
     const active = getActiveVehicleAssignments(selectedPin);
     const selectedMap = new Map(pendingVehicleSelection.map(v => [vehicleKey(v), v]));
-    const rows = vehicleList.filter(v => !query || [v.prefecture, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
+    const rows = vehicleList.filter(v => !query || [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
     vehicleSelectList.replaceChildren();
     if (!rows.length) {
       const empty = document.createElement("div"); empty.className = "vehicleEmpty";
-      empty.textContent = vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。";
+      empty.textContent = vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録Excelを読み込んでください。";
       vehicleSelectList.appendChild(empty); updateVehicleSelectionTotal(); return;
     }
     rows.forEach(v => {
