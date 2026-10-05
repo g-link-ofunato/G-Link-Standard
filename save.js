@@ -887,10 +887,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function formatAssignedVehiclesForReport(item) {
     const vehicles = Array.isArray(item?.assignedVehicles) ? item.assignedVehicles.filter(v => v && v.vehicle) : [];
-    const unitsText = String(item?.units || "").trim() || "未入力";
-    if (!vehicles.length) return unitsText;
+    const unitsText = String(item?.units || "").trim();
+    if (!vehicles.length) return unitsText || "未入力";
+
+    const vehicleLines = vehicles.map(v => `${v.vehicle}（${Math.max(0, Number(v.personnel) || 0)}名）`);
+    const vehicleSet = new Set(vehicleLines.map(text => text.trim()));
+    const otherUnitLines = unitsText
+      ? unitsText.split("、").map(text => text.trim()).filter(text => text && !vehicleSet.has(text))
+      : [];
     const totalPersonnel = vehicles.reduce((sum, v) => sum + Math.max(0, Number(v.personnel) || 0), 0);
-    return `${unitsText} 【計${vehicles.length}台／${totalPersonnel}名】`;
+
+    return [...vehicleLines, ...otherUnitLines, `計${vehicles.length}台／活動人員${totalPersonnel}名`].join("\n");
   }
 
   function appendHistoryCell(row, value, className = "") {
@@ -924,7 +931,9 @@ window.addEventListener("DOMContentLoaded", () => {
     appendHistoryCell(row, item.incidentNo || "-");
     appendHistoryCell(row, item.disasterArea || "-");
     appendHistoryCell(row, item.summary || "-");
-    appendHistoryCell(row, formatAssignedVehiclesForReport(item));
+    const unitsCell = appendHistoryCell(row, formatAssignedVehiclesForReport(item));
+    unitsCell.style.whiteSpace = "pre-line";
+    unitsCell.style.overflowWrap = "anywhere";
     appendHistoryCell(row, item.injured ?? 0);
     return row;
   }
