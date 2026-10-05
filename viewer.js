@@ -302,6 +302,22 @@ window.addEventListener("DOMContentLoaded", async () => {
     return sw && ne ? { southWest: sw, northEast: ne } : null;
   }
 
+  function expandAssignedVehicles(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(v => Array.isArray(v) ? ({
+      prefecture: v[0] || "", organization: v[1] || "", jurisdiction: v[2] || "",
+      vehicle: v[3] || "", personnel: Math.max(0, Number(v[4]) || 0)
+    }) : null).filter(v => v && v.vehicle);
+  }
+
+  function formatViewerUnits(item) {
+    const vehicles = Array.isArray(item?.assignedVehicles) ? item.assignedVehicles.filter(v => v && v.vehicle) : [];
+    const unitsText = String(item?.units || "").trim() || "未入力";
+    if (!vehicles.length) return unitsText;
+    const totalPersonnel = vehicles.reduce((sum, v) => sum + Math.max(0, Number(v.personnel) || 0), 0);
+    return `${unitsText} 【計${vehicles.length}台／${totalPersonnel}名】`;
+  }
+
   function expandPin(value) {
     if (!Array.isArray(value)) return null;
     return {
@@ -318,7 +334,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       summary: value[9] || "",
       units: value[10] || "",
       injured: value[11] ?? 0,
-      disasterArea: value[12] || ""
+      disasterArea: value[12] || "",
+      assignedVehicles: expandAssignedVehicles(value[13])
     };
   }
 
@@ -373,7 +390,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       disasterArea: value[11] || "",
       // Build互換: 新形式は活動完了フラグを末尾に保持する。
       // 旧共有データでは完了日時がある場合も完了として復元する。
-      completed: value.length >= 13 ? value[12] === 1 : !!String(value[6] || "").trim()
+      completed: value.length >= 13 ? value[12] === 1 : !!String(value[6] || "").trim(),
+      assignedVehicles: expandAssignedVehicles(value[13])
     };
   }
 
@@ -530,7 +548,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       災害番号：${escapeHtml(data.incidentNo || "-")}<br>
       災害地区：${escapeHtml(data.disasterArea || "-")}<br>
       概要：${escapeHtml(data.summary || "-")}<br>
-      出動部隊：${escapeHtml(data.units || "-")}<br>
+      出動部隊：${escapeHtml(formatViewerUnits(data))}<br>
       傷病者人数：${escapeHtml(data.injured || 0)}
       ${attachment}
     `;
@@ -990,7 +1008,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(pinLabels[normalizePinType(item.type)] || item.type || "-")}</td>
         <td>${escapeHtml(item.awarenessLabel || "-")}</td>
         <td>${escapeHtml(item.completedLabel || "-")}</td>
-        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>災害地区：${escapeHtml(item.disasterArea || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(String(item.units || "").trim() || "未入力")}<br>傷病者人数：${escapeHtml(item.injured ?? 0)}</td>
+        <td>グリッド：${escapeHtml(item.gridNo || "-")}<br>座標：${escapeHtml(formatLatLng(item))}<br>災害番号：${escapeHtml(item.incidentNo || "-")}<br>災害地区：${escapeHtml(item.disasterArea || "-")}<br>概要：${escapeHtml(item.summary || "-")}<br>出動部隊：${escapeHtml(formatViewerUnits(item))}<br>傷病者人数：${escapeHtml(item.injured ?? 0)}</td>
       </tr>`).join("")}</tbody></table>`;
   }
 

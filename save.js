@@ -885,6 +885,14 @@ window.addEventListener("DOMContentLoaded", () => {
     })).sort((a,b) => Number(a.pinNo||0)-Number(b.pinNo||0));
   }
 
+  function formatAssignedVehiclesForReport(item) {
+    const vehicles = Array.isArray(item?.assignedVehicles) ? item.assignedVehicles.filter(v => v && v.vehicle) : [];
+    const unitsText = String(item?.units || "").trim() || "未入力";
+    if (!vehicles.length) return unitsText;
+    const totalPersonnel = vehicles.reduce((sum, v) => sum + Math.max(0, Number(v.personnel) || 0), 0);
+    return `${unitsText} 【計${vehicles.length}台／${totalPersonnel}名】`;
+  }
+
   function appendHistoryCell(row, value, className = "") {
     const cell = document.createElement("td");
     if (className) cell.className = className;
@@ -916,7 +924,7 @@ window.addEventListener("DOMContentLoaded", () => {
     appendHistoryCell(row, item.incidentNo || "-");
     appendHistoryCell(row, item.disasterArea || "-");
     appendHistoryCell(row, item.summary || "-");
-    appendHistoryCell(row, String(item.units || "").trim() || "未入力");
+    appendHistoryCell(row, formatAssignedVehiclesForReport(item));
     appendHistoryCell(row, item.injured ?? 0);
     return row;
   }
@@ -1520,6 +1528,14 @@ window.addEventListener("DOMContentLoaded", () => {
     return copy;
   }
 
+  function compactAssignedVehicles(items) {
+    return (Array.isArray(items) ? items : []).map(v => [
+      compactText(v?.prefecture, 40), compactText(v?.organization, 80),
+      compactText(v?.jurisdiction, 80), compactText(v?.vehicle, 80),
+      Math.max(0, Number(v?.personnel) || 0)
+    ]).filter(v => v[3]);
+  }
+
   function compactPin(pin) {
     const p = stripAttachmentForViewer(pin || {});
     return [
@@ -1535,7 +1551,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(p.summary, 180),
       compactText(p.units, 120),
       p.injured ?? 0,
-      compactText(p.disasterArea, 80)
+      compactText(p.disasterArea, 80),
+      compactAssignedVehicles(p.assignedVehicles)
     ];
   }
 
@@ -1587,7 +1604,9 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(item?.summary, 180),
       compactText(item?.units, 120),
       item?.injured ?? 0,
-      compactText(item?.disasterArea, 80)
+      compactText(item?.disasterArea, 80),
+      item?.completed ? 1 : 0,
+      compactAssignedVehicles(item?.assignedVehicles)
     ];
   }
 
