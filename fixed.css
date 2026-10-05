@@ -3731,3 +3731,41 @@ body {
 .shapeGeometryHelp { margin: 6px 0 8px; font-size: 11px; line-height: 1.5; color: #475569; }
 #shapeGeometryEditActions .buttonRow { width: 100%; }
 #shapeGeometryEditActions button { white-space: nowrap; }
+
+/* 車両リスト（第1段階） */
+.vehicleNotice {
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.vehicleActionGrid { display: grid; gap: 7px; margin-bottom: 10px; }
+.vehicleActionGrid button,
+.vehiclePasteBlock button { min-height: 36px; cursor: pointer; }
+.vehiclePasteBlock,
+.vehicleSearchBlock {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.vehiclePasteBlock label,
+.vehicleSearchBlock label { display:block; font-size:12px; font-weight:700; margin-bottom:6px; }
+#vehicleCsvPaste { width:100%; box-sizing:border-box; resize:vertical; font-size:12px; margin-bottom:7px; }
+#vehicleSearchInput { width:100%; box-sizing:border-box; min-height:34px; }
+.vehicleImportStatus { min-height:18px; margin: 4px 0 8px; font-size:12px; line-height:1.45; color:#374151; }
+.vehicleImportStatus.error { color:#b91c1c; font-weight:700; }
+.vehicleImportStatus.success { color:#166534; font-weight:700; }
+.vehicleListHeader { margin: 8px 0 6px; font-size:13px; }
+.vehicleListTableWrap { overflow-x:auto; max-height:360px; overflow-y:auto; border:1px solid #d1d5db; border-radius:7px; }
+.vehicleListTable { width:100%; border-collapse:collapse; font-size:11px; background:#fff; }
+.vehicleListTable th, .vehicleListTable td { border-bottom:1px solid #e5e7eb; padding:6px 5px; text-align:left; vertical-align:top; white-space:nowrap; }
+.vehicleListTable th { position:sticky; top:0; background:#f3f4f6; z-index:1; }
+.vehicleListTable .vehicleActions { display:flex; gap:4px; }
+.vehicleListTable .vehicleActions button { font-size:11px; padding:3px 6px; cursor:pointer; }
+.vehicleEmpty { padding:16px 10px; color:#6b7280; font-size:12px; text-align:center; }

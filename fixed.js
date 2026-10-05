@@ -1391,6 +1391,182 @@ window.addEventListener("DOMContentLoaded", () => {
   adjustHeaderFieldsNoWrap();
   window.addEventListener("resize", adjustHeaderFieldsNoWrap);
  
+
+  // 車両リスト（第1段階）: CSVを入力候補としてブラウザ内に一時保持する。
+  // D1・災害データ・ピン情報には保存しない。
+  const VEHICLE_LIST_SESSION_KEY = "glinkVehicleListV1";
+  let vehicleList = [];
+
+  const vehicleTemplateBtn = document.getElementById("vehicleTemplateBtn");
+  const vehicleImportBtn = document.getElementById("vehicleImportBtn");
+  const vehicleExportBtn = document.getElementById("vehicleExportBtn");
+  const vehicleCsvFileInput = document.getElementById("vehicleCsvFileInput");
+  const vehicleCsvPaste = document.getElementById("vehicleCsvPaste");
+  const vehiclePasteImportBtn = document.getElementById("vehiclePasteImportBtn");
+  const vehicleImportStatus = document.getElementById("vehicleImportStatus");
+  const vehicleSearchInput = document.getElementById("vehicleSearchInput");
+  const vehicleListCount = document.getElementById("vehicleListCount");
+  const vehicleListTableWrap = document.getElementById("vehicleListTableWrap");
+
+  function normalizeVehicle(value) {
+    return String(value == null ? "" : value).trim();
+  }
+
+  function vehicleKey(vehicle) {
+    return [vehicle.prefecture, vehicle.organization, vehicle.jurisdiction, vehicle.vehicle]
+      .map(value => normalizeVehicle(value).toLocaleLowerCase("ja-JP")).join("\u001f");
+  }
+
+  function loadVehicleListSession() {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(VEHICLE_LIST_SESSION_KEY) || "[]");
+      if (Array.isArray(parsed)) vehicleList = parsed.filter(Boolean).map(v => ({
+        prefecture: normalizeVehicle(v.prefecture),
+        organization: normalizeVehicle(v.organization),
+        jurisdiction: normalizeVehicle(v.jurisdiction),
+        vehicle: normalizeVehicle(v.vehicle),
+        personnel: Math.max(0, Number.parseInt(v.personnel, 10) || 0)
+      })).filter(v => v.vehicle);
+    } catch (_) { vehicleList = []; }
+  }
+
+  function saveVehicleListSession() {
+    try { sessionStorage.setItem(VEHICLE_LIST_SESSION_KEY, JSON.stringify(vehicleList)); } catch (_) {}
+  }
+
+  function parseCsvRows(text) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    const src = String(text || "").replace(/^\uFEFF/, "");
+    for (let i = 0; i < src.length; i += 1) {
+      const ch = src[i];
+      if (quoted) {
+        if (ch === '"' && src[i + 1] === '"') { field += '"'; i += 1; }
+        else if (ch === '"') quoted = false;
+        else field += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ',') { row.push(field); field = ""; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+      else if (ch !== '\r') field += ch;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(r => r.some(cell => String(cell).trim() !== ""));
+  }
+
+  function parseVehicleCsv(text) {
+    const rows = parseCsvRows(text);
+    if (!rows.length) throw new Error("CSVにデータがありません。");
+    const expected = ["都道府県", "所属", "管轄", "車両", "人員"];
+    const header = rows[0].map(normalizeVehicle);
+    if (expected.some((name, index) => header[index] !== name)) {
+      throw new Error("CSVの1行目を「都道府県,所属,管轄,車両,人員」にしてください。");
+    }
+    return rows.slice(1).map((r, index) => {
+      const personnelText = normalizeVehicle(r[4]);
+      if (!normalizeVehicle(r[3])) throw new Error(`${index + 2}行目の車両名が空欄です。`);
+      if (personnelText && (!/^\d+$/.test(personnelText) || Number(personnelText) < 0)) {
+        throw new Error(`${index + 2}行目の人員は0以上の整数で入力してください。`);
+      }
+      return {
+        prefecture: normalizeVehicle(r[0]), organization: normalizeVehicle(r[1]),
+        jurisdiction: normalizeVehicle(r[2]), vehicle: normalizeVehicle(r[3]),
+        personnel: personnelText === "" ? 0 : Number(personnelText)
+      };
+    });
+  }
+
+  function mergeVehicleRows(rows) {
+    const indexByKey = new Map(vehicleList.map((v, i) => [vehicleKey(v), i]));
+    let added = 0, updated = 0;
+    rows.forEach(vehicle => {
+      const key = vehicleKey(vehicle);
+      if (indexByKey.has(key)) { vehicleList[indexByKey.get(key)] = vehicle; updated += 1; }
+      else { indexByKey.set(key, vehicleList.length); vehicleList.push(vehicle); added += 1; }
+    });
+    saveVehicleListSession(); renderVehicleList();
+    return { added, updated };
+  }
+
+  function csvEscape(value) {
+    const text = String(value == null ? "" : value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  function downloadVehicleCsv(filename, rows) {
+    const header = ["都道府県", "所属", "管轄", "車両", "人員"];
+    const lines = [header, ...rows.map(v => [v.prefecture, v.organization, v.jurisdiction, v.vehicle, v.personnel])]
+      .map(row => row.map(csvEscape).join(","));
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function setVehicleStatus(message, kind = "") {
+    if (!vehicleImportStatus) return;
+    vehicleImportStatus.textContent = message;
+    vehicleImportStatus.className = "vehicleImportStatus" + (kind ? ` ${kind}` : "");
+  }
+
+  function renderVehicleList() {
+    if (!vehicleListTableWrap || !vehicleListCount) return;
+    const query = normalizeVehicle(vehicleSearchInput?.value).toLocaleLowerCase("ja-JP");
+    const filtered = vehicleList.map((v, index) => ({ v, index })).filter(({ v }) =>
+      !query || [v.prefecture, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
+    vehicleListCount.textContent = `車両リスト ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
+    if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。"}</div>`; return; }
+    const table = document.createElement("table"); table.className = "vehicleListTable";
+    table.innerHTML = "<thead><tr><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>操作</th></tr></thead>";
+    const tbody = document.createElement("tbody");
+    filtered.forEach(({ v, index }) => {
+      const tr = document.createElement("tr");
+      [v.prefecture, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
+      const action = document.createElement("td"); action.className = "vehicleActions";
+      const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "編集";
+      edit.addEventListener("click", () => editVehicle(index));
+      const del = document.createElement("button"); del.type = "button"; del.textContent = "削除";
+      del.addEventListener("click", () => { if (confirm(`${v.vehicle} を車両リストから削除しますか？`)) { vehicleList.splice(index, 1); saveVehicleListSession(); renderVehicleList(); } });
+      action.append(edit, del); tr.appendChild(action); tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); vehicleListTableWrap.replaceChildren(table);
+  }
+
+  function editVehicle(index) {
+    const current = vehicleList[index]; if (!current) return;
+    const prefecture = prompt("都道府県", current.prefecture); if (prefecture === null) return;
+    const organization = prompt("所属", current.organization); if (organization === null) return;
+    const jurisdiction = prompt("管轄", current.jurisdiction); if (jurisdiction === null) return;
+    const vehicle = prompt("車両", current.vehicle); if (vehicle === null) return;
+    const personnel = prompt("人員", String(current.personnel)); if (personnel === null) return;
+    if (!normalizeVehicle(vehicle)) return alert("車両名は必須です。");
+    if (!/^\d+$/.test(normalizeVehicle(personnel))) return alert("人員は0以上の整数で入力してください。");
+    const next = { prefecture: normalizeVehicle(prefecture), organization: normalizeVehicle(organization), jurisdiction: normalizeVehicle(jurisdiction), vehicle: normalizeVehicle(vehicle), personnel: Number(personnel) };
+    const duplicate = vehicleList.findIndex((v, i) => i !== index && vehicleKey(v) === vehicleKey(next));
+    if (duplicate >= 0) return alert("同じ「都道府県・所属・管轄・車両」の車両が既にあります。");
+    vehicleList[index] = next; saveVehicleListSession(); renderVehicleList();
+  }
+
+  function importVehicleText(text) {
+    try {
+      const rows = parseVehicleCsv(text); const result = mergeVehicleRows(rows);
+      setVehicleStatus(`読込完了：新規 ${result.added}台／更新 ${result.updated}台／合計 ${vehicleList.length}台`, "success");
+    } catch (error) { setVehicleStatus(error?.message || "CSVを読み込めませんでした。", "error"); }
+  }
+
+  function setupVehicleListEvents() {
+    loadVehicleListSession(); renderVehicleList();
+    vehicleTemplateBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_車両リスト様式.csv", []));
+    vehicleExportBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_現在の車両リスト.csv", vehicleList));
+    vehicleImportBtn?.addEventListener("click", () => vehicleCsvFileInput?.click());
+    vehicleCsvFileInput?.addEventListener("change", async () => {
+      const file = vehicleCsvFileInput.files?.[0]; if (!file) return;
+      try { importVehicleText(await file.text()); } catch (_) { setVehicleStatus("CSVファイルを読み込めませんでした。", "error"); }
+      vehicleCsvFileInput.value = "";
+    });
+    vehiclePasteImportBtn?.addEventListener("click", () => importVehicleText(vehicleCsvPaste?.value || ""));
+    vehicleSearchInput?.addEventListener("input", renderVehicleList);
+  }
+
   const panelNames = {
     searchPanel: "検索",
     editToolPanel: "編集",
@@ -1399,6 +1575,7 @@ window.addEventListener("DOMContentLoaded", () => {
     hazardPanel: "ハザード",
     layerPanel: "レイヤ",
     historyPanel: "活動一覧",
+    vehiclePanel: "車両リスト",
     settingPanel: "設定",
     sharePanel: "共有"
   };
@@ -3107,6 +3284,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   setupDirectProjectSaveButton();
+  setupVehicleListEvents();
 
   toolButtons.forEach(btn => {
     btn.addEventListener("click", () => {
