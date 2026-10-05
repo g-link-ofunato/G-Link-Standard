@@ -46,6 +46,7 @@
     <button class="toolBtn" data-panel="hazardPanel"><span>⚠</span><small>ハザード</small></button>
     <button class="toolBtn" data-panel="layerPanel"><span>🗂</span><small>レイヤ</small></button>
     <button class="toolBtn" data-panel="historyPanel"><span>📋</span><small>活動一覧</small></button>
+    <button class="toolBtn" data-panel="vehiclePanel"><span>🚒</span><small>車両リスト</small></button>
     <button class="toolBtn" id="openSaveCenterBtn" type="button"><span>📁</span><small>保存</small></button>
     <button class="toolBtn" data-panel="settingPanel"><span>⚙</span><small>設定</small></button>
     <button class="toolBtn" data-panel="sharePanel"><span>🔗</span><small>共有</small></button>
@@ -122,6 +123,29 @@
         </div>
       </div>
  
+      <div class="panelContent" id="vehiclePanel">
+        <h3>車両リスト</h3>
+        <div class="vehicleNotice">CSVは入力候補としてこのブラウザ内に一時保持します。第1段階ではピン情報との連動は行いません。</div>
+        <div class="vehicleActionGrid">
+          <button id="vehicleTemplateBtn" type="button">CSV様式をダウンロード</button>
+          <button id="vehicleImportBtn" type="button">CSVを読み込む</button>
+          <button id="vehicleExportBtn" type="button">現在の車両リストをCSV出力</button>
+        </div>
+        <input id="vehicleCsvFileInput" type="file" accept=".csv,text/csv" hidden>
+        <div class="vehiclePasteBlock">
+          <label for="vehicleCsvPaste">CSVデータを貼り付け</label>
+          <textarea id="vehicleCsvPaste" rows="5" placeholder="都道府県,所属,管轄,車両,人員"></textarea>
+          <button id="vehiclePasteImportBtn" type="button">貼り付け内容を読み込む</button>
+        </div>
+        <div id="vehicleImportStatus" class="vehicleImportStatus" aria-live="polite"></div>
+        <div class="vehicleSearchBlock">
+          <label for="vehicleSearchInput">車両検索</label>
+          <input id="vehicleSearchInput" type="search" placeholder="都道府県・所属・管轄・車両で検索">
+        </div>
+        <div class="vehicleListHeader"><strong id="vehicleListCount">車両リスト 0台</strong></div>
+        <div id="vehicleListTableWrap" class="vehicleListTableWrap"></div>
+      </div>
+
       <div class="panelContent" id="editToolPanel">
         <h3>編集</h3>
  
