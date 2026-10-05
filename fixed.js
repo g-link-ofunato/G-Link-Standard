@@ -1860,6 +1860,16 @@ window.addEventListener("DOMContentLoaded", () => {
     return text.length > max ? text.slice(0, max) : text;
   }
 
+  function compactAssignedVehicles(items) {
+    return (Array.isArray(items) ? items : []).map(v => [
+      compactText(v?.prefecture, 40),
+      compactText(v?.organization, 80),
+      compactText(v?.jurisdiction, 80),
+      compactText(v?.vehicle, 80),
+      Math.max(0, Number(v?.personnel) || 0)
+    ]).filter(v => v[3]);
+  }
+
   function compactPin(pin) {
     const p = stripAttachmentForViewer(pin || {});
     return [
@@ -1875,7 +1885,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(p.summary, 180),
       compactText(p.units, 120),
       p.injured ?? 0,
-      compactText(p.disasterArea, 80)
+      compactText(p.disasterArea, 80),
+      compactAssignedVehicles(p.assignedVehicles)
     ];
   }
 
@@ -1928,7 +1939,8 @@ window.addEventListener("DOMContentLoaded", () => {
       compactText(item?.units, 120),
       item?.injured ?? 0,
       compactText(item?.disasterArea, 80),
-      item?.completed ? 1 : 0
+      item?.completed ? 1 : 0,
+      compactAssignedVehicles(item?.assignedVehicles)
     ];
   }
 
