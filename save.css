@@ -1012,3 +1012,10 @@ body.glinkFileMode .previewControls {
 .activityTable th:nth-child(10), .activityTable td:nth-child(10) { width: 24% !important; }
 .activityTable th:nth-child(11), .activityTable td:nth-child(11) { width: 12% !important; }
 .activityTable th:nth-child(12), .activityTable td:nth-child(12) { width: 5% !important; }
+
+
+/* 2026-10-05: CSV出力もファイル保存と同様にプレビューを持たない。 */
+body.noPreviewMode .pagePreviewStrip,
+body.noPreviewMode .previewControls {
+  display: none !important;
+}
