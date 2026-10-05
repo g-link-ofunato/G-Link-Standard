@@ -1224,22 +1224,54 @@ window.addEventListener("DOMContentLoaded", () => {
  
     if (csvIncludeHistory.checked) {
       rows.push(["活動一覧"]);
-      rows.push(["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "災害地区", "概要", "出動部隊", "傷病者人数"]);
+      rows.push(["№", "活動状態", "種別", "グリッド番号", "座標", "覚知日時", "完了日時", "災害番号", "災害地区", "概要", "都道府県", "所属", "管轄", "車両", "台数", "人員", "その他の部隊", "傷病者人数"]);
       const list = buildActivityListFromPins();
-      list.forEach((item, index) => rows.push([
-        getHistoryPinNo(item, index),
-        item.statusLabel || getActivityStatusLabel(item),
-        item.typeLabel || item.type || "",
-        item.gridNo || "",
-        (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "",
-        item.awarenessLabel || "",
-        item.completedLabel || "",
-        item.incidentNo || "",
-        item.disasterArea || "",
-        item.summary || "",
-        item.units || "",
-        item.injured ?? 0
-      ]));
+      list.forEach((item, index) => {
+        const base = [
+          getHistoryPinNo(item, index),
+          item.statusLabel || getActivityStatusLabel(item),
+          item.typeLabel || item.type || "",
+          item.gridNo || "",
+          (typeof item.lat === "number" && typeof item.lng === "number") ? formatLatLngPair(item.lat, item.lng) : "",
+          item.awarenessLabel || "",
+          item.completedLabel || "",
+          item.incidentNo || "",
+          item.disasterArea || "",
+          item.summary || ""
+        ];
+        const vehicles = Array.isArray(item?.assignedVehicles)
+          ? item.assignedVehicles.filter(v => v && String(v.vehicle || "").trim())
+          : [];
+        const vehicleUnitSet = new Set(vehicles.map(v =>
+          `${String(v.vehicle || "").trim()}（${Math.max(0, Number(v.personnel) || 0)}名）`
+        ));
+        const otherUnits = String(item?.units || "").trim()
+          .split("、")
+          .map(text => text.trim())
+          .filter(text => text && !vehicleUnitSet.has(text))
+          .join("、");
+
+        if (vehicles.length) {
+          vehicles.forEach(v => rows.push([
+            ...base,
+            v.prefecture || "",
+            v.organization || "",
+            v.jurisdiction || "",
+            v.vehicle || "",
+            1,
+            Math.max(0, Number(v.personnel) || 0),
+            otherUnits,
+            item.injured ?? 0
+          ]));
+        } else {
+          rows.push([
+            ...base,
+            "", "", "", "", "", "",
+            otherUnits,
+            item.injured ?? 0
+          ]);
+        }
+      });
       rows.push([]);
     }
  
