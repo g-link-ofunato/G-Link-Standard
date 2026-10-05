@@ -3744,9 +3744,7 @@ body {
   line-height: 1.55;
 }
 .vehicleActionGrid { display: grid; gap: 7px; margin-bottom: 10px; }
-.vehicleActionGrid button,
-.vehiclePasteBlock button { min-height: 36px; cursor: pointer; }
-.vehiclePasteBlock,
+.vehicleActionGrid button { min-height: 36px; cursor: pointer; }
 .vehicleSearchBlock {
   border: 1px solid #d1d5db;
   background: #f9fafb;
@@ -3754,9 +3752,7 @@ body {
   padding: 10px;
   margin-bottom: 10px;
 }
-.vehiclePasteBlock label,
 .vehicleSearchBlock label { display:block; font-size:12px; font-weight:700; margin-bottom:6px; }
-#vehicleCsvPaste { width:100%; box-sizing:border-box; resize:vertical; font-size:12px; margin-bottom:7px; }
 #vehicleSearchInput { width:100%; box-sizing:border-box; min-height:34px; }
 .vehicleImportStatus { min-height:18px; margin: 4px 0 8px; font-size:12px; line-height:1.45; color:#374151; }
 .vehicleImportStatus.error { color:#b91c1c; font-weight:700; }
@@ -3769,3 +3765,35 @@ body {
 .vehicleListTable .vehicleActions { display:flex; gap:4px; }
 .vehicleListTable .vehicleActions button { font-size:11px; padding:3px 6px; cursor:pointer; }
 .vehicleEmpty { padding:16px 10px; color:#6b7280; font-size:12px; text-align:center; }
+
+
+/* 車両選択（第2段階） */
+.selectVehiclesBtn { width:100%; min-height:36px; margin-bottom:7px; cursor:pointer; }
+.selectedVehiclesSummary { margin:0 0 9px; padding:8px 9px; border:1px solid #d1d5db; border-radius:7px; background:#f8fafc; font-size:12px; line-height:1.55; color:#334155; }
+.selectedVehiclesSummary .selectedVehicleRow { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
+.selectedVehiclesSummary .selectedVehicleTotal { margin-top:5px; padding-top:5px; border-top:1px solid #e5e7eb; font-weight:700; }
+.subFieldLabel { font-size:12px; color:#475569; }
+.vehicleSelectModal[hidden] { display:none !important; }
+.vehicleSelectModal { position:fixed; inset:0; z-index:10050; background:rgba(15,23,42,.48); display:flex; align-items:center; justify-content:center; padding:20px; }
+.vehicleSelectDialog { width:min(760px,94vw); max-height:84vh; overflow:hidden; background:#fff; border-radius:12px; box-shadow:0 18px 55px rgba(0,0,0,.28); padding:14px; display:flex; flex-direction:column; gap:9px; }
+.vehicleSelectHeader { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.vehicleSelectHeader h3 { margin:0; }
+.vehicleSelectHeader button { width:34px; height:34px; font-size:20px; cursor:pointer; }
+#vehicleSelectSearch { width:100%; min-height:36px; box-sizing:border-box; }
+.vehicleSelectHelp { font-size:12px; color:#475569; }
+.vehicleSelectList { overflow:auto; border:1px solid #d1d5db; border-radius:8px; min-height:180px; max-height:52vh; }
+.vehicleSelectRow { display:grid; grid-template-columns:28px minmax(170px,1fr) 86px 145px; gap:8px; align-items:center; padding:8px 9px; border-bottom:1px solid #e5e7eb; font-size:12px; }
+.vehicleSelectRow:last-child { border-bottom:0; }
+.vehicleSelectRow.isBusy { background:#f3f4f6; color:#6b7280; }
+.vehicleSelectIdentity strong { display:block; color:#111827; }
+.vehicleSelectIdentity small { display:block; margin-top:2px; color:#64748b; white-space:normal; }
+.vehicleSelectPersonnel { display:flex; align-items:center; gap:4px; }
+.vehicleSelectPersonnel input { width:54px; min-height:30px; box-sizing:border-box; }
+.vehicleSelectStatus { font-weight:700; }
+.vehicleSelectStatus.busy { color:#b91c1c; }
+.vehicleSelectStatus.ready { color:#166534; }
+.vehicleSelectFooter { display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.vehicleSelectTotal { margin-right:auto; font-weight:700; }
+.vehicleSelectFooter button { min-height:36px; cursor:pointer; }
+.vehicleStateActive { color:#b91c1c; font-weight:700; }
+.vehicleStateReady { color:#166534; font-weight:700; }
