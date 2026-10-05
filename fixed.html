@@ -125,13 +125,13 @@
  
       <div class="panelContent" id="vehiclePanel">
         <h3>部隊登録</h3>
-        <div class="vehicleNotice">Excel様式（.xlsx）で部隊を登録します。登録内容はこのブラウザ内に一時保持し、ピン情報の出動部隊から選択できます。</div>
+        <div class="vehicleNotice">CSV様式で部隊を登録します。登録内容はこのブラウザ内に一時保持し、ピン情報の出動部隊から選択できます。</div>
         <div class="vehicleActionGrid">
-          <button id="vehicleTemplateBtn" type="button">部隊登録様式をダウンロード（Excel）</button>
-          <button id="vehicleImportBtn" type="button">Excelを読み込む</button>
+          <button id="vehicleTemplateBtn" type="button">部隊登録様式をダウンロード（CSV）</button>
+          <button id="vehicleImportBtn" type="button">CSVを読み込む</button>
           <button id="vehicleExportBtn" type="button">現在の部隊登録をCSV出力</button>
         </div>
-        <input id="vehicleCsvFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        <input id="vehicleCsvFileInput" type="file" accept=".csv,text/csv" hidden>
         <div id="vehicleImportStatus" class="vehicleImportStatus" aria-live="polite"></div>
         <div class="vehicleSearchBlock">
           <label for="vehicleSearchInput">車両検索</label>
@@ -957,7 +957,6 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="vendor/jszip/jszip.min.js"></script>
   <script src="fixed.js?v=Build1126"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
