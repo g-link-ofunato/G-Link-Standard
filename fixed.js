@@ -1471,25 +1471,29 @@ window.addEventListener("DOMContentLoaded", () => {
     text = text.replace(/^\uFEFF/, "");
     const lines = text.split(/\r?\n/).filter((line, index, all) => line.trim() || index < all.length - 1);
     if (!lines.length) throw new Error("CSVファイルが空です。");
-    const expected = ["都道府県", "№", "所属", "管轄", "車両", "人員"];
-    const header = parseCsvLine(lines[0]);
+    if (normalizeVehicle(parseCsvLine(lines[0])[0]) !== "G-Link部隊登録様式") {
+      throw new Error("1行目のA列を「G-Link部隊登録様式」にしてください。");
+    }
+    if (lines.length < 2) throw new Error("2行目の項目行がありません。");
+    const expected = ["№", "都道府県", "所属", "管轄", "車両", "人員"];
+    const header = parseCsvLine(lines[1]);
     if (expected.some((name, index) => normalizeVehicle(header[index]) !== name) || header.length !== 6) {
-      throw new Error("1行目の項目を「都道府県,№,所属,管轄,車両,人員」にしてください。");
+      throw new Error("2行目の項目を「№,都道府県,所属,管轄,車両,人員」にしてください。");
     }
     const result = [];
-    for (let i = 1; i < lines.length; i += 1) {
+    for (let i = 2; i < lines.length; i += 1) {
       const r = parseCsvLine(lines[i]);
       const rowNo = i + 1;
       if (r.slice(6).some(value => normalizeVehicle(value))) throw new Error(`${rowNo}行目のG列以降にデータがあります。A～F列のみ使用してください。`);
       if (!r.slice(0, 6).some(value => normalizeVehicle(value))) continue;
-      const noText = normalizeVehicle(r[1]);
+      const noText = normalizeVehicle(r[0]);
       const vehicle = normalizeVehicle(r[4]);
       const personnelText = normalizeVehicle(r[5]);
       if (!/^\d+$/.test(noText) || Number(noText) < 1) throw new Error(`${rowNo}行目の№は1以上の整数で入力してください。`);
       if (!vehicle) throw new Error(`${rowNo}行目の車両名が空欄です。`);
       if (personnelText && (!/^\d+$/.test(personnelText) || Number(personnelText) < 0)) throw new Error(`${rowNo}行目の人員は0以上の整数で入力してください。`);
       result.push({
-        prefecture: normalizeVehicle(r[0]), no: String(Number(noText)),
+        prefecture: normalizeVehicle(r[1]), no: String(Number(noText)),
         organization: normalizeVehicle(r[2]), jurisdiction: normalizeVehicle(r[3]),
         vehicle, personnel: personnelText === "" ? 0 : Number(personnelText)
       });
@@ -1516,8 +1520,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function downloadVehicleCsv(filename, rows) {
-    const header = ["都道府県", "№", "所属", "管轄", "車両", "人員"];
-    const lines = [header, ...rows.map(v => [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle, v.personnel])]
+    const title = ["G-Link部隊登録様式", "", "", "", "", ""];
+    const header = ["№", "都道府県", "所属", "管轄", "車両", "人員"];
+    const lines = [title, header, ...rows.map(v => [v.no, v.prefecture, v.organization, v.jurisdiction, v.vehicle, v.personnel])]
       .map(row => row.map(csvEscape).join(","));
     const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a");
@@ -1543,12 +1548,12 @@ window.addEventListener("DOMContentLoaded", () => {
     vehicleListCount.textContent = `部隊登録 ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
     if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録CSVを読み込んでください。"}</div>`; return; }
     const table = document.createElement("table"); table.className = "vehicleListTable";
-    table.innerHTML = "<thead><tr><th>都道府県</th><th>№</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>№</th><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
     const tbody = document.createElement("tbody");
     const activeAssignments = getActiveVehicleAssignments();
     filtered.forEach(({ v, index }) => {
       const tr = document.createElement("tr");
-      [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
+      [v.no, v.prefecture, v.organization, v.jurisdiction, v.vehicle, `${v.personnel}名`].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
       const activeNo = activeAssignments.get(vehicleKey(v));
       const stateTd = document.createElement("td"); stateTd.textContent = activeNo ? `活動中 No.${activeNo}` : "待機"; stateTd.className = activeNo ? "vehicleStateActive" : "vehicleStateReady"; tr.appendChild(stateTd);
       const action = document.createElement("td"); action.className = "vehicleActions";
