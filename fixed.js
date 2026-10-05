@@ -1401,7 +1401,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", adjustHeaderFieldsNoWrap);
  
 
-  // 部隊登録: Excel様式（.xlsx）を入力候補としてブラウザ内に一時保持する。
+  // 部隊登録: CSV様式を入力候補としてブラウザ内に一時保持する。
   // D1・災害データには部隊登録一覧そのものを保存しない。
   const VEHICLE_LIST_SESSION_KEY = "glinkVehicleListV1";
   let vehicleList = [];
@@ -1449,64 +1449,37 @@ window.addEventListener("DOMContentLoaded", () => {
     try { sessionStorage.setItem(VEHICLE_LIST_SESSION_KEY, JSON.stringify(vehicleList)); } catch (_) {}
   }
 
-  function columnLettersToNumber(letters) {
-    let n = 0;
-    for (const ch of String(letters || "").toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64;
-    return n;
+  function parseCsvLine(line) {
+    const values = [];
+    let value = "", quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (quoted) {
+        if (ch === '"' && line[i + 1] === '"') { value += '"'; i += 1; }
+        else if (ch === '"') quoted = false;
+        else value += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ',') { values.push(value); value = ""; }
+      else value += ch;
+    }
+    values.push(value);
+    return values;
   }
 
-  async function parseVehicleXlsx(file) {
-    if (!window.JSZip) throw new Error("Excel読込機能を初期化できませんでした。");
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-    const readXml = async path => {
-      const entry = zip.file(path);
-      if (!entry) throw new Error("Excelファイルの構成を確認できませんでした。");
-      return new DOMParser().parseFromString(await entry.async("text"), "application/xml");
-    };
-    const workbook = await readXml("xl/workbook.xml");
-    const rels = await readXml("xl/_rels/workbook.xml.rels");
-    const firstSheet = workbook.querySelector("sheet");
-    if (!firstSheet) throw new Error("Excelにシートがありません。");
-    const relId = firstSheet.getAttribute("r:id") || firstSheet.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
-    const rel = Array.from(rels.querySelectorAll("Relationship")).find(node => node.getAttribute("Id") === relId);
-    if (!rel) throw new Error("Excelのシート情報を確認できませんでした。");
-    let target = rel.getAttribute("Target") || "worksheets/sheet1.xml";
-    target = target.replace(/^\//, "");
-    const sheetPath = target.startsWith("xl/") ? target : "xl/" + target.replace(/^\.\//, "");
-    const sheet = await readXml(sheetPath);
-
-    let sharedStrings = [];
-    if (zip.file("xl/sharedStrings.xml")) {
-      const shared = await readXml("xl/sharedStrings.xml");
-      sharedStrings = Array.from(shared.querySelectorAll("si")).map(si => Array.from(si.querySelectorAll("t")).map(t => t.textContent || "").join(""));
-    }
-    const rows = new Map();
-    for (const cell of sheet.querySelectorAll("c")) {
-      const ref = cell.getAttribute("r") || "";
-      const match = /^([A-Z]+)(\d+)$/.exec(ref);
-      if (!match) continue;
-      const col = columnLettersToNumber(match[1]);
-      const row = Number(match[2]);
-      const type = cell.getAttribute("t") || "";
-      let value = "";
-      if (type === "inlineStr") value = Array.from(cell.querySelectorAll("is t")).map(t => t.textContent || "").join("");
-      else {
-        const raw = cell.querySelector("v")?.textContent || "";
-        value = type === "s" ? (sharedStrings[Number(raw)] ?? "") : raw;
-      }
-      if (!rows.has(row)) rows.set(row, []);
-      rows.get(row)[col - 1] = value;
-    }
-    const title = normalizeVehicle(rows.get(1)?.[0]);
-    if (title !== "G-Link　部隊登録様式" && title !== "G-Link 部隊登録様式") throw new Error("1行目を「G-Link　部隊登録様式」にしてください。");
+  async function parseVehicleCsv(file) {
+    let text = await file.text();
+    text = text.replace(/^\uFEFF/, "");
+    const lines = text.split(/\r?\n/).filter((line, index, all) => line.trim() || index < all.length - 1);
+    if (!lines.length) throw new Error("CSVファイルが空です。");
     const expected = ["都道府県", "№", "所属", "管轄", "車両", "人員"];
-    const header = rows.get(2) || [];
-    if (expected.some((name, index) => normalizeVehicle(header[index]) !== name)) throw new Error("2行目の項目を「都道府県,№,所属,管轄,車両,人員」にしてください。");
-
+    const header = parseCsvLine(lines[0]);
+    if (expected.some((name, index) => normalizeVehicle(header[index]) !== name) || header.length !== 6) {
+      throw new Error("1行目の項目を「都道府県,№,所属,管轄,車両,人員」にしてください。");
+    }
     const result = [];
-    const maxRow = Math.max(2, ...rows.keys());
-    for (let rowNo = 3; rowNo <= maxRow; rowNo += 1) {
-      const r = rows.get(rowNo) || [];
+    for (let i = 1; i < lines.length; i += 1) {
+      const r = parseCsvLine(lines[i]);
+      const rowNo = i + 1;
       if (r.slice(6).some(value => normalizeVehicle(value))) throw new Error(`${rowNo}行目のG列以降にデータがあります。A～F列のみ使用してください。`);
       if (!r.slice(0, 6).some(value => normalizeVehicle(value))) continue;
       const noText = normalizeVehicle(r[1]);
@@ -1553,10 +1526,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function downloadVehicleTemplate() {
-    const a = document.createElement("a");
-    a.href = "templates/G-Link_部隊登録様式.xlsx";
-    a.download = "G-Link_部隊登録様式.xlsx";
-    document.body.appendChild(a); a.click(); a.remove();
+    downloadVehicleCsv("G-Link_部隊登録様式.csv", []);
   }
 
   function setVehicleStatus(message, kind = "") {
@@ -1571,7 +1541,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const filtered = vehicleList.map((v, index) => ({ v, index })).filter(({ v }) =>
       !query || [v.prefecture, v.no, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
     vehicleListCount.textContent = `部隊登録 ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
-    if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録Excelを読み込んでください。"}</div>`; return; }
+    if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録CSVを読み込んでください。"}</div>`; return; }
     const table = document.createElement("table"); table.className = "vehicleListTable";
     table.innerHTML = "<thead><tr><th>都道府県</th><th>№</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
     const tbody = document.createElement("tbody");
@@ -1612,11 +1582,11 @@ window.addEventListener("DOMContentLoaded", () => {
     vehicleList[index] = next; saveVehicleListSession(); renderVehicleList();
   }
 
-  async function importVehicleXlsx(file) {
+  async function importVehicleCsv(file) {
     try {
-      const rows = await parseVehicleXlsx(file); const result = mergeVehicleRows(rows);
+      const rows = await parseVehicleCsv(file); const result = mergeVehicleRows(rows);
       setVehicleStatus(`読込完了：新規 ${result.added}台／更新 ${result.updated}台／合計 ${vehicleList.length}台`, "success");
-    } catch (error) { setVehicleStatus(error?.message || "Excelファイルを読み込めませんでした。", "error"); }
+    } catch (error) { setVehicleStatus(error?.message || "CSVファイルを読み込めませんでした。", "error"); }
   }
 
   function setupVehicleListEvents() {
@@ -1626,7 +1596,7 @@ window.addEventListener("DOMContentLoaded", () => {
     vehicleImportBtn?.addEventListener("click", () => vehicleCsvFileInput?.click());
     vehicleCsvFileInput?.addEventListener("change", async () => {
       const file = vehicleCsvFileInput.files?.[0]; if (!file) return;
-      await importVehicleXlsx(file);
+      await importVehicleCsv(file);
       vehicleCsvFileInput.value = "";
     });
     vehicleSearchInput?.addEventListener("input", renderVehicleList);
@@ -1700,7 +1670,7 @@ window.addEventListener("DOMContentLoaded", () => {
     vehicleSelectList.replaceChildren();
     if (!rows.length) {
       const empty = document.createElement("div"); empty.className = "vehicleEmpty";
-      empty.textContent = vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録Excelを読み込んでください。";
+      empty.textContent = vehicleList.length ? "検索条件に一致する車両はありません。" : "部隊登録CSVを読み込んでください。";
       vehicleSelectList.appendChild(empty); updateVehicleSelectionTotal(); return;
     }
     rows.forEach(v => {
