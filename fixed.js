@@ -1520,7 +1520,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const query = normalizeVehicle(vehicleSearchInput?.value).toLocaleLowerCase("ja-JP");
     const filtered = vehicleList.map((v, index) => ({ v, index })).filter(({ v }) =>
       !query || [v.prefecture, v.organization, v.jurisdiction, v.vehicle].join(" ").toLocaleLowerCase("ja-JP").includes(query));
-    vehicleListCount.textContent = `車両リスト ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
+    vehicleListCount.textContent = `部隊登録 ${vehicleList.length}台` + (query ? `（表示 ${filtered.length}台）` : "");
     if (!filtered.length) { vehicleListTableWrap.innerHTML = `<div class="vehicleEmpty">${vehicleList.length ? "検索条件に一致する車両はありません。" : "車両CSVを読み込んでください。"}</div>`; return; }
     const table = document.createElement("table"); table.className = "vehicleListTable";
     table.innerHTML = "<thead><tr><th>都道府県</th><th>所属</th><th>管轄</th><th>車両</th><th>人員</th><th>状態</th><th>操作</th></tr></thead>";
@@ -1538,7 +1538,7 @@ window.addEventListener("DOMContentLoaded", () => {
       del.addEventListener("click", () => {
         const activeNo = getActiveVehicleAssignments().get(vehicleKey(v));
         if (activeNo) return alert(`${v.vehicle} はNo.${activeNo}で活動中のため削除できません。`);
-        if (confirm(`${v.vehicle} を車両リストから削除しますか？`)) { vehicleList.splice(index, 1); saveVehicleListSession(); renderVehicleList(); }
+        if (confirm(`${v.vehicle} を部隊登録から削除しますか？`)) { vehicleList.splice(index, 1); saveVehicleListSession(); renderVehicleList(); }
       });
       action.append(edit, del); tr.appendChild(action); tbody.appendChild(tr);
     });
@@ -1569,8 +1569,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function setupVehicleListEvents() {
     loadVehicleListSession(); renderVehicleList();
-    vehicleTemplateBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_車両リスト様式.csv", []));
-    vehicleExportBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_現在の車両リスト.csv", vehicleList));
+    vehicleTemplateBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_部隊登録様式.csv", []));
+    vehicleExportBtn?.addEventListener("click", () => downloadVehicleCsv("G-Link_現在の部隊登録.csv", vehicleList));
     vehicleImportBtn?.addEventListener("click", () => vehicleCsvFileInput?.click());
     vehicleCsvFileInput?.addEventListener("change", async () => {
       const file = vehicleCsvFileInput.files?.[0]; if (!file) return;
@@ -1712,7 +1712,7 @@ window.addEventListener("DOMContentLoaded", () => {
     hazardPanel: "ハザード",
     layerPanel: "レイヤ",
     historyPanel: "活動一覧",
-    vehiclePanel: "車両リスト",
+    vehiclePanel: "部隊登録",
     settingPanel: "設定",
     sharePanel: "共有"
   };

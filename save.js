@@ -161,7 +161,7 @@ window.addEventListener("DOMContentLoaded", () => {
     csv: {
       title: "保存センター - CSV出力",
       lead: "活動一覧・計測図形のうち、チェックしたものをCSV形式で出力します。",
-      previewTitle: "CSVプレビュー",
+      previewTitle: "CSV出力",
       settingsTitle: "CSV設定",
       saveLabel: "📊 CSVを保存",
       extension: "csv"
@@ -1201,21 +1201,26 @@ window.addEventListener("DOMContentLoaded", () => {
     previewTitle.textContent = data.previewTitle;
     settingsTitle.textContent = data.settingsTitle;
     primarySaveBtn.textContent = data.saveLabel;
+    const noPreviewMode = mode === "glink" || mode === "csv";
     document.body.classList.toggle("glinkPreviewMode", false);
     document.body.classList.toggle("glinkFileMode", mode === "glink");
-    if (glinkNoPreviewPanel) glinkNoPreviewPanel.classList.toggle("hidden", mode !== "glink");
+    document.body.classList.toggle("noPreviewMode", noPreviewMode);
+    if (glinkNoPreviewPanel) {
+      glinkNoPreviewPanel.classList.toggle("hidden", !noPreviewMode);
+      if (mode === "csv") {
+        glinkNoPreviewPanel.innerHTML = `<h2>CSV出力</h2><p>CSVは、活動一覧・計測図形の集計や絞り込みに利用するデータファイルとして出力します。</p><p>CSVプレビューは表示しません。右側で出力対象を選択し、「CSVを保存」を押してください。</p>`;
+      } else {
+        glinkNoPreviewPanel.innerHTML = `<h2>ファイル保存</h2><p>\`.glink\`ファイルは、G-Linkの編集状態を後から復元するための専用保存ファイルです。</p><p>PDF保存・PNG保存とは異なり、地図プレビューは表示しません。</p><p>右側の保存設定を確認し、「.glinkを保存」を押してください。保存済みファイルは「.glinkを読み込む」から復元できます。</p>`;
+      }
+    }
     if (glinkLoadBtn) glinkLoadBtn.classList.toggle("hidden", mode !== "glink");
-    if (previewCanvas) previewCanvas.classList.toggle("hidden", mode === "glink");
-    // .glinkファイル保存はページプレビューを持たないため、ページ選択ボタンも表示しない。
-    if (pagePreviewStrip) pagePreviewStrip.classList.toggle("hidden", mode === "glink");
+    if (previewCanvas) previewCanvas.classList.toggle("hidden", noPreviewMode);
+    // .glinkファイル保存とCSV出力はページプレビューを持たないため、ページ選択ボタンも表示しない。
+    if (pagePreviewStrip) pagePreviewStrip.classList.toggle("hidden", noPreviewMode);
     applyPaperPreviewRatio();
     reflectMapPreviewImage();
  
-    if (mode === "csv") {
-      showPage(2);
-    } else {
-      showPage(1);
-    }
+    showPage(1);
     updateInfoSections();
   }
  
