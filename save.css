@@ -986,3 +986,15 @@ body.glinkFileMode .previewControls {
   font-size: 13px;
   color: #334155;
 }
+
+/* 2026-10-05: 車両割当表示を出動部隊セル内で1車両1行に固定 */
+.activityTable th:nth-child(11),
+.activityTable td:nth-child(11) {
+  white-space: pre-line !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  vertical-align: top !important;
+  line-height: 1.35 !important;
+}
