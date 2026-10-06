@@ -890,3 +890,20 @@ body {
 .notice-detail-meta .priority-important{background:#8a6414;color:#fff1bd}.notice-detail-meta .priority-urgent{background:#a51f2d;color:#fff}
 .notice-detail-dialog p{margin:0;color:#e5eef5;font-size:17px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:700px){.notice-detail-overlay{padding:12px}.notice-detail-dialog{width:calc(100vw - 24px);max-height:84vh;padding:28px 22px}.notice-detail-dialog h2{font-size:22px}.notice-detail-dialog p{font-size:16px}}
+
+
+/* Build1430: important/urgent announcement modal usability fix */
+.important-overlay{padding:24px;box-sizing:border-box}
+.important-overlay .important-dialog{position:relative;display:flex;flex-direction:column;width:min(680px,calc(100vw - 48px));max-height:min(84vh,820px);padding:0;border:1px solid rgba(255,100,100,.75);border-radius:18px;background:#07182c;box-shadow:0 30px 90px rgba(0,0,0,.7);text-align:left;overflow:hidden}
+.important-header{flex:0 0 auto;padding:32px 38px 18px;text-align:center}
+.important-close{position:absolute;z-index:3;right:12px;top:10px;width:44px;height:44px;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#fff!important;font-size:32px!important;line-height:1!important;cursor:pointer}
+.important-close:hover,.important-close:focus-visible{background:rgba(255,255,255,.12)!important;outline:2px solid rgba(255,255,255,.55);outline-offset:0;border-radius:50%!important}
+.important-label{margin-right:46px}
+.important-overlay h2{margin:18px 46px 12px;font-size:29px;line-height:1.45}
+.important-meta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.important-meta span{display:inline-block;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.12);font-size:13px;font-weight:800}
+.important-meta .priority-important{background:#8a6414;color:#fff1bd}.important-meta .priority-urgent{background:#a51f2d;color:#fff}
+.important-body-scroll{min-height:0;overflow-y:auto;padding:0 38px 32px;overscroll-behavior:contain}
+.important-body-scroll p{margin:0;font-size:17px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;text-align:left}
+.important-body-scroll a{margin:16px 0 0;text-align:left}
+@media(max-width:700px){.important-overlay{padding:12px}.important-overlay .important-dialog{width:calc(100vw - 24px);max-height:88vh}.important-header{padding:28px 22px 16px}.important-body-scroll{padding:0 22px 24px}.important-overlay h2{margin-left:36px;margin-right:36px;font-size:22px}.important-body-scroll p{font-size:16px}}
