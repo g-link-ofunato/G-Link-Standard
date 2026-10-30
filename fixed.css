@@ -3797,3 +3797,9 @@ body {
 .vehicleSelectFooter button { min-height:36px; cursor:pointer; }
 .vehicleStateActive { color:#b91c1c; font-weight:700; }
 .vehicleStateReady { color:#166534; font-weight:700; }
+
+/* 画面表示専用の直線距離計測 */
+.distanceMeasureResults { margin:10px 0; padding:9px; background:#f5f0ff; border:1px solid #c4a5f5; border-radius:7px; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.distanceMeasureResults[hidden] { display:none; }
+.distanceMeasureLabel { background:transparent; border:0; width:auto !important; height:auto !important; }
+.distanceMeasureLabel span { display:inline-block; white-space:nowrap; transform:translate(-50%,-50%); background:#101827; color:white; border-radius:5px; padding:3px 7px; font-weight:bold; font-size:12px; }

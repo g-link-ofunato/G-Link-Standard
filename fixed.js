@@ -465,6 +465,47 @@ window.addEventListener("DOMContentLoaded", () => {
     weight: 3
   };
  
+  // 画面表示専用の2点間距離。既存の面積計測・保存データから完全に独立。
+  const distanceMeasureLayer = L.layerGroup(); // map生成後に追加
+  const distanceMeasurements = [];
+  let distanceStart = null;
+  let distancePreviewMarker = null;
+  function distanceLabel(m) { return m < 1000 ? `${m.toFixed(1)} m` : `${(m / 1000).toFixed(2)} km`; }
+  function refreshDistanceResults() {
+    const target = document.getElementById("distanceMeasureResults");
+    if (!target) return;
+    target.hidden = !distanceMeasurements.length;
+    target.textContent = distanceMeasurements.map((x, i) => `直線距離 ${i + 1}：${distanceLabel(x.meters)}`).join(" ／ ");
+  }
+  function resetDistanceStart() {
+    distanceStart = null;
+    if (distancePreviewMarker) { distanceMeasureLayer.removeLayer(distancePreviewMarker); distancePreviewMarker = null; }
+  }
+  function handleDistanceClick(latlng) {
+    if (!distanceStart) {
+      distanceStart = latlng;
+      distancePreviewMarker = L.circleMarker(latlng, {radius:5, color:measureSettings.lineColor, weight:2, fillOpacity:1, interactive:false}).addTo(distanceMeasureLayer);
+      if (measureStatusText) measureStatusText.textContent = "始点を指定しました。終点をクリックしてください。";
+      return;
+    }
+    const meters = distanceStart.distanceTo(latlng);
+    const line = L.polyline([distanceStart, latlng], {color:measureSettings.lineColor, weight:measureSettings.weight, opacity:1 - measureSettings.opacity, interactive:false}).addTo(distanceMeasureLayer);
+    const label = L.marker(L.latLng((distanceStart.lat + latlng.lat)/2, (distanceStart.lng + latlng.lng)/2), {interactive:false, icon:L.divIcon({className:"distanceMeasureLabel", html:`<span>${distanceLabel(meters)}</span>`})}).addTo(distanceMeasureLayer);
+    distanceMeasurements.push({meters, line, label});
+    resetDistanceStart();
+    refreshDistanceResults();
+    if (measureStatusText) measureStatusText.textContent = `直線距離：${distanceLabel(meters)}（次の始点を指定できます）`;
+  }
+  function clearLastDistance() {
+    if (distanceStart) { resetDistanceStart(); updateMeasureStatus(); return; }
+    const item = distanceMeasurements.pop();
+    if (item) { distanceMeasureLayer.removeLayer(item.line); distanceMeasureLayer.removeLayer(item.label); }
+    refreshDistanceResults(); updateMeasureStatus();
+  }
+  function clearAllDistances() {
+    resetDistanceStart(); distanceMeasurements.length = 0; distanceMeasureLayer.clearLayers(); refreshDistanceResults(); updateMeasureStatus();
+  }
+
   const defaultGridLineSettings = {
     color: "#888888",
     opacity: 0.5,
@@ -602,6 +643,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const drawingLayer = L.layerGroup().addTo(map);
   const textLayer = L.layerGroup().addTo(map);
   const measureLayer = L.layerGroup().addTo(map);
+  distanceMeasureLayer.addTo(map);
   const pinLayer = L.layerGroup().addTo(map);
   const searchHighlightLayer = L.layerGroup().addTo(map);
   const coordSearchLayer = L.layerGroup().addTo(map);
@@ -4638,7 +4680,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const typeLabel = {
       none: "未選択",
       polyline: "折れ線（面積）",
-      freehand: "フリーハンド（面積）"
+      freehand: "フリーハンド（面積）",
+      distance: "直線距離（2点間）"
     }[measureSettings.type] || "未選択";
  
     measureStatusText.textContent = measureSettings.active
@@ -4659,6 +4702,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (measureSettings.type === "polyline") map.doubleClickZoom.disable();
     } else {
       resetMeasureDrawingState();
+      resetDistanceStart();
       measureSettings.type = "none";
       if (measureDrawType) measureDrawType.value = "none";
       map.doubleClickZoom.enable();
@@ -5569,6 +5613,7 @@ window.addEventListener("DOMContentLoaded", () => {
       measureDrawType.addEventListener("change", () => {
         measureSettings.type = measureDrawType.value;
         resetMeasureDrawingState();
+        resetDistanceStart();
         window.fireGridSuppressNextClick = false;
  
         if (measureSettings.type !== "none") {
@@ -5629,8 +5674,8 @@ window.addEventListener("DOMContentLoaded", () => {
       applyMeasureStyleToAll();
     });
  
-    clearLastMeasureBtn.addEventListener("click", clearLastMeasurement);
-    clearAllMeasureBtn.addEventListener("click", clearAllMeasurements);
+    clearLastMeasureBtn.addEventListener("click", () => { if (measureSettings.type === "distance") clearLastDistance(); else clearLastMeasurement(); });
+    clearAllMeasureBtn.addEventListener("click", () => { if (measureSettings.type === "distance") clearAllDistances(); else clearAllMeasurements(); });
  
     updateMeasureStatus();
     updateMeasureSummaryBanner();
@@ -7437,6 +7482,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     if (measureSettings.active) {
+      if (measureSettings.type === "distance") { handleDistanceClick(e.latlng); return; }
       if (measureSettings.type === "polyline") {
         if (measurePolylineClickTimer) return;
         measurePolylineClickTimer = setTimeout(() => {
