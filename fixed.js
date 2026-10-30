@@ -1272,7 +1272,14 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function updatePinLatLngField(data) {
     if (!pinLatLng || !data) return;
-    pinLatLng.value = formatLatLngPair(data.lat, data.lng);
+    // Pin edit field only: omit N/E/S/W suffixes to make the full coordinate visible.
+    // Preserve negative values with a minus sign so southern/western coordinates remain editable.
+    const pinCoordText = (value, axis) => {
+      if (coordinateType === "decimal") return formatDecimal(value);
+      const dms = formatDms(value, axis).replace(/[NSEW]$/, "");
+      return Number(value) < 0 ? `-${dms}` : dms;
+    };
+    pinLatLng.value = `${pinCoordText(data.lat, "lat")}, ${pinCoordText(data.lng, "lng")}`;
   }
  
   function resetPinCoordinateEdit() {
