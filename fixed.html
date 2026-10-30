@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1126">
+  <link rel="stylesheet" href="fixed.css?v=Build2126">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -276,13 +276,14 @@
         </div>
  
         <div class="measureBlock">
-          <label>面積算出方法</label>
+          <label>計測方法</label>
           <select id="measureDrawType">
             <option value="none">選択してください</option>
             <option value="polyline">折れ線（面積）</option>
             <option value="freehand">フリーハンド（面積）</option>
+            <option value="distance">直線距離（2点間）</option>
           </select>
-          <div class="measureHelp">編集と同じ操作です。折れ線はクリックで頂点を追加し、ダブルクリックで確定します。フリーハンドはドラッグで囲みます。</div>
+          <div class="measureHelp">面積は従来どおり操作します。直線距離は地図上で始点・終点をクリックします。保存・共有はされません。</div>
         </div>
  
         <div class="measureBlock">
@@ -341,6 +342,7 @@
           <span id="measureStatusText">未選択</span>
         </div>
  
+        <div id="distanceMeasureResults" class="distanceMeasureResults" aria-live="polite" hidden></div>
         <div class="measureListTitle">面積・範囲一覧（個別）</div>
         <div id="measureList" class="measureList">
           <p class="emptyMeasure">計測図形はありません。</p>
@@ -957,7 +959,7 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1126"></script>
+  <script src="fixed.js?v=Build2126"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
