@@ -470,6 +470,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const distanceMeasurements = [];
   let distanceStart = null;
   let distancePreviewMarker = null;
+  let distancePreviewLine = null;
+  let distancePreviewLabel = null;
   function distanceLabel(m) { return m < 1000 ? `${m.toFixed(1)} m` : `${(m / 1000).toFixed(2)} km`; }
   function refreshDistanceResults() {
     const target = document.getElementById("distanceMeasureResults");
@@ -480,6 +482,22 @@ window.addEventListener("DOMContentLoaded", () => {
   function resetDistanceStart() {
     distanceStart = null;
     if (distancePreviewMarker) { distanceMeasureLayer.removeLayer(distancePreviewMarker); distancePreviewMarker = null; }
+    if (distancePreviewLine) { distanceMeasureLayer.removeLayer(distancePreviewLine); distancePreviewLine = null; }
+    if (distancePreviewLabel) { distanceMeasureLayer.removeLayer(distancePreviewLabel); distancePreviewLabel = null; }
+  }
+  function updateDistancePreview(latlng) {
+    if (!distanceStart || !measureSettings.active || measureSettings.type !== "distance") return;
+    const meters = distanceStart.distanceTo(latlng);
+    const midpoint = L.latLng((distanceStart.lat + latlng.lat) / 2, (distanceStart.lng + latlng.lng) / 2);
+    if (!distancePreviewLine) {
+      distancePreviewLine = L.polyline([distanceStart, latlng], {color:measureSettings.lineColor, weight:measureSettings.weight, opacity:1 - measureSettings.opacity, interactive:false}).addTo(distanceMeasureLayer);
+      distancePreviewLabel = L.marker(midpoint, {interactive:false, icon:L.divIcon({className:"distanceMeasureLabel", html:`<span>${distanceLabel(meters)}</span>`})}).addTo(distanceMeasureLayer);
+    } else {
+      distancePreviewLine.setLatLngs([distanceStart, latlng]);
+      distancePreviewLabel.setLatLng(midpoint);
+      distancePreviewLabel.setIcon(L.divIcon({className:"distanceMeasureLabel", html:`<span>${distanceLabel(meters)}</span>`}));
+    }
+    if (measureStatusText) measureStatusText.textContent = `直線距離（計測中）：${distanceLabel(meters)}（終点をクリックして確定）`;
   }
   function handleDistanceClick(latlng) {
     if (!distanceStart) {
@@ -5863,6 +5881,10 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   map.on("mousemove", (e) => {
+    if (measureSettings.active && measureSettings.type === "distance" && distanceStart) {
+      updateDistancePreview(e.latlng);
+      return;
+    }
     if (measureSettings.active && measureSettings.type === "polyline" && measurePolylinePoints.length > 0) {
       drawMeasurePolylinePreview(e.latlng);
       return;
