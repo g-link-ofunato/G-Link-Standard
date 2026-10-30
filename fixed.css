@@ -3806,6 +3806,6 @@ body {
 
 /* Pin coordinate edit: keep existing panel layout intact */
 .pinCoordinateRow { display:flex; align-items:stretch; gap:6px; width:100%; min-width:0; }
-.pinCoordinateRow #pinLatLng { flex:4 1 0; width:0; min-width:0; box-sizing:border-box; }
-.pinCoordinateRow #pinCoordinateEditBtn { flex:1 1 0; min-width:0; padding:6px 2px; border:0; border-radius:4px; background:#2563eb; color:#fff; font-weight:600; cursor:pointer; }
+.pinCoordinateRow #pinLatLng { flex:9 1 0; width:0; min-width:0; box-sizing:border-box; }
+.pinCoordinateRow #pinCoordinateEditBtn { flex:1 1 0; min-width:42px; padding:6px 2px; border:0; border-radius:4px; background:#2563eb; color:#fff; font-weight:600; cursor:pointer; }
 .pinCoordinateRow #pinLatLng:not([readonly]) { background:#fff; border-color:#2563eb; }
