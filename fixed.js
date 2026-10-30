@@ -367,6 +367,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const editPanel = document.getElementById("editPanel");
   const pinType = document.getElementById("pinType");
   const pinLatLng = document.getElementById("pinLatLng");
+  const pinCoordinateEditBtn = document.getElementById("pinCoordinateEditBtn");
+  let editingPinCoordinate = false;
   const gridNo = document.getElementById("gridNo");
   const incidentNo = document.getElementById("incidentNo");
   const disasterArea = document.getElementById("disasterArea");
@@ -1273,6 +1275,52 @@ window.addEventListener("DOMContentLoaded", () => {
     pinLatLng.value = formatLatLngPair(data.lat, data.lng);
   }
  
+  function resetPinCoordinateEdit() {
+    editingPinCoordinate = false;
+    if (pinLatLng) pinLatLng.readOnly = true;
+    if (pinCoordinateEditBtn) pinCoordinateEditBtn.textContent = "修正";
+  }
+
+  // Only an explicit confirmation changes the marker position; never move on partial input.
+  if (pinCoordinateEditBtn && pinLatLng) {
+    pinCoordinateEditBtn.addEventListener("click", () => {
+      if (!selectedPin || !selectedPin.data) return;
+      if (!editingPinCoordinate) {
+        editingPinCoordinate = true;
+        pinLatLng.readOnly = false;
+        pinCoordinateEditBtn.textContent = "反映";
+        pinLatLng.focus();
+        pinLatLng.select();
+        return;
+      }
+      const raw = pinLatLng.value.trim();
+      const normalized = normalizeCoordinateInputText(raw);
+      const parsed = parseLatLngInput(raw);
+      // Avoid accepting malformed fragments or ambiguous degree/minute strings.
+      const parts = normalized.split(",").map(v => v.trim());
+      const validDms = parts.length === 2 && parts.every((v, i) =>
+        /^(?:[+-]?\d+(?:\.\d+)?度\d+(?:\.\d+)?分\d+(?:\.\d+)?秒[NSEW]?)$/i.test(v) &&
+        (i === 0 ? !/[EW]/i.test(v) : !/[NS]/i.test(v)));
+      const validDecimal = parts.length === 2 && parts.every(v => /^[+-]?\d+(?:\.\d+)?$/.test(v));
+      if (!parsed || !(validDms || validDecimal)) {
+        window.alert("座標を確認してください。緯度, 経度の順で、10進法または度分秒で入力してください。");
+        pinLatLng.focus();
+        return;
+      }
+      selectedPin.setLatLng([parsed.lat, parsed.lng]);
+      updatePinPositionAfterDrag(selectedPin);
+      resetPinCoordinateEdit();
+      updatePinLatLngField(selectedPin.data);
+    });
+    pinLatLng.addEventListener("keydown", event => {
+      if (event.key === "Escape" && editingPinCoordinate) {
+        event.preventDefault();
+        resetPinCoordinateEdit();
+        if (selectedPin) updatePinLatLngField(selectedPin.data);
+      }
+    });
+  }
+
   function getFormattedNowForHeader() {
     const now = new Date();
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -7031,6 +7079,7 @@ window.addEventListener("DOMContentLoaded", () => {
  
   function openEditPanel(pin, options = {}) {
     selectedPin = pin;
+    resetPinCoordinateEdit();
     const data = pin.data;
     pendingAttachment = null;
  
@@ -7627,6 +7676,10 @@ window.addEventListener("DOMContentLoaded", () => {
  
   savePin.addEventListener("click", () => {
     if (!selectedPin) return;
+    if (editingPinCoordinate) {
+      window.alert("座標を編集中です。先に「反映」を押すか、Escキーで取り消してください。");
+      return;
+    }
  
     selectedPin.data.type = normalizePinType(pinType.value);
     selectedPin.data.gridNo = gridNo.value;
@@ -7652,6 +7705,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
  
   closePanel.addEventListener("click", () => {
+    resetPinCoordinateEdit();
     editPanel.style.display = "none";
   });
  
