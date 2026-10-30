@@ -507,8 +507,25 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const meters = distanceStart.distanceTo(latlng);
-    const line = L.polyline([distanceStart, latlng], {color:measureSettings.lineColor, weight:measureSettings.weight, opacity:1 - measureSettings.opacity, interactive:false}).addTo(distanceMeasureLayer);
+    const line = L.polyline([distanceStart, latlng], {color:measureSettings.lineColor, weight:measureSettings.weight, opacity:1 - measureSettings.opacity, interactive:true, bubblingMouseEvents:false}).addTo(distanceMeasureLayer);
     const label = L.marker(L.latLng((distanceStart.lat + latlng.lat)/2, (distanceStart.lng + latlng.lng)/2), {interactive:false, icon:L.divIcon({className:"distanceMeasureLabel", html:`<span>${distanceLabel(meters)}</span>`})}).addTo(distanceMeasureLayer);
+    // 距離線のみ右クリック削除。既存の図形・面積計測にはイベントを伝播させない。
+    line.options.interactive = true;
+    line.options.bubblingMouseEvents = false;
+    line.on("contextmenu", (event) => {
+      if (event.originalEvent) {
+        event.originalEvent.preventDefault();
+        event.originalEvent.stopPropagation();
+      }
+      if (!window.confirm("この直線距離の計測線を削除しますか？")) return;
+      const index = distanceMeasurements.findIndex(item => item.line === line);
+      if (index < 0) return;
+      const [item] = distanceMeasurements.splice(index, 1);
+      distanceMeasureLayer.removeLayer(item.line);
+      distanceMeasureLayer.removeLayer(item.label);
+      refreshDistanceResults();
+      updateMeasureStatus();
+    });
     distanceMeasurements.push({meters, line, label});
     resetDistanceStart();
     refreshDistanceResults();
