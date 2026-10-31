@@ -172,8 +172,8 @@ window.addEventListener('DOMContentLoaded', () => {
       '消火栓,入力例_消火栓01,75,,39度05分06秒,141度42分36秒,使用可',
       '防火水槽,入力例_防火水槽01,,40,39度05分10秒,141度42分40秒,使用不能',
       '自然水利,入力例_自然水利01,,,39.086111,141.713889,使用可'
-    ].join('\\r\\n') + '\\r\\n';
-    const url = URL.createObjectURL(new Blob(['\\uFEFF', sample], {type:'text/csv;charset=utf-8'}));
+    ].join('\r\n') + '\r\n';
+    const url = URL.createObjectURL(new Blob(['\uFEFF', sample], {type:'text/csv;charset=utf-8'}));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'G-Link_水利登録様式.csv';
