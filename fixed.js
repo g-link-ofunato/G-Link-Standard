@@ -3288,10 +3288,31 @@ window.addEventListener("DOMContentLoaded", () => {
         if (points.length < 3) return;
  
         ctx.save();
-        fillCanvasPath(ctx, points, {
-          fillColor: style.fillColor || style.lineColor || "#a855f7",
-          fillOpacity: Number(style.opacity ?? 0.35)
-        }, "#a855f7");
+        // 減算区域はLeafletと同じ偶奇塗りルールで描画する。
+        // destination-outは背景地図まで消してしまうため使用しない。
+        const subtractHoles = Array.isArray(item.subtractRings)
+          ? item.subtractRings.map(ring => getCanvasPoints(ring, crop)).filter(ring => ring.length >= 3)
+          : [];
+        if (subtractHoles.length) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, Number(style.opacity ?? 0.35)));
+          ctx.fillStyle = style.fillColor || style.lineColor || "#a855f7";
+          ctx.beginPath();
+          const appendRing = ring => {
+            ctx.moveTo(ring[0].x, ring[0].y);
+            for (let i = 1; i < ring.length; i++) ctx.lineTo(ring[i].x, ring[i].y);
+            ctx.closePath();
+          };
+          appendRing(points);
+          subtractHoles.forEach(appendRing);
+          ctx.fill("evenodd");
+          ctx.restore();
+        } else {
+          fillCanvasPath(ctx, points, {
+            fillColor: style.fillColor || style.lineColor || "#a855f7",
+            fillOpacity: Number(style.opacity ?? 0.35)
+          }, "#a855f7");
+        }
         applyCanvasLineStyle(ctx, {
           lineColor: style.lineColor || "#7e22ce",
           weight: Number(style.weight || 3),
