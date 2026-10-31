@@ -348,6 +348,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const measureEditPanel = document.getElementById("measureEditPanel");
   const measureEditName = document.getElementById("measureEditName");
+  const startMeasureSubtract = document.getElementById("startMeasureSubtract");
+  const clearMeasureSubtract = document.getElementById("clearMeasureSubtract");
+  const measureSubtractStatus = document.getElementById("measureSubtractStatus");
+  let subtractDrawing = null;
   const measureEditLineColor = document.getElementById("measureEditLineColor");
   const measureEditFillColor = document.getElementById("measureEditFillColor");
   const measureEditOpacity = document.getElementById("measureEditOpacity");
@@ -4998,11 +5002,104 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
  
+  // 面積減算（試験版）：親区域内に完全包含され、互いに交差しない穴のみ許可する。
+  // 境界交差を黙って近似せず拒否することで、誤った面積表示を防止する。
+  function polygonEdgesCross(a, b) {
+    const x = normalizePolygonPoints(a), y = normalizePolygonPoints(b);
+    for (let i = 0; i < x.length - 1; i++) {
+      for (let j = 0; j < y.length - 1; j++) {
+        if (segmentsIntersect(x[i], x[i + 1], y[j], y[j + 1])) return true;
+      }
+    }
+    return false;
+  }
+  function validSubtractRing(measurement, ring) {
+    const outer = normalizePolygonPoints(getLatLngsFromLayer(measurement.layer));
+    const holes = measurement.subtractRings || [];
+    if (ring.length < 4 || calculatePolygonAreaM2(ring) <= 0) return false;
+    if (polygonEdgesCross(outer, ring) || !ring.slice(0, -1).every(p => pointInPolygon(p, outer))) return false;
+    return holes.every(hole => !polygonEdgesCross(hole, ring) &&
+      !pointInPolygon(ring[0], hole) && !pointInPolygon(hole[0], ring));
+  }
+  function updateSubtractGeometry(measurement) {
+    if (!measurement?.layer) return;
+    const outer = normalizePolygonPoints(getLatLngsFromLayer(measurement.layer));
+    const holes = measurement.subtractRings || [];
+    measurement.layer.setLatLngs(holes.length ? [outer.slice(0, -1), ...holes.map(h => h.slice(0, -1))] : outer.slice(0, -1));
+    measurement.layer.options.fillRule = "evenodd";
+    if (measurement.layer._path) measurement.layer._path.setAttribute("fill-rule", "evenodd");
+  }
+  function cancelSubtractDrawing() {
+    if (!subtractDrawing) return;
+    if (subtractDrawing.preview) map.removeLayer(subtractDrawing.preview);
+    subtractDrawing = null;
+    map.doubleClickZoom.enable();
+    if (measureSubtractStatus) measureSubtractStatus.textContent = "";
+  }
+  function commitSubtractDrawing() {
+    if (!subtractDrawing) return;
+    const { measurement, points } = subtractDrawing;
+    const ring = normalizePolygonPoints(points.slice());
+    if (!validSubtractRing(measurement, ring)) {
+      alert("減算区域は元の区域の内側に収め、境界や既存の減算区域と重ならないよう指定してください。今回は保存されません。");
+      cancelSubtractDrawing();
+      return;
+    }
+    measurement.subtractRings = [...(measurement.subtractRings || []), cloneLatLngPoints(ring)];
+    cancelSubtractDrawing();
+    updateSubtractGeometry(measurement);
+    refreshMeasurementStats(measurement);
+    updateMeasureSummaryBanner();
+    renderMeasureList();
+    applyMeasurementLayerFilter();
+    if (measureSubtractStatus) measureSubtractStatus.textContent = "減算区域を追加しました。保存で編集を終了できます。";
+  }
+  if (startMeasureSubtract) startMeasureSubtract.addEventListener("click", () => {
+    if (!selectedMeasurement || measurementVertexEditState) return;
+    cancelSubtractDrawing();
+    setMeasureMode(false);
+    cancelDrawMode();
+    subtractDrawing = { measurement: selectedMeasurement, points: [], preview: L.polyline([], {color:"#dc2626", weight:3, dashArray:"6,5", interactive:false}).addTo(map) };
+    map.doubleClickZoom.disable();
+    if (measureSubtractStatus) measureSubtractStatus.textContent = "地図を3点以上クリックし、ダブルクリックで減算区域を確定（Escで中止）";
+  });
+  if (clearMeasureSubtract) clearMeasureSubtract.addEventListener("click", () => {
+    if (!selectedMeasurement) return;
+    cancelSubtractDrawing();
+    selectedMeasurement.subtractRings = [];
+    updateSubtractGeometry(selectedMeasurement);
+    refreshMeasurementStats(selectedMeasurement);
+    updateMeasureSummaryBanner();
+    renderMeasureList();
+    if (measureSubtractStatus) measureSubtractStatus.textContent = "減算区域をすべて解除しました。";
+  });
+  map.on("dblclick", e => {
+    if (!subtractDrawing) return;
+    L.DomEvent.stop(e);
+    commitSubtractDrawing();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") cancelSubtractDrawing(); });
+
   function refreshMeasurementStats(measurement) {
     const points = getLatLngsFromLayer(measurement.layer);
     const normalized = normalizePolygonPoints(points);
     measurement.points = normalized;
-    measurement.areaM2 = calculatePolygonAreaM2(normalized);
+    // 既存の単純合算を維持し、区域内の穴だけを個別に差し引く。
+    const gross = calculatePolygonAreaM2(normalized);
+    const holes = measurement.subtractRings || [];
+    const validHoles = holes.every((hole, i) => {
+      const others = measurement.subtractRings;
+      measurement.subtractRings = others.filter((_, j) => j !== i);
+      const valid = validSubtractRing(measurement, hole);
+      measurement.subtractRings = others;
+      return valid;
+    });
+    if (!validHoles && holes.length) {
+      // 親区域の頂点編集で穴が無効になった場合、誤った差引面積を出さない。
+      measurement.subtractRings = [];
+    }
+    updateSubtractGeometry(measurement);
+    measurement.areaM2 = Math.max(0, gross - (measurement.subtractRings || []).reduce((sum, hole) => sum + calculatePolygonAreaM2(hole), 0));
     measurement.areaHa = measurement.areaM2 / 10000;
     measurement.gridRange = calculateGridRange(normalized);
  
@@ -5479,6 +5576,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (measureEditWeightValue) measureEditWeightValue.textContent = String(weight);
     }
 
+    if (measureSubtractStatus) measureSubtractStatus.textContent = `減算区域：${(measurement.subtractRings || []).length}件`;
     if (measureEditPanel) measureEditPanel.style.display = "block";
   }
 
@@ -5549,6 +5647,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (measureEditPanel) measureEditPanel.style.display = "none";
     }
  
+    if (subtractDrawing?.measurement === target) cancelSubtractDrawing();
     measureLayer.removeLayer(target.layer);
     if (target.labelMarker) measureLayer.removeLayer(target.labelMarker);
     measurements = measurements.filter(item => item.id !== id);
@@ -5567,6 +5666,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!measurements.length) return;
     const result = confirm("計測図形をすべて削除しますか？");
     if (!result) return;
+    cancelSubtractDrawing();
     measureLayer.clearLayers();
     measurements = [];
     selectedMeasurement = null;
@@ -6593,6 +6693,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (saveMeasureEdit) {
     saveMeasureEdit.addEventListener("click", () => {
       if (!selectedMeasurement) return;
+      if (subtractDrawing) { alert("減算区域を確定またはEscで中止してください。"); return; }
       if (measurementVertexEditState?.measurement === selectedMeasurement) saveMeasurementVertexEdit();
       selectedMeasurement.name = (measureEditName?.value || "").trim() || "名称未設定";
       selectedMeasurement.style = {
@@ -6628,6 +6729,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   if (closeMeasureEdit) {
     closeMeasureEdit.addEventListener("click", () => {
+      cancelSubtractDrawing();
       if (measurementVertexEditState) cancelMeasurementVertexEdit(true);
       if (measureEditPanel) measureEditPanel.style.display = "none";
       clearSelectedMeasurementStyle();
@@ -7554,6 +7656,12 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   map.on("click", e => {
+    if (subtractDrawing) {
+      const pts = subtractDrawing.points;
+      if (!pts.length || e.latlng.distanceTo(pts[pts.length - 1]) > 0.2) pts.push(e.latlng);
+      subtractDrawing.preview.setLatLngs(pts);
+      return;
+    }
     if (window.fireGridSuppressNextClick) {
       window.fireGridSuppressNextClick = false;
       return;
@@ -7951,6 +8059,7 @@ window.addEventListener("DOMContentLoaded", () => {
       type: item.type,
       style: item.style,
       points: (item.points || []).map(latLngToPlain),
+      subtractRings: (item.subtractRings || []).map(ring => ring.map(latLngToPlain)),
       areaM2: item.areaM2 || 0,
       areaHa: item.areaHa || 0,
       gridRange: item.gridRange || null,
@@ -8285,6 +8394,7 @@ window.addEventListener("DOMContentLoaded", () => {
         layer,
         labelMarker,
         points,
+        subtractRings: (saved.subtractRings || []).map(ring => ring.map(plainToLatLng)),
         areaM2: 0,
         areaHa: 0,
         gridRange: { cells: [], gridCount: 0, areaM2: 0, areaHa: 0, colSpan: 0, rowSpan: 0 },
