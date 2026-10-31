@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1708">
+  <link rel="stylesheet" href="fixed.css?v=Build1722">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -486,10 +486,16 @@
             </div>
           </div>
           <div class="layerGroupBlock">
-            <label class="layerToggleRow"><input id="waterLayerVisible" type="checkbox" checked><span class="layerIcon">💧</span><span class="layerName">水利</span><span id="waterLayerCount" class="layerCount">0</span></label>
-            <div class="layerSubsection" style="display:block">
+            <div class="layerToggleRow layerParentRow">
+              <input id="waterLayerVisible" type="checkbox" checked aria-label="水利を表示">
+              <span class="layerIcon">💧</span><label class="layerName layerParentName" for="waterLayerVisible">水利</label>
+              <span id="waterLayerCount" class="layerCount">0</span>
+              <button id="waterLayerAccordionBtn" class="layerAccordionBtn" type="button" aria-expanded="false" aria-controls="waterLayerDetails" aria-label="水利の詳細を開く">▼</button>
+            </div>
+            <div id="waterLayerDetails" class="layerSubsection" hidden>
               <label class="layerSubToggle"><input id="waterHydrantVisible" type="checkbox" checked><span style="color:#db2029">●</span><span>消火栓</span></label>
               <label class="layerSubToggle"><input id="waterTankVisible" type="checkbox" checked><span style="color:#1246b4">●</span><span>防火水槽</span></label>
+              <label class="layerSubToggle"><input id="waterNaturalVisible" type="checkbox" checked><span style="color:#16843a">●</span><span>自然水利</span></label>
             </div>
           </div>
           <label class="layerToggleRow"><input id="layerTextsVisible" type="checkbox" checked><span class="layerIcon">T</span><span class="layerName">テキスト</span><span id="layerTextsCount" class="layerCount">0</span></label>
@@ -990,8 +996,8 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1708"></script>
-  <script src="water-register.js?v=Build1708"></script>
+  <script src="fixed.js?v=Build1722"></script>
+  <script src="water-register.js?v=Build1722"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
