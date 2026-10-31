@@ -60,6 +60,30 @@ window.addEventListener('DOMContentLoaded', () => {
     return rows;
   }
   const clean = v => String(v ?? '').trim();
+  // 60進法（度分秒）を優先し、10進法も受け付ける。座標系はWGS84。
+  function parseCoordinate(value, limit) {
+    const raw = clean(value).normalize('NFKC').trim();
+    if (!raw) return NaN;
+    const compact = raw.replace(/[\s　]/g, '');
+    if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(compact)) {
+      const decimal = Number(compact);
+      return Math.abs(decimal) <= limit ? decimal : NaN;
+    }
+    // 度分秒記号・コロン・空白区切りに対応。N/E/S/W の方位も許容。
+    const normalized = raw.replace(/[º˚°度]/g, ':').replace(/[′’'分]/g, ':')
+      .replace(/[″”"秒]/g, '').replace(/：/g, ':').trim();
+    const directionMatch = normalized.match(/^([NSEW北南東西])|([NSEW北南東西])$/i);
+    const direction = directionMatch ? (directionMatch[1] || directionMatch[2]).toUpperCase() : '';
+    const numeric = normalized.replace(/[NSEW北南東西]/gi, '').trim();
+    const parts = numeric.split(/[\s:]+/).filter(Boolean);
+    if (parts.length < 2 || parts.length > 3 || !parts.every(p => /^\d+(?:\.\d+)?$/.test(p) || /^-\d+(?:\.\d+)?$/.test(p))) return NaN;
+    const deg = Number(parts[0]), min = Number(parts[1]), sec = parts.length === 3 ? Number(parts[2]) : 0;
+    if (!Number.isFinite(deg) || min < 0 || min >= 60 || sec < 0 || sec >= 60) return NaN;
+    let sign = deg < 0 || direction === 'S' || direction === 'W' || direction === '南' || direction === '西' ? -1 : 1;
+    if ((deg < 0 && ['N','E','北','東'].includes(direction)) || (deg > 0 && ['S','W','南','西'].includes(direction))) return NaN;
+    const coordinate = sign * (Math.abs(deg) + min / 60 + sec / 3600);
+    return Math.abs(coordinate) <= limit ? coordinate : NaN;
+  }
   function readRows(rows) {
     if (!rows.length) throw new Error('CSVにデータがありません。');
     const header = rows[0].map(v => clean(v).replace(/^\uFEFF/, '').replace(/[\s　]/g, '').toLowerCase());
@@ -73,7 +97,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const raw = clean(row[typeIdx]);
       const type = /^(消火栓|消|hydrant)$/i.test(raw) ? 'hydrant' : /^(防火水槽|水槽|水|tank)$/i.test(raw) ? 'tank' : null;
       const latText = clean(row[latIdx]), lngText = clean(row[lngIdx]);
-      const lat = Number(latText), lng = Number(lngText);
+      const lat = parseCoordinate(latText, 90), lng = parseCoordinate(lngText, 180);
       if (!type || !latText || !lngText || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { invalid++; continue; }
       result.push({type, name: clean(row[nameIdx]), diameter: clean(row[diamIdx]), capacity: clean(row[capIdx]), lat, lng});
     }
@@ -82,7 +106,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // CSS pixel を96dpi相当として縮尺分母を近似。画面の物理DPIではなく地図表示用の判定。
   function detailedEnough() {
     const metersPerPixel = 156543.03392804097 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom());
-    return metersPerPixel * 96 / 0.0254 <= 5000;
+    return metersPerPixel * 96 / 0.0254 <= 20000;
   }
   function tooltipNode(record) {
     const root = document.createElement('div');
@@ -90,7 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const title = document.createElement('strong');
     title.textContent = `${record.type === 'hydrant' ? '消火栓' : '防火水槽'}｜${record.name || '名称未登録'}`;
     root.append(title);
-    for (const [label, value] of [['口径', record.diameter ? record.diameter + ' mm' : '未登録'], ['水量', record.capacity ? record.capacity + ' ㎥' : '未登録'], ['緯度', record.lat.toFixed(6)], ['経度', record.lng.toFixed(6)]]) {
+    for (const [label, value] of [['口径', record.diameter ? record.diameter + ' mm' : '未登録'], ['水量', record.capacity ? record.capacity + ' t' : '未登録'], ['緯度', record.lat.toFixed(6)], ['経度', record.lng.toFixed(6)]]) {
       const line = document.createElement('div'); line.textContent = `${label}：${value}`; root.append(line);
     }
     return root;
@@ -117,9 +141,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (drawn > MAX_DRAWN) setStatus(`表示件数が${MAX_DRAWN.toLocaleString()}件を超えたため、一部を省略しています。さらに拡大してください。`);
   }
   $('waterTemplateBtn')?.addEventListener('click', () => {
-    const csv = '\uFEFF種別,名称,口径,水量,緯度,経度\r\n消火栓,サンプル消火栓,75,,39.085000,141.710000\r\n防火水槽,サンプル防火水槽,,40,39.086000,141.712000\r\n';
+    const csv = '\uFEFF種別,名称,口径,水量,緯度,経度\r\n消火栓,サンプル消火栓,75,,39°05′06″,141°42′36″\r\n防火水槽,サンプル防火水槽,,40,39°05′09.6″,141°42′43.2″\r\n';
     const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-    const a = document.createElement('a'); a.href = url; a.download = '水利登録様式.csv'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = 'G-Link_水利登録様式.csv'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   $('waterImportBtn')?.addEventListener('click', () => fileInput.click());
@@ -134,7 +158,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const {result,invalid} = readRows(parseCsv(text));
       if (!result.length) throw new Error('有効な水利データがありません。座標と種別を確認してください。');
       records = result; count.textContent = String(records.length);
-      setStatus(`${records.length.toLocaleString()}件読込（無効行 ${invalid}件）。赤枠内かつ縮尺1/5,000以上で表示。`);
+      setStatus(`${records.length.toLocaleString()}件読込（無効行 ${invalid}件）。赤枠内かつ縮尺1/20,000以上で表示。`);
       redraw();
     } catch (error) { setStatus(`読込エラー：${error.message}`); }
     finally { fileInput.value = ''; }
