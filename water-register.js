@@ -166,13 +166,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (drawn > MAX_DRAWN) setStatus(`表示件数が${MAX_DRAWN.toLocaleString()}件を超えたため、一部を省略しています。さらに拡大してください。`);
   }
   $('waterTemplateBtn')?.addEventListener('click', () => {
-    // 手入力用CSV様式を配布（Excel形式は使用しない）。
+    // CSVの入力例をコードから直接生成し、配信キャッシュや古い静的ファイルの影響を避ける。
+    const sample = [
+      '種別,名称,口径(mm),水量(t),緯度,経度,使用の有無',
+      '消火栓,入力例_消火栓01,75,,39度05分06秒,141度42分36秒,使用可',
+      '防火水槽,入力例_防火水槽01,,40,39度05分10秒,141度42分40秒,使用不能',
+      '自然水利,入力例_自然水利01,,,39.086111,141.713889,使用可'
+    ].join('\\r\\n') + '\\r\\n';
+    const url = URL.createObjectURL(new Blob(['\\uFEFF', sample], {type:'text/csv;charset=utf-8'}));
     const a = document.createElement('a');
-    a.href = './G-Link_水利登録様式.csv';
+    a.href = url;
     a.download = 'G-Link_水利登録様式.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   $('waterImportBtn')?.addEventListener('click', () => fileInput.click());
   fileInput?.addEventListener('change', async () => {
