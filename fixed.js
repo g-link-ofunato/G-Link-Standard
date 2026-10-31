@@ -5307,6 +5307,11 @@ window.addEventListener("DOMContentLoaded", () => {
           `概算：${formatNumber(item.gridRange.areaHa, 3)}ha`,
           `グリッド：横${item.gridRange.colSpan} × 縦${item.gridRange.rowSpan}`
         ].forEach(text => cardBody.append(createTextDiv(text)));
+        // 個別結果のみ減算面積を追記。既存の面積表示は差引後面積のまま維持する。
+        if ((item.subtractRings || []).length) {
+          const deductedM2 = (item.subtractRings || []).reduce((sum, ring) => sum + calculatePolygonAreaM2(ring), 0);
+          cardBody.append(createTextDiv(`減算面積：${formatNumber(deductedM2)}㎡ / ${formatNumber(deductedM2 / 10000, 3)}ha`));
+        }
         card.append(cardHeader, cardBody);
         measureIndividualCards.append(card);
       }
@@ -6040,6 +6045,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   map.on("mousemove", (e) => {
+    if (subtractDrawing) {
+      const pts = subtractDrawing.points;
+      if (pts.length) subtractDrawing.preview.setLatLngs([...pts, e.latlng]);
+      return;
+    }
     if (measureSettings.active && measureSettings.type === "distance" && distanceStart) {
       updateDistancePreview(e.latlng);
       return;
