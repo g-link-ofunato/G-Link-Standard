@@ -15,6 +15,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const master = $('waterLayerVisible');
   const hydrants = $('waterHydrantVisible');
   const tanks = $('waterTankVisible');
+  const natural = $('waterNaturalVisible');
+  const waterAccordion = $('waterLayerAccordionBtn');
+  const waterDetails = $('waterLayerDetails');
+  waterAccordion?.addEventListener('click', () => {
+    const open = waterAccordion.getAttribute('aria-expanded') !== 'true';
+    waterAccordion.setAttribute('aria-expanded', String(open));
+    waterAccordion.setAttribute('aria-label', open ? '水利の詳細を閉じる' : '水利の詳細を開く');
+    waterDetails.hidden = !open;
+  });
   const group = L.layerGroup().addTo(map);
   const renderer = L.canvas({padding: 0.2});
   let records = [];
@@ -95,7 +104,7 @@ window.addEventListener('DOMContentLoaded', () => {
     for (const row of rows.slice(1)) {
       const [typeIdx,nameIdx,diamIdx,capIdx,latIdx,lngIdx] = fields;
       const raw = clean(row[typeIdx]);
-      const type = /^(消火栓|消|hydrant)$/i.test(raw) ? 'hydrant' : /^(防火水槽|水槽|水|tank)$/i.test(raw) ? 'tank' : null;
+      const type = /^(消火栓|消|hydrant)$/i.test(raw) ? 'hydrant' : /^(防火水槽|水槽|tank)$/i.test(raw) ? 'tank' : /^(自然水利|自然|natural)$/i.test(raw) ? 'natural' : null;
       const latText = clean(row[latIdx]), lngText = clean(row[lngIdx]);
       const lat = parseCoordinate(latText, 90), lng = parseCoordinate(lngText, 180);
       if (!type || !latText || !lngText || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { invalid++; continue; }
@@ -108,13 +117,24 @@ window.addEventListener('DOMContentLoaded', () => {
     const metersPerPixel = 156543.03392804097 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom());
     return metersPerPixel * 96 / 0.0254 <= 20000;
   }
+  // 水利情報バナーは度分秒を日本語単位で表示（CSVの入力形式は問わない）。
+  function formatDms(value) {
+    const absolute = Math.abs(value);
+    let totalSeconds = Math.round(absolute * 3600 * 100) / 100;
+    const degrees = Math.floor(totalSeconds / 3600);
+    totalSeconds -= degrees * 3600;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds - minutes * 60;
+    const secondText = seconds.toFixed(2).replace(/\.?0+$/, '');
+    return `${value < 0 ? '-' : ''}${degrees}度${String(minutes).padStart(2, '0')}分${secondText.padStart(2, '0')}秒`;
+  }
   function tooltipNode(record) {
     const root = document.createElement('div');
     root.style.cssText = 'min-width:175px;font-size:13px;line-height:1.6';
     const title = document.createElement('strong');
-    title.textContent = `${record.type === 'hydrant' ? '消火栓' : '防火水槽'}｜${record.name || '名称未登録'}`;
+    title.textContent = `${record.type === 'hydrant' ? '消火栓' : record.type === 'tank' ? '防火水槽' : '自然水利'}｜${record.name || '名称未登録'}`;
     root.append(title);
-    for (const [label, value] of [['口径', record.diameter ? record.diameter + ' mm' : '未登録'], ['水量', record.capacity ? record.capacity + ' t' : '未登録'], ['緯度', record.lat.toFixed(6)], ['経度', record.lng.toFixed(6)]]) {
+    for (const [label, value] of [['口径', record.diameter ? record.diameter + ' mm' : '未登録'], ['水量', record.capacity ? record.capacity + ' t' : '未登録'], ['緯度', formatDms(record.lat)], ['経度', formatDms(record.lng)]]) {
       const line = document.createElement('div'); line.textContent = `${label}：${value}`; root.append(line);
     }
     return root;
@@ -128,11 +148,11 @@ window.addEventListener('DOMContentLoaded', () => {
     const visible = map.getBounds();
     let drawn = 0;
     for (const record of records) {
-      if ((record.type === 'hydrant' && !hydrants.checked) || (record.type === 'tank' && !tanks.checked)) continue;
+      if ((record.type === 'hydrant' && !hydrants.checked) || (record.type === 'tank' && !tanks.checked) || (record.type === 'natural' && !natural.checked)) continue;
       const point = L.latLng(record.lat, record.lng);
       if (!disaster.contains(point) || !visible.contains(point)) continue;
       if (++drawn > MAX_DRAWN) break;
-      const color = record.type === 'hydrant' ? '#d71920' : '#063bb2';
+      const color = record.type === 'hydrant' ? '#d71920' : record.type === 'tank' ? '#063bb2' : '#16843a';
       // 円と文字を組み合わせた divIcon。表示範囲内のみDOMを生成する。
       const icon = L.divIcon({className:'',html:`<div style="width:25px;height:25px;border-radius:50%;background:${color};color:white;border:1.5px solid white;box-shadow:0 1px 3px #3339;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;">${record.type === 'hydrant' ? '消' : '水'}</div>`,iconSize:[25,25],iconAnchor:[12,12]});
       const marker = L.marker(point, {icon, keyboard:false}).bindTooltip(tooltipNode(record), {direction:'top',opacity:0.98,sticky:false});
@@ -141,7 +161,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (drawn > MAX_DRAWN) setStatus(`表示件数が${MAX_DRAWN.toLocaleString()}件を超えたため、一部を省略しています。さらに拡大してください。`);
   }
   $('waterTemplateBtn')?.addEventListener('click', () => {
-    const csv = '\uFEFF種別,名称,口径,水量,緯度,経度\r\n消火栓,サンプル消火栓,75,,39°05′06″,141°42′36″\r\n防火水槽,サンプル防火水槽,,40,39°05′09.6″,141°42′43.2″\r\n';
+    const csv = '\uFEFF種別,名称,口径,水量,緯度,経度\r\n消火栓,サンプル消火栓,75,,39度05分06秒,141度42分36秒\r\n防火水槽,サンプル防火水槽,,40,39度05分09.6秒,141度42分43.2秒\r\n自然水利,サンプル自然水利,,,39度05分12秒,141度42分48秒\r\n';
     const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
     const a = document.createElement('a'); a.href = url; a.download = 'G-Link_水利登録様式.csv'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -167,9 +187,9 @@ window.addEventListener('DOMContentLoaded', () => {
     records = []; count.textContent = '0'; group.clearLayers(); activeMarkers = [];
     setStatus('読込データを解除しました。');
   });
-  [master,hydrants,tanks].forEach(input => input?.addEventListener('change', redraw));
+  [master,hydrants,tanks,natural].forEach(input => input?.addEventListener('change', redraw));
   window.addEventListener('glink-show-all-layers', () => {
-    [master,hydrants,tanks].forEach(input => { if (input) input.checked = true; }); redraw();
+    [master,hydrants,tanks,natural].forEach(input => { if (input) input.checked = true; }); redraw();
   });
   map.on('moveend zoomend', redraw);
 });
