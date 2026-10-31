@@ -647,6 +647,9 @@ window.addEventListener("DOMContentLoaded", () => {
     attributionControl: true
   });
  
+  // 水利表示専用：既存の部隊登録・保存センターとは独立して参照する。
+  window.glinkWaterMapContext = { map, getDisasterBounds: () => fixedBounds };
+
   // Version2026.08.03 Build1730:
   // グリッド番号をLeaflet内部の専用ペインへ移し、図形より前・ピン情報より後ろに固定する。
   // 兄弟要素だった旧gridOverlayでは、地図内部のTooltipがz-indexを上げても前面に出られなかった。
@@ -973,6 +976,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (showAllLayersBtn) {
       showAllLayersBtn.addEventListener("click", () => {
         layerVisibility = { ...defaultLayerVisibility };
+        window.dispatchEvent(new Event("glink-show-all-layers"));
         measurements.forEach(item => { item.visible = true; });
         tracks.forEach(item => { item.visible = true; });
         applyLayerVisibility();
@@ -1868,7 +1872,7 @@ window.addEventListener("DOMContentLoaded", () => {
     hazardPanel: "ハザード",
     layerPanel: "レイヤ",
     historyPanel: "活動一覧",
-    vehiclePanel: "部隊登録",
+    vehiclePanel: "各種登録",
     settingPanel: "設定",
     sharePanel: "共有"
   };

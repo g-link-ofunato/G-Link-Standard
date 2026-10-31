@@ -1,0 +1,151 @@
+/* 水利CSV一時表示：D1、保存センター、共有Viewerへ書き込まない。 */
+window.addEventListener('DOMContentLoaded', () => {
+  'use strict';
+  const context = window.glinkWaterMapContext;
+  if (!context || !window.L) return;
+  const {map, getDisasterBounds} = context;
+  const $ = id => document.getElementById(id);
+  const vehicleTab = $('registrationVehicleTab');
+  const waterTab = $('registrationWaterTab');
+  const vehicleContent = $('registrationVehicleContent');
+  const waterContent = $('registrationWaterContent');
+  const fileInput = $('waterCsvFileInput');
+  const status = $('waterImportStatus');
+  const count = $('waterLayerCount');
+  const master = $('waterLayerVisible');
+  const hydrants = $('waterHydrantVisible');
+  const tanks = $('waterTankVisible');
+  const group = L.layerGroup().addTo(map);
+  const renderer = L.canvas({padding: 0.2});
+  let records = [];
+  let activeMarkers = [];
+  const MAX_CSV_BYTES = 8 * 1024 * 1024;
+  const MAX_RECORDS = 50000;
+  const MAX_DRAWN = 1500;
+  const setStatus = message => { if (status) status.textContent = message; };
+  const setTab = water => {
+    vehicleContent.hidden = water;
+    waterContent.hidden = !water;
+    vehicleTab.setAttribute('aria-pressed', String(!water));
+    waterTab.setAttribute('aria-pressed', String(water));
+    vehicleTab.style.opacity = water ? '0.6' : '1';
+    waterTab.style.opacity = water ? '1' : '0.6';
+  };
+  vehicleTab?.addEventListener('click', () => setTab(false));
+  waterTab?.addEventListener('click', () => setTab(true));
+  setTab(false);
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quoted) {
+        if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (c === '"') quoted = false;
+        else field += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        if (row.some(v => v.trim())) rows.push(row);
+        row = [];
+        if (rows.length > MAX_RECORDS + 1) throw new Error('最大50,000件まで読み込めます。');
+      } else field += c;
+    }
+    if (quoted) throw new Error('CSVの引用符が閉じられていません。');
+    row.push(field);
+    if (row.some(v => v.trim())) rows.push(row);
+    return rows;
+  }
+  const clean = v => String(v ?? '').trim();
+  function readRows(rows) {
+    if (!rows.length) throw new Error('CSVにデータがありません。');
+    const header = rows[0].map(v => clean(v).replace(/^\uFEFF/, '').replace(/[\s　]/g, '').toLowerCase());
+    const column = (...names) => header.findIndex(v => names.includes(v));
+    const fields = [column('種別','種類','type'), column('名称','名前','name'), column('口径','口径(mm)','口径（mm）','diameter'), column('水量','水量(m3)','水量（㎥）','capacity'), column('緯度','latitude','lat'), column('経度','longitude','lng','lon')];
+    if (fields.some(i => i < 0)) throw new Error('必須列（種別、名称、口径、水量、緯度、経度）が不足しています。');
+    const result = [];
+    let invalid = 0;
+    for (const row of rows.slice(1)) {
+      const [typeIdx,nameIdx,diamIdx,capIdx,latIdx,lngIdx] = fields;
+      const raw = clean(row[typeIdx]);
+      const type = /^(消火栓|消|hydrant)$/i.test(raw) ? 'hydrant' : /^(防火水槽|水槽|水|tank)$/i.test(raw) ? 'tank' : null;
+      const latText = clean(row[latIdx]), lngText = clean(row[lngIdx]);
+      const lat = Number(latText), lng = Number(lngText);
+      if (!type || !latText || !lngText || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { invalid++; continue; }
+      result.push({type, name: clean(row[nameIdx]), diameter: clean(row[diamIdx]), capacity: clean(row[capIdx]), lat, lng});
+    }
+    return {result, invalid};
+  }
+  // CSS pixel を96dpi相当として縮尺分母を近似。画面の物理DPIではなく地図表示用の判定。
+  function detailedEnough() {
+    const metersPerPixel = 156543.03392804097 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom());
+    return metersPerPixel * 96 / 0.0254 <= 5000;
+  }
+  function tooltipNode(record) {
+    const root = document.createElement('div');
+    root.style.cssText = 'min-width:175px;font-size:13px;line-height:1.6';
+    const title = document.createElement('strong');
+    title.textContent = `${record.type === 'hydrant' ? '消火栓' : '防火水槽'}｜${record.name || '名称未登録'}`;
+    root.append(title);
+    for (const [label, value] of [['口径', record.diameter ? record.diameter + ' mm' : '未登録'], ['水量', record.capacity ? record.capacity + ' ㎥' : '未登録'], ['緯度', record.lat.toFixed(6)], ['経度', record.lng.toFixed(6)]]) {
+      const line = document.createElement('div'); line.textContent = `${label}：${value}`; root.append(line);
+    }
+    return root;
+  }
+  function redraw() {
+    group.clearLayers();
+    activeMarkers = [];
+    if (!records.length || !master.checked || !detailedEnough()) return;
+    const disaster = getDisasterBounds();
+    if (!disaster || !disaster.isValid()) return;
+    const visible = map.getBounds();
+    let drawn = 0;
+    for (const record of records) {
+      if ((record.type === 'hydrant' && !hydrants.checked) || (record.type === 'tank' && !tanks.checked)) continue;
+      const point = L.latLng(record.lat, record.lng);
+      if (!disaster.contains(point) || !visible.contains(point)) continue;
+      if (++drawn > MAX_DRAWN) break;
+      const color = record.type === 'hydrant' ? '#d71920' : '#063bb2';
+      // 円と文字を組み合わせた divIcon。表示範囲内のみDOMを生成する。
+      const icon = L.divIcon({className:'',html:`<div style="width:25px;height:25px;border-radius:50%;background:${color};color:white;border:1.5px solid white;box-shadow:0 1px 3px #3339;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;">${record.type === 'hydrant' ? '消' : '水'}</div>`,iconSize:[25,25],iconAnchor:[12,12]});
+      const marker = L.marker(point, {icon, keyboard:false}).bindTooltip(tooltipNode(record), {direction:'top',opacity:0.98,sticky:false});
+      marker.addTo(group); activeMarkers.push(marker);
+    }
+    if (drawn > MAX_DRAWN) setStatus(`表示件数が${MAX_DRAWN.toLocaleString()}件を超えたため、一部を省略しています。さらに拡大してください。`);
+  }
+  $('waterTemplateBtn')?.addEventListener('click', () => {
+    const csv = '\uFEFF種別,名称,口径,水量,緯度,経度\r\n消火栓,サンプル消火栓,75,,39.085000,141.710000\r\n防火水槽,サンプル防火水槽,,40,39.086000,141.712000\r\n';
+    const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+    const a = document.createElement('a'); a.href = url; a.download = '水利登録様式.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  $('waterImportBtn')?.addEventListener('click', () => fileInput.click());
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0]; if (!file) return;
+    try {
+      if (file.size > MAX_CSV_BYTES) throw new Error('CSVは8MB以内にしてください。');
+      const bytes = await file.arrayBuffer();
+      let text;
+      try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); }
+      catch (_) { text = new TextDecoder('shift_jis').decode(bytes); }
+      const {result,invalid} = readRows(parseCsv(text));
+      if (!result.length) throw new Error('有効な水利データがありません。座標と種別を確認してください。');
+      records = result; count.textContent = String(records.length);
+      setStatus(`${records.length.toLocaleString()}件読込（無効行 ${invalid}件）。赤枠内かつ縮尺1/5,000以上で表示。`);
+      redraw();
+    } catch (error) { setStatus(`読込エラー：${error.message}`); }
+    finally { fileInput.value = ''; }
+  });
+  $('waterClearBtn')?.addEventListener('click', () => {
+    records = []; count.textContent = '0'; group.clearLayers(); activeMarkers = [];
+    setStatus('読込データを解除しました。');
+  });
+  [master,hydrants,tanks].forEach(input => input?.addEventListener('change', redraw));
+  window.addEventListener('glink-show-all-layers', () => {
+    [master,hydrants,tanks].forEach(input => { if (input) input.checked = true; }); redraw();
+  });
+  map.on('moveend zoomend', redraw);
+});
