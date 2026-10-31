@@ -163,10 +163,10 @@ window.addEventListener('DOMContentLoaded', () => {
     if (drawn > MAX_DRAWN) setStatus(`表示件数が${MAX_DRAWN.toLocaleString()}件を超えたため、一部を省略しています。さらに拡大してください。`);
   }
   $('waterTemplateBtn')?.addEventListener('click', () => {
-    // 手入力用CSV様式を配布（Excel形式は使用しない）。
+    // Excelのプルダウン付き様式を配布。入力後はCSV UTF-8形式で保存して読み込む。
     const a = document.createElement('a');
-    a.href = './G-Link_水利登録様式.csv';
-    a.download = 'G-Link_水利登録様式.csv';
+    a.href = './G-Link_水利登録様式.xlsx';
+    a.download = 'G-Link_水利登録様式.xlsx';
     document.body.appendChild(a);
     a.click();
     a.remove();
