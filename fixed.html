@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build2240">
+  <link rel="stylesheet" href="fixed.css?v=Build0314">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -930,6 +930,13 @@
     <label>線の太さ：<span id="measureEditWeightValue">4</span></label>
     <input id="measureEditWeight" type="range" min="1" max="10" value="4">
 
+    <label>面積減算（試験版：区域内に完全包含する範囲のみ）</label>
+    <div class="buttonRow shapeButtonRow">
+      <button id="startMeasureSubtract" type="button">減算区域を設定</button>
+      <button id="clearMeasureSubtract" type="button">減算を解除</button>
+    </div>
+    <div id="measureSubtractStatus" style="font-size:12px;line-height:1.5;margin:6px 0;"></div>
+
     <div class="buttonRow shapeButtonRow">
       <button id="startMeasureVertexEdit" type="button">頂点編集</button>
       <button id="saveMeasureEdit" type="button">保存</button>
@@ -959,7 +966,7 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build2240"></script>
+  <script src="fixed.js?v=Build0314"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
