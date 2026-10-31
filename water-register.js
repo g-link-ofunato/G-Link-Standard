@@ -16,6 +16,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const hydrants = $('waterHydrantVisible');
   const tanks = $('waterTankVisible');
   const natural = $('waterNaturalVisible');
+  const available = $('waterAvailableVisible');
+  const unavailable = $('waterUnavailableVisible');
   const waterAccordion = $('waterLayerAccordionBtn');
   const waterDetails = $('waterLayerDetails');
   waterAccordion?.addEventListener('click', () => {
@@ -151,6 +153,7 @@ window.addEventListener('DOMContentLoaded', () => {
     let drawn = 0;
     for (const record of records) {
       if ((record.type === 'hydrant' && !hydrants.checked) || (record.type === 'tank' && !tanks.checked) || (record.type === 'natural' && !natural.checked)) continue;
+      if ((record.availability === '使用不能' && !unavailable.checked) || (record.availability !== '使用不能' && !available.checked)) continue;
       const point = L.latLng(record.lat, record.lng);
       if (!disaster.contains(point) || !visible.contains(point)) continue;
       if (++drawn > MAX_DRAWN) break;
@@ -192,9 +195,9 @@ window.addEventListener('DOMContentLoaded', () => {
     records = []; count.textContent = '0'; group.clearLayers(); activeMarkers = [];
     setStatus('読込データを解除しました。');
   });
-  [master,hydrants,tanks,natural].forEach(input => input?.addEventListener('change', redraw));
+  [master,hydrants,tanks,natural,available,unavailable].forEach(input => input?.addEventListener('change', redraw));
   window.addEventListener('glink-show-all-layers', () => {
-    [master,hydrants,tanks,natural].forEach(input => { if (input) input.checked = true; }); redraw();
+    [master,hydrants,tanks,natural,available,unavailable].forEach(input => { if (input) input.checked = true; }); redraw();
   });
   map.on('moveend zoomend', redraw);
 });
