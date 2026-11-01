@@ -73,26 +73,30 @@ window.addEventListener('DOMContentLoaded', () => {
   const clean = v => String(v ?? '').trim();
   // 60進法（度分秒）を優先し、10進法も受け付ける。座標系はWGS84。
   function parseCoordinate(value, limit) {
-    const raw = clean(value).normalize('NFKC').trim();
+    // 度分秒の小数秒を省略・丸めず保持する。全角小数点、度分秒記号も許容。
+    const raw = clean(value).normalize('NFKC').replace(/[．。]/g, '.').trim();
     if (!raw) return NaN;
     const compact = raw.replace(/[\s　]/g, '');
     if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(compact)) {
       const decimal = Number(compact);
-      return Math.abs(decimal) <= limit ? decimal : NaN;
+      return Number.isFinite(decimal) && Math.abs(decimal) <= limit ? decimal : NaN;
     }
-    // 度分秒記号・コロン・空白区切りに対応。N/E/S/W の方位も許容。
-    const normalized = raw.replace(/[º˚°度]/g, ':').replace(/[′’'分]/g, ':')
+    // 方位文字は先頭または末尾だけ許容。
+    const m = raw.match(/^\s*([NSEW北南東西])?\s*(.*?)\s*([NSEW北南東西])?\s*$/i);
+    if (!m) return NaN;
+    const prefix = (m[1] || '').toUpperCase(), suffix = (m[3] || '').toUpperCase();
+    if (prefix && suffix && prefix !== suffix) return NaN;
+    const direction = prefix || suffix;
+    const normalized = m[2].replace(/[º˚°度]/g, ':').replace(/[′’'分]/g, ':')
       .replace(/[″”"秒]/g, '').replace(/：/g, ':').trim();
-    const directionMatch = normalized.match(/^([NSEW北南東西])|([NSEW北南東西])$/i);
-    const direction = directionMatch ? (directionMatch[1] || directionMatch[2]).toUpperCase() : '';
-    const numeric = normalized.replace(/[NSEW北南東西]/gi, '').trim();
-    const parts = numeric.split(/[\s:]+/).filter(Boolean);
-    if (parts.length < 2 || parts.length > 3 || !parts.every(p => /^\d+(?:\.\d+)?$/.test(p) || /^-\d+(?:\.\d+)?$/.test(p))) return NaN;
+    const parts = normalized.split(/[\s:]+/).filter(Boolean);
+    if (parts.length < 2 || parts.length > 3 || !parts.every(p => /^[+-]?\d+(?:\.\d+)?$/.test(p))) return NaN;
     const deg = Number(parts[0]), min = Number(parts[1]), sec = parts.length === 3 ? Number(parts[2]) : 0;
-    if (!Number.isFinite(deg) || min < 0 || min >= 60 || sec < 0 || sec >= 60) return NaN;
-    let sign = deg < 0 || direction === 'S' || direction === 'W' || direction === '南' || direction === '西' ? -1 : 1;
-    if ((deg < 0 && ['N','E','北','東'].includes(direction)) || (deg > 0 && ['S','W','南','西'].includes(direction))) return NaN;
-    const coordinate = sign * (Math.abs(deg) + min / 60 + sec / 3600);
+    if (!Number.isFinite(deg) || !Number.isFinite(min) || !Number.isFinite(sec) ||
+        min < 0 || min >= 60 || sec < 0 || sec >= 60) return NaN;
+    const negative = deg < 0 || ['S','W','南','西'].includes(direction);
+    if (deg < 0 && ['N','E','北','東'].includes(direction)) return NaN;
+    const coordinate = (negative ? -1 : 1) * (Math.abs(deg) + min / 60 + sec / 3600);
     return Math.abs(coordinate) <= limit ? coordinate : NaN;
   }
   function readRows(rows) {
