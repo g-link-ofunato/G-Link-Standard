@@ -1221,7 +1221,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   const liveUpdatedAt = document.getElementById("viewerLiveUpdatedAt");
   const autoRefreshSelect = document.getElementById("viewerAutoRefreshSelect");
   const liveStatus = document.getElementById("viewerLiveStatus");
-  const LIVE_INTERVAL_KEY = "gLinkViewerLiveInterval";
+  const manualRefreshBtn = document.getElementById("viewerRefreshBtn");
+  const manualRefreshHeaderBtn = document.getElementById("viewerHeaderRefreshBtn");
+  const LIVE_HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000;
+  let lastHeartbeatAt = 0;
+  let heartbeatInFlight = false;
   const LIVE_VIEWER_ID_KEY = "gLinkLiveViewerId";
 
   let currentData = null;
@@ -1254,14 +1258,23 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function sendLiveViewerHeartbeat() {
-    if (!liveId || document.hidden) return;
+    if (!liveId || document.hidden || heartbeatInFlight || window.__gLinkLiveShareMeta?.status === "stopped") return;
+    const heartbeatKey = `gLinkViewerHeartbeat:${liveId}:${getLiveViewerId()}`;
+    try { lastHeartbeatAt = Number(sessionStorage.getItem(heartbeatKey)) || lastHeartbeatAt; } catch (error) {}
+    if (lastHeartbeatAt && Date.now() - lastHeartbeatAt < LIVE_HEARTBEAT_INTERVAL_MS) return;
+    heartbeatInFlight = true;
     try {
-      await fetch(`https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(liveId)}/heartbeat`, {
+      const response = await fetch(`https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(liveId)}/heartbeat`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({viewerId:getLiveViewerId()}), cache:"no-store", keepalive:true
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      lastHeartbeatAt = Date.now();
+      try { sessionStorage.setItem(heartbeatKey, String(lastHeartbeatAt)); } catch (error) {}
     } catch (error) {
       console.warn("Viewer接続通知に失敗しました。", error);
+    } finally {
+      heartbeatInFlight = false;
     }
   }
 
@@ -1297,6 +1310,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (liveTimer) clearInterval(liveTimer);
       liveTimer = null;
       if (autoRefreshSelect) autoRefreshSelect.disabled = true;
+      for (const button of [manualRefreshBtn, manualRefreshHeaderBtn]) if (button) button.disabled = true;
       if (liveHeartbeatTimer) clearInterval(liveHeartbeatTimer);
       liveHeartbeatTimer = null;
       return;
@@ -1583,8 +1597,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function refreshLiveData({force=false}={}) {
-    if (!liveId || liveRequestInFlight || document.hidden) return;
+    if (!liveId || liveRequestInFlight || document.hidden || window.__gLinkLiveShareMeta?.status === "stopped") return;
     liveRequestInFlight = true;
+    for (const button of [manualRefreshBtn, manualRefreshHeaderBtn]) if (button) button.disabled = true;
     setLiveConnection("updating", "更新中");
     try {
       const data = await fetchLiveViewerPayload(liveId);
@@ -1602,6 +1617,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       console.warn("ライブ共有の自動更新に失敗しました。", error);
     } finally {
       liveRequestInFlight = false;
+      const stopped = window.__gLinkLiveShareMeta?.status === "stopped";
+      for (const button of [manualRefreshBtn, manualRefreshHeaderBtn]) if (button) button.disabled = stopped;
     }
   }
 
@@ -1614,10 +1631,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       autoRefreshSelect.disabled = true;
       return;
     }
-    const seconds = Number(autoRefreshSelect.value || 0);
-    try { localStorage.setItem(LIVE_INTERVAL_KEY, String(seconds)); } catch (error) {}
+    const seconds = ["30", "60"].includes(autoRefreshSelect.value) ? Number(autoRefreshSelect.value) : 0;
     if (seconds <= 0) {
-      setLiveConnection("online", "自動更新OFF");
+      setLiveConnection("online", "手動更新");
       return;
     }
     setLiveConnection("online", "オンライン");
@@ -1662,8 +1678,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (liveId) {
     if (liveControl) liveControl.hidden = false;
     if (viewerLiveSettingsCard) viewerLiveSettingsCard.hidden = false;
-    const savedInterval = (() => { try { return localStorage.getItem(LIVE_INTERVAL_KEY); } catch (error) { return null; } })();
-    if (autoRefreshSelect && ["0","3","5","10"].includes(savedInterval || "")) autoRefreshSelect.value = savedInterval;
+    // Opening a viewer always starts in manual mode, including previously saved 3/5/10-second settings.
+    if (autoRefreshSelect) autoRefreshSelect.value = "0";
+    for (const button of [manualRefreshBtn, manualRefreshHeaderBtn]) {
+      if (button) {
+        button.hidden = false;
+        button.disabled = window.__gLinkLiveShareMeta?.status === "stopped";
+        button.addEventListener("click", () => refreshLiveData({force:true}));
+      }
+    }
     if (autoRefreshSelect) autoRefreshSelect.addEventListener("change", () => {
       scheduleLiveRefresh();
       const sec = Number(autoRefreshSelect.value || 0);
@@ -1673,11 +1696,18 @@ window.addEventListener("DOMContentLoaded", async () => {
     updateLiveMeta(window.__gLinkLiveShareMeta || {}, false);
     scheduleLiveRefresh();
     sendLiveViewerHeartbeat();
-    liveHeartbeatTimer = setInterval(sendLiveViewerHeartbeat, 120000);
+    // Check locally each minute so a reload does not postpone the next 10-minute record.
+    // sendLiveViewerHeartbeat performs no request before the 10-minute deadline.
+    liveHeartbeatTimer = setInterval(sendLiveViewerHeartbeat, 60000);
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) { refreshLiveData(); sendLiveViewerHeartbeat(); }
+      if (!document.hidden) {
+        if (Number(autoRefreshSelect?.value || 0) > 0) refreshLiveData();
+        sendLiveViewerHeartbeat();
+      }
     });
-    window.addEventListener("online", () => refreshLiveData({force:true}));
+    window.addEventListener("online", () => {
+      if (Number(autoRefreshSelect?.value || 0) > 0) refreshLiveData({force:true});
+    });
   }
 
   diag("パネル状態", true, `レイヤ=${viewerLayerPanel && !viewerLayerPanel.hidden ? "OPEN" : "CLOSE"} / 検索=${viewerSearchPanel && !viewerSearchPanel.hidden ? "OPEN" : "CLOSE"} / 情報=${viewerInfoPanel && !viewerInfoPanel.hidden ? "OPEN" : "CLOSE"}`);

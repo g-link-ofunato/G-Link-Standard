@@ -264,6 +264,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const liveLastSentAt = document.getElementById("liveLastSentAt");
   const liveLastReceivedAt = document.getElementById("liveLastReceivedAt");
   const liveViewerCount = document.getElementById("liveViewerCount");
+  const refreshLiveMetricsBtn = document.getElementById("refreshLiveMetricsBtn");
+  const liveMetricsCheckedAt = document.getElementById("liveMetricsCheckedAt");
+  let liveMetricsRequestInFlight = false;
   const saveShareQrBtn = document.getElementById("saveShareQrBtn");
   const openViewerBtn = document.getElementById("openViewerBtn");
   const shareQrCode = document.getElementById("shareQrCode");
@@ -2236,7 +2239,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const LIVE_AUTO_SEND_KEY = "gLinkLiveAutoSend";
   let liveAutoSendTimer = null;
   let liveChangeMonitorTimer = null;
-  let liveStatusPollTimer = null;
   let lastObservedLiveSignature = "";
   let lastSentLiveSignature = "";
 
@@ -2266,6 +2268,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveLiveShareState(state) {
+    if (liveShareState?.shareId !== state?.shareId) {
+      if (liveViewerCount) liveViewerCount.textContent = "未確認";
+      if (liveLastReceivedAt) liveLastReceivedAt.textContent = "-";
+      if (liveMetricsCheckedAt) liveMetricsCheckedAt.textContent = "未確認（手動で確認してください）";
+    }
     liveShareState = state || null;
     try {
       if (state) localStorage.setItem(LIVE_SHARE_STORAGE_KEY, JSON.stringify(state));
@@ -2336,29 +2343,31 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   async function refreshLiveShareMetrics() {
-    if (!liveShareState?.shareId) return;
+    if (!liveShareState?.shareId || liveShareState.active === false || liveMetricsRequestInFlight) return;
+    liveMetricsRequestInFlight = true;
+    if (refreshLiveMetricsBtn) refreshLiveMetricsBtn.disabled = true;
     try {
       const data = await callLiveShareApi("/api/app/live-share/status", {shareId:liveShareState.shareId});
-      if (liveViewerCount) liveViewerCount.textContent = `${Number(data.viewerCount || 0)}台`;
+      if (liveViewerCount) liveViewerCount.textContent = `約${Number(data.viewerCount || 0)}台`;
+      if (liveMetricsCheckedAt) liveMetricsCheckedAt.textContent = `確認時刻：${formatLiveTime(new Date().toISOString())}`;
       if (liveLastReceivedAt) liveLastReceivedAt.textContent = data.lastReceivedAt ? formatLiveTime(data.lastReceivedAt) : "-";
     } catch (error) {
       console.warn("ライブ共有状況の取得に失敗しました。", error);
+      if (liveMetricsCheckedAt) liveMetricsCheckedAt.textContent = "確認に失敗しました。再度確認してください。";
+    } finally {
+      liveMetricsRequestInFlight = false;
+      if (refreshLiveMetricsBtn) refreshLiveMetricsBtn.disabled = false;
     }
   }
 
   function startLiveShareBackgroundTasks() {
     if (!liveChangeMonitorTimer) liveChangeMonitorTimer = setInterval(monitorLiveShareChanges, 1000);
-    if (liveStatusPollTimer) clearInterval(liveStatusPollTimer);
-    liveStatusPollTimer = setInterval(refreshLiveShareMetrics, 15000);
-    refreshLiveShareMetrics();
   }
 
   function stopLiveShareBackgroundTasks() {
     clearLiveAutoSendTimer();
     if (liveChangeMonitorTimer) clearInterval(liveChangeMonitorTimer);
-    if (liveStatusPollTimer) clearInterval(liveStatusPollTimer);
     liveChangeMonitorTimer = null;
-    liveStatusPollTimer = null;
     lastObservedLiveSignature = "";
     lastSentLiveSignature = "";
   }
@@ -2371,6 +2380,8 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     if (liveAutoSendRow) liveAutoSendRow.hidden = !active;
     if (liveShareMetrics) liveShareMetrics.hidden = !active;
+    if (refreshLiveMetricsBtn) refreshLiveMetricsBtn.hidden = !active;
+    if (liveMetricsCheckedAt) liveMetricsCheckedAt.hidden = !active;
     if (liveLastSentAt) liveLastSentAt.textContent = liveShareState?.updatedAt ? formatLiveTime(liveShareState.updatedAt) : "-";
     if (startLiveShareBtn) startLiveShareBtn.hidden = active;
     if (updateLiveShareBtn) updateLiveShareBtn.hidden = !active;
@@ -2447,7 +2458,6 @@ window.addEventListener("DOMContentLoaded", () => {
       lastObservedLiveSignature = snapshot.signature;
       if (liveLastSentAt) liveLastSentAt.textContent = formatLiveTime(data.updatedAt);
       if (!automatic) setShareStatus("最新情報を送信しました。Viewerは同じURLで最新状態を取得できます。", false);
-      refreshLiveShareMetrics();
     } catch (error) {
       console.error("ライブ共有更新に失敗しました。", error);
       if (error.status === 404) saveLiveShareState(null);
@@ -2711,6 +2721,7 @@ window.addEventListener("DOMContentLoaded", () => {
         setShareStatus("自動送信を停止しました。今すぐ送信を使用してください。", false);
       }
     });
+    if (refreshLiveMetricsBtn) refreshLiveMetricsBtn.addEventListener("click", refreshLiveShareMetrics);
     if (startLiveShareBtn) startLiveShareBtn.addEventListener("click", startLiveShare);
     if (updateLiveShareBtn) updateLiveShareBtn.addEventListener("click", updateLiveShare);
     if (stopLiveShareBtn) stopLiveShareBtn.addEventListener("click", stopLiveShare);

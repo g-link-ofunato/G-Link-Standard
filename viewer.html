@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>G-Link 現場閲覧モード</title>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="viewer.css?v=Build1058">
+  <link rel="stylesheet" href="viewer.css?v=Build1656">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
 <body>
@@ -21,6 +21,7 @@
       <button id="viewerLocationBtn" type="button" class="viewerModeBtn viewerLocationBtn" aria-pressed="false" title="端末の現在地を表示して常時追従します">現在地</button>
       <button id="viewerLayerToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerLayerPanel" aria-expanded="false">レイヤ</button>
       <button id="viewerSearchToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerSearchPanel" aria-expanded="false">検索</button>
+      <button id="viewerHeaderRefreshBtn" type="button" class="viewerModeBtn" hidden>最新情報を取得</button>
       <button id="viewerInfoToggleBtn" type="button" class="viewerModeBtn" aria-controls="viewerInfoPanel" aria-expanded="false">情報</button>
     </div>
   </header>
@@ -138,11 +139,11 @@
           <span id="viewerLiveConnection" class="viewerLiveConnection isOnline">オンライン</span>
           <label for="viewerAutoRefreshSelect">自動更新</label>
           <select id="viewerAutoRefreshSelect" aria-label="ライブ共有の自動更新間隔">
-            <option value="0">OFF</option>
-            <option value="3">3秒</option>
-            <option value="5" selected>5秒</option>
-            <option value="10">10秒</option>
+            <option value="0" selected>手動更新</option>
+            <option value="30">30秒</option>
+            <option value="60">60秒</option>
           </select>
+          <button id="viewerRefreshBtn" type="button" class="viewerModeBtn" hidden>最新情報を取得</button>
           <span id="viewerLiveUpdatedAt" class="viewerLiveUpdatedAt">最終更新：-</span>
         </div>
       </section>
@@ -169,7 +170,7 @@
 
       <section class="viewerNotice">
         このページは現場閲覧モードです。ピン追加・編集・削除・保存・設定変更はできません。<br>
-        ライブ共有URLで開いた場合は、同じURLのまま最新情報を自動取得します。自動更新はOFF・3秒・5秒・10秒から選択できます。
+        初期設定は手動更新です。「最新情報を取得」で更新してください。必要な場合のみ、自動更新を30秒・60秒から選択できます。表示内容は最後に取得した時点の情報です。
       </section>
     </aside>
   </main>
@@ -184,7 +185,7 @@
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="viewer.js?v=Build1058"></script>
+  <script src="viewer.js?v=Build1656"></script>
   <script src="license-auth.js?v=Build1445"></script>
 </body>
 </html>
