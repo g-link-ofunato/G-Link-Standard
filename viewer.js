@@ -349,7 +349,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         weight: meta.w || 4,
         opacity: meta.o ?? 1,
         style: meta.s || "solid",
-        fillMode: meta.f || "none"
+        fillMode: meta.f || "none",
+        ...(meta.g ? {gridFill:meta.g,fillOpacity:meta.fo} : {})
       },
       latlngs: item.l || null,
       circleCenter: expandPoint(item.cc),
@@ -576,7 +577,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       dashArray: dashArrayFromStyle(meta.style),
       fill: meta.fillMode === "semi",
       fillColor: color,
-      fillOpacity: meta.fillMode === "semi" ? 0.25 : 0
+      fillOpacity: meta.gridFill ? Math.max(0, Math.min(1, Number(meta.fillOpacity ?? 0.3))) : (meta.fillMode === "semi" ? 0.25 : 0)
     };
   }
 
@@ -694,7 +695,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const VIEWER_LAYER_STORAGE_KEY = "gLinkViewerLayerVisibility";
   const defaultViewerLayerVisibility = Object.freeze({
     grid:true, pins:true, pinFire:true, pinRescue:true, pinEmergency:true, pinOther:true,
-    pinUnassigned:true, pinActive:true, pinCompleted:true, drawings:true, drawingLine:true,
+    pinUnassigned:true, pinActive:true, pinCompleted:true, drawings:true, gridFill:true, drawingLine:true,
     drawingPolyline:true, drawingRectangle:true, drawingCircle:true, drawingArrow:true,
     drawingFreehand:true, measurements:true, texts:true, tracks:true, hazards:true,
     water:true, waterHydrant:true, waterTank:true, waterNatural:true, waterAvailable:true, waterUnavailable:true
@@ -720,6 +721,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function drawingVisibleInViewer(item) {
+    if (item?.meta?.gridFill) return viewerLayerVisibility.gridFill !== false;
     if (viewerLayerVisibility.drawings === false) return false;
     const type = item?.meta?.type || item?.type || "polyline";
     const key = {line:"drawingLine", polyline:"drawingPolyline", rectangle:"drawingRectangle", circle:"drawingCircle", arrow:"drawingArrow", freehand:"drawingFreehand"}[type] || "drawingPolyline";
@@ -1543,6 +1545,26 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function renderGridFillViewerLegend(data) {
+    const target = document.getElementById("viewerGridFillLegend");
+    if (!target) return;
+    target.replaceChildren();
+    const groups = new Map();
+    for (const item of data.drawings || []) {
+      const fill = item.meta?.gridFill;
+      if (!fill || viewerLayerVisibility.gridFill === false) continue;
+      const key = JSON.stringify([fill.name,item.meta.color]);
+      const group = groups.get(key) || {name:fill.name,color:item.meta.color,count:0}; group.count++; groups.set(key,group);
+    }
+    target.hidden = !groups.size;
+    for (const group of groups.values()) {
+      const row = document.createElement("p"), swatch = document.createElement("span");
+      swatch.style.cssText = "display:inline-block;width:14px;height:14px;margin-right:6px;border:1px solid #64748b";
+      swatch.style.backgroundColor = group.color;
+      row.append(swatch,document.createTextNode(`${group.name}：${group.count}マス`));target.append(row);
+    }
+  }
+
   function renderViewerData(data, options={}) {
     const initial = Boolean(options.initial);
     const preservedCenter = !initial && map ? map.getCenter() : null;
@@ -1556,6 +1578,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     currentData = data;
     currentBounds = boundsFromData(data);
 
+    renderGridFillViewerLegend(data);
     renderHeaderInfo(data);
     renderSummary(data);
     renderPinsInfo(data);
@@ -1584,7 +1607,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (viewerLayerVisibility.tracks !== false) renderTracks(map, data);
-    if (viewerLayerVisibility.drawings !== false) renderDrawings(map, {...data, drawings:(data.drawings || []).filter(drawingVisibleInViewer)});
+    renderDrawings(map, {...data, drawings:(data.drawings || []).filter(drawingVisibleInViewer)});
     if (viewerLayerVisibility.texts !== false) renderTexts(map, data);
     if (viewerLayerVisibility.measurements !== false) renderMeasurements(map, data);
 

@@ -757,7 +757,7 @@ window.addEventListener("DOMContentLoaded", () => {
     (Array.isArray(saveCenterData.drawings) ? saveCenterData.drawings : []).forEach(item => {
       const meta = item.meta || {};
       const color = meta.color || "#0066ff";
-      const opt = { color, weight: Number(meta.weight || 4), opacity: Number(meta.opacity || 1), fillColor: color, fillOpacity: meta.fillMode === "semi" ? 0.25 : 0 };
+      const opt = { color, weight: Number(meta.weight || 4), opacity: Number(meta.opacity || 1), fillColor: color, fillOpacity: meta.gridFill ? Math.max(0, Math.min(1, Number(meta.fillOpacity ?? 0.3))) : (meta.fillMode === "semi" ? 0.25 : 0) };
       if (item.circleCenter && typeof item.radius === "number") {
         const c = toLatLng(item.circleCenter);
         if (c) L.circle(c, { ...opt, radius: item.radius }).addTo(previewFeatureLayer);
@@ -1669,7 +1669,8 @@ window.addEventListener("DOMContentLoaded", () => {
         w: meta.weight || 4,
         o: meta.opacity ?? 1,
         s: meta.style || "solid",
-        f: meta.fillMode || "none"
+        f: meta.fillMode || "none",
+        ...(meta.gridFill ? {g:meta.gridFill,fo:meta.fillOpacity} : {})
       },
       l: Array.isArray(item?.latlngs) ? item.latlngs : null,
       cc: compactPoint(item?.circleCenter),
