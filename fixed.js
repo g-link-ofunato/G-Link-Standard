@@ -748,7 +748,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("gridFillSelection").addEventListener("change",beginGridFillSelection);
     document.getElementById("gridFillOpacity").addEventListener("input",event=>document.getElementById("gridFillOpacityText").textContent=event.target.value);
-    document.getElementById("gridFillVisible").addEventListener("change",()=>applyLayerVisibility());
+    document.getElementById("gridFillVisible").addEventListener("change",event=>{layerVisibility.gridFill=event.target.checked;applyLayerVisibility();});
     document.addEventListener("keydown",event=>{if(event.key==="Escape")endGridFillSelection();});
   }
 
@@ -769,6 +769,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pinActive: true,
     pinCompleted: true,
     drawings: true,
+    gridFill: true,
     drawingLine: true,
     drawingPolyline: true,
     drawingRectangle: true,
@@ -861,6 +862,7 @@ window.addEventListener("DOMContentLoaded", () => {
     pinActive: document.getElementById("layerPinActiveVisible"),
     pinCompleted: document.getElementById("layerPinCompletedVisible"),
     drawings: document.getElementById("layerDrawingsVisible"),
+    gridFill: document.getElementById("layerGridFillVisible"),
     drawingLine: document.getElementById("layerDrawingLineVisible"),
     drawingPolyline: document.getElementById("layerDrawingPolylineVisible"),
     drawingRectangle: document.getElementById("layerDrawingRectangleVisible"),
@@ -964,7 +966,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function isDrawingVisibleByLayer(item) {
     if (!item) return false;
-    if (item.meta?.gridFill) return document.getElementById("gridFillVisible")?.checked !== false;
+    if (item.meta?.gridFill) return layerVisibility.gridFill !== false;
     if (layerVisibility.drawings === false) return false;
     const type = item.meta?.type || item.layer?._fireGridMeta?.type || "polyline";
     const key = { line:"drawingLine", polyline:"drawingPolyline", rectangle:"drawingRectangle", circle:"drawingCircle", arrow:"drawingArrow", freehand:"drawingFreehand" }[type] || "drawingPolyline";
@@ -976,13 +978,16 @@ window.addEventListener("DOMContentLoaded", () => {
     drawings.forEach(item => {
       if (!item || !item.layer) return;
       const type = item.meta?.type || item.layer?._fireGridMeta?.type || "polyline";
-      if (Object.prototype.hasOwnProperty.call(counts, type)) counts[type] += 1;
+      if (!item.meta?.gridFill && Object.prototype.hasOwnProperty.call(counts, type)) counts[type] += 1;
       if (isDrawingVisibleByLayer(item)) {
         if (!drawingLayer.hasLayer(item.layer)) drawingLayer.addLayer(item.layer);
       } else if (drawingLayer.hasLayer(item.layer)) drawingLayer.removeLayer(item.layer);
     });
     renderGridFillLegend();
-    if (layerDrawingsCount) layerDrawingsCount.textContent = String(drawings.length);
+    const fillCount=drawings.filter(item=>item.meta?.gridFill).length;
+    const fillCountLabel=document.getElementById("layerGridFillCount");
+    if(fillCountLabel)fillCountLabel.textContent=String(fillCount);
+    if (layerDrawingsCount) layerDrawingsCount.textContent = String(drawings.length-fillCount);
     Object.entries(layerDrawingCountElements).forEach(([key, el]) => { if (el) el.textContent = String(counts[key] || 0); });
   }
 
@@ -1084,12 +1089,14 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function applyLayerVisibility(options = {}) {
     layerVisibility = normalizeLayerVisibility(layerVisibility);
+    const fillToggle=document.getElementById("gridFillVisible");
+    if(fillToggle)fillToggle.checked=layerVisibility.gridFill !== false;
     setLayerGroupVisible(gridLayer, layerVisibility.grid);
     if (gridOverlay) gridOverlay.style.display = layerVisibility.grid ? "" : "none";
     applyPinLayerFilter();
     setLayerGroupVisible(pinLayer, layerVisibility.pins);
     applyDrawingLayerFilter();
-    setLayerGroupVisible(drawingLayer, layerVisibility.drawings || document.getElementById("gridFillVisible")?.checked !== false);
+    setLayerGroupVisible(drawingLayer, layerVisibility.drawings || layerVisibility.gridFill !== false);
     applyTextLayerFilter();
     applyMeasurementLayerFilter();
     setLayerGroupVisible(measureLayer, layerVisibility.measurements);
@@ -3426,7 +3433,7 @@ window.addEventListener("DOMContentLoaded", () => {
           arrow: "drawingArrow",
           freehand: "drawingFreehand"
         }[type] || "drawingPolyline";
-        if (meta.gridFill ? document.getElementById("gridFillVisible")?.checked === false : (layerVisibility.drawings === false || layerVisibility[visibilityKey] === false)) return;
+        if (meta.gridFill ? layerVisibility.gridFill === false : (layerVisibility.drawings === false || layerVisibility[visibilityKey] === false)) return;
         ctx.save();
         applyCanvasLineStyle(ctx, meta, "#0066ff");
  

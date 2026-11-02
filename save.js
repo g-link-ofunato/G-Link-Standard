@@ -756,6 +756,8 @@ window.addEventListener("DOMContentLoaded", () => {
  
     (Array.isArray(saveCenterData.drawings) ? saveCenterData.drawings : []).forEach(item => {
       const meta = item.meta || {};
+      const visibility=saveCenterData.layerVisibility || saveCenterData.session?.layerVisibility || {};
+      if(meta.gridFill && visibility.gridFill === false)return;
       const color = meta.color || "#0066ff";
       const opt = { color, weight: Number(meta.weight || 4), opacity: Number(meta.opacity || 1), fillColor: color, fillOpacity: meta.gridFill ? Math.max(0, Math.min(1, Number(meta.fillOpacity ?? 0.3))) : (meta.fillMode === "semi" ? 0.25 : 0) };
       if (item.circleCenter && typeof item.radius === "number") {
