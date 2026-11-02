@@ -2236,7 +2236,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const LIVE_SHARE_STORAGE_KEY = "gLinkLiveShareState";
   let liveShareState = null;
   let liveShareRequestInFlight = false;
-  const LIVE_AUTO_SEND_KEY = "gLinkLiveAutoSend";
+  const liveAutoSendSettings = document.getElementById("liveAutoSendSettings");
+  const liveAutoSendInterval = document.getElementById("liveAutoSendInterval");
+  let approvedLiveAutoSendSeconds = 0;
+  let liveAutoSendConfirmationPending = false;
   let liveAutoSendTimer = null;
   let liveChangeMonitorTimer = null;
   let lastObservedLiveSignature = "";
@@ -2298,7 +2301,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function isLiveAutoSendEnabled() {
-    return !liveAutoSendCheckbox || liveAutoSendCheckbox.checked;
+    return Boolean(liveAutoSendCheckbox?.checked && [10,30,60].includes(approvedLiveAutoSendSeconds));
   }
 
   function setLiveBadge(kind, text) {
@@ -2322,21 +2325,27 @@ window.addEventListener("DOMContentLoaded", () => {
     liveAutoSendTimer = null;
   }
 
-  function scheduleLiveAutoSend(snapshot) {
-    clearLiveAutoSendTimer();
-    if (!liveShareState?.shareId || !isLiveAutoSendEnabled()) return;
-    liveAutoSendTimer = setTimeout(() => updateLiveShare({automatic:true, snapshot}), 3000);
+  function scheduleLiveAutoSend() {
+    if (liveAutoSendTimer || !liveShareState?.shareId || liveShareState.active === false || !isLiveAutoSendEnabled()) return;
+    liveAutoSendTimer = setTimeout(async () => {
+      liveAutoSendTimer = null;
+      if (!isLiveAutoSendEnabled() || liveShareState?.active === false || liveShareRequestInFlight) return;
+      try {
+        const snapshot = createLivePayloadSnapshot();
+        if (snapshot.signature !== lastSentLiveSignature) await updateLiveShare({automatic:true, snapshot});
+      } catch (error) {
+        console.warn("ライブ共有の自動送信に失敗しました。", error);
+      }
+    }, approvedLiveAutoSendSeconds * 1000);
   }
 
   function monitorLiveShareChanges() {
-    if (!liveShareState?.shareId || !isLiveAutoSendEnabled() || liveShareRequestInFlight) return;
+    if (!liveShareState?.shareId || liveShareState.active === false || !isLiveAutoSendEnabled() || liveShareRequestInFlight) return;
     try {
       const snapshot = createLivePayloadSnapshot();
-      if (!lastObservedLiveSignature) lastObservedLiveSignature = snapshot.signature;
-      if (snapshot.signature !== lastObservedLiveSignature) {
-        lastObservedLiveSignature = snapshot.signature;
-        scheduleLiveAutoSend(snapshot);
-      }
+      lastObservedLiveSignature = snapshot.signature;
+      if (snapshot.signature !== lastSentLiveSignature) scheduleLiveAutoSend();
+      else clearLiveAutoSendTimer();
     } catch (error) {
       console.warn("ライブ共有の変更検知に失敗しました。", error);
     }
@@ -2696,11 +2705,27 @@ window.addEventListener("DOMContentLoaded", () => {
     setShareStatus("QR画像を保存しました。", false);
   }
 
+  function confirmLiveAutoSend(seconds) {
+    const message = `変更がある場合、${seconds}秒間隔で共有データを送信します。編集頻度やデータ量によってはCloudflareの無料上限に達し、利用できなくなる恐れがあります。有効にしますか？`;
+    const dialog = document.getElementById("liveAutoSendWarning");
+    if (!dialog?.showModal) return Promise.resolve(window.confirm(message));
+    document.getElementById("liveAutoSendWarningText").textContent = message;
+    return new Promise(resolve => {
+      const ok = document.getElementById("liveAutoSendWarningOk");
+      const cancel = document.getElementById("liveAutoSendWarningCancel");
+      const finish = accepted => { dialog.close(); ok.onclick = null; cancel.onclick = null; dialog.oncancel = null; resolve(accepted); };
+      ok.onclick = () => finish(true);
+      cancel.onclick = () => finish(false);
+      dialog.oncancel = event => { event.preventDefault(); finish(false); };
+      dialog.showModal();
+    });
+  }
+
   function setupSharePanelEvents() {
-    try {
-      const savedAuto = localStorage.getItem(LIVE_AUTO_SEND_KEY);
-      if (liveAutoSendCheckbox) liveAutoSendCheckbox.checked = savedAuto !== "false";
-    } catch (error) {}
+    if (liveAutoSendCheckbox) liveAutoSendCheckbox.checked = false;
+    approvedLiveAutoSendSeconds = 0;
+    if (liveAutoSendInterval) { liveAutoSendInterval.value = ""; liveAutoSendInterval.disabled = true; }
+    if (liveAutoSendSettings) liveAutoSendSettings.hidden = true;
     loadLiveShareState();
     if (liveShareState?.shareId) {
       try {
@@ -2711,15 +2736,32 @@ window.addEventListener("DOMContentLoaded", () => {
       startLiveShareBackgroundTasks();
     }
     if (liveAutoSendCheckbox) liveAutoSendCheckbox.addEventListener("change", () => {
-      try { localStorage.setItem(LIVE_AUTO_SEND_KEY, String(liveAutoSendCheckbox.checked)); } catch (error) {}
       clearLiveAutoSendTimer();
-      if (liveAutoSendCheckbox.checked) {
-        lastObservedLiveSignature = "";
-        monitorLiveShareChanges();
-        setShareStatus("自動送信を有効にしました。", false);
-      } else {
-        setShareStatus("自動送信を停止しました。今すぐ送信を使用してください。", false);
+      approvedLiveAutoSendSeconds = 0;
+      if (liveAutoSendSettings) liveAutoSendSettings.hidden = !liveAutoSendCheckbox.checked;
+      if (liveAutoSendInterval) { liveAutoSendInterval.value = ""; liveAutoSendInterval.disabled = !liveAutoSendCheckbox.checked; }
+      setShareStatus(liveAutoSendCheckbox.checked ? "送信間隔を選択してください。" : "自動送信を停止しました。", false);
+    });
+    if (liveAutoSendInterval) liveAutoSendInterval.addEventListener("change", async () => {
+      if (liveAutoSendConfirmationPending) return;
+      const seconds = Number(liveAutoSendInterval.value);
+      if (![10,30,60].includes(seconds)) return;
+      const previous = approvedLiveAutoSendSeconds;
+      clearLiveAutoSendTimer();
+      approvedLiveAutoSendSeconds = 0;
+      liveAutoSendConfirmationPending = true;
+      const ok = await confirmLiveAutoSend(seconds);
+      liveAutoSendConfirmationPending = false;
+      if (!liveAutoSendCheckbox.checked) return;
+      approvedLiveAutoSendSeconds = ok ? seconds : previous;
+      liveAutoSendInterval.value = approvedLiveAutoSendSeconds ? String(approvedLiveAutoSendSeconds) : "";
+      if (!approvedLiveAutoSendSeconds) {
+        liveAutoSendCheckbox.checked = false;
+        liveAutoSendInterval.disabled = true;
+        if (liveAutoSendSettings) liveAutoSendSettings.hidden = true;
       }
+      if (isLiveAutoSendEnabled()) monitorLiveShareChanges();
+      setShareStatus(isLiveAutoSendEnabled() ? `自動送信を${approvedLiveAutoSendSeconds}秒間隔で有効にしました。` : "自動送信はOFFです。", false);
     });
     if (refreshLiveMetricsBtn) refreshLiveMetricsBtn.addEventListener("click", refreshLiveShareMetrics);
     if (startLiveShareBtn) startLiveShareBtn.addEventListener("click", startLiveShare);
@@ -8285,7 +8327,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
       if (liveAutoSendCheckbox) {
         liveAutoSendCheckbox.checked = false;
-        try { localStorage.setItem(LIVE_AUTO_SEND_KEY, "false"); } catch (error) {}
+        approvedLiveAutoSendSeconds = 0;
+        if (liveAutoSendInterval) { liveAutoSendInterval.value = ""; liveAutoSendInterval.disabled = true; }
+        if (liveAutoSendSettings) liveAutoSendSettings.hidden = true;
         clearLiveAutoSendTimer();
       }
 

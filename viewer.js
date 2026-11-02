@@ -446,17 +446,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  let cachedLiveViewerPayload = null;
+  let cachedLiveViewerShareId = "";
   async function fetchLiveViewerPayload(shareId) {
     const id = String(shareId || "").trim();
     if (!/^[A-Za-z0-9_-]{20,40}$/.test(id)) throw new Error("ライブ共有URLを確認してください。");
-    const endpoint = `https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(id)}?t=${Date.now()}`;
+    const since = cachedLiveViewerPayload && cachedLiveViewerShareId === id ? window.__gLinkLiveShareMeta?.updatedAt || "" : "";
+    const endpoint = `https://g-link-portal.pages.dev/api/live-share/${encodeURIComponent(id)}?t=${Date.now()}&since=${encodeURIComponent(since)}`;
     const response = await fetch(endpoint, {cache:"no-store", headers:{Accept:"application/json"}});
     let body = {};
     try { body = await response.json(); } catch (error) {}
     if (!response.ok) throw new Error(body.message || `ライブ共有データを取得できません（HTTP ${response.status}）`);
     diag("ライブ共有取得", true, `更新=${body.updatedAt || "-"}`);
     window.__gLinkLiveShareMeta = {shareId:id, status:body.status || "active", stoppedAt:body.stoppedAt || null, updatedAt:body.updatedAt, expiresAt:body.expiresAt};
-    return expandCompactViewerData(body.payload);
+    if (body.notModified && cachedLiveViewerShareId === id && cachedLiveViewerPayload) return cachedLiveViewerPayload;
+    cachedLiveViewerPayload = expandCompactViewerData(body.payload);
+    cachedLiveViewerShareId = id;
+    return cachedLiveViewerPayload;
   }
 
   async function decodeViewerPayload() {
