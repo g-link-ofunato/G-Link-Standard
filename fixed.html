@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build0919">
+  <link rel="stylesheet" href="fixed.css?v=Build1656">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -651,8 +651,10 @@
           <div id="liveShareMetrics" class="liveShareMetrics" hidden>
             <div><span>最終送信</span><strong id="liveLastSentAt">-</strong></div>
             <div><span>最終受信</span><strong id="liveLastReceivedAt">-</strong></div>
-            <div><span>Viewer接続数</span><strong id="liveViewerCount">0台</strong></div>
+            <div><span>閲覧端末（直近15分・概数）</span><strong id="liveViewerCount">未確認</strong></div>
           </div>
+          <button id="refreshLiveMetricsBtn" type="button" class="secondaryButton" hidden>閲覧状況を確認</button>
+          <p id="liveMetricsCheckedAt" aria-live="polite" hidden>未確認（手動で確認してください）</p>
           <button id="startLiveShareBtn" type="button" class="primaryButton liveShareStartBtn">ライブ共有を開始</button>
           <button id="updateLiveShareBtn" type="button" class="secondaryButton liveShareUpdateBtn" hidden>最新情報を今すぐ送信</button>
           <button id="stopLiveShareBtn" type="button" class="secondaryButton liveShareStopBtn" hidden>ライブ共有を停止</button>
@@ -998,8 +1000,8 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build0919"></script>
-  <script src="water-register.js?v=Build0919"></script>
+  <script src="fixed.js?v=Build1656"></script>
+  <script src="water-register.js?v=Build1656"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
 </body>
