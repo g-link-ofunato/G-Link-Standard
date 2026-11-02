@@ -601,6 +601,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let gridFillSelecting = false;
   let gridFillSelected = new Map();
   let gridFillFirst = null;
+  let gridFillCorners = [];
   let gridFillPreview = null;
   let gridFillUndoData = null;
 
@@ -624,34 +625,74 @@ window.addEventListener("DOMContentLoaded", () => {
   function refreshGridFillSelection() {
     if (gridFillPreview) gridFillPreview.clearLayers();
     for (const cell of gridFillSelected.values()) L.rectangle(cell.bounds,{color:"#0066ff",weight:2,fillOpacity:0.12,interactive:false}).addTo(gridFillPreview);
-    const message = `${gridFillSelected.size}マス選択` + (gridFillFirst ? "・対角のマスを選択してください" : "");
+    const mode=document.getElementById("gridFillSelection").value;
+    const action=document.getElementById("gridFillAction").value==="erase" ? "解除" : "着色";
+    const instruction=mode==="corners" ? `四隅を選択 ${gridFillCorners.length}/4点` : mode==="range" ? (gridFillFirst ? "対角の2点目を選択" : "対角の1点目を選択") : "マスをクリック";
+    const message=`${action}：${instruction}`;
     document.getElementById("gridFillStatus").textContent=message;
     document.getElementById("gridFillBannerCount").textContent=message;
   }
 
-  function selectGridFillCell(latlng) {
-    const cell=gridFillCellAt(latlng);
-    if (!cell) return;
-    if (document.getElementById("gridFillSelection").value==="range") {
-      if (!gridFillFirst) {gridFillSelected.clear();gridFillFirst=cell;gridFillSelected.set(cell.key,cell);}
-      else {
-        const a=gridFillFirst; const count=(Math.abs(a.row-cell.row)+1)*(Math.abs(a.col-cell.col)+1);
-        if(count>500){alert("1回の選択は500マス以内にしてください。");return;}
-        gridFillSelected.clear();
-        for(let row=Math.min(a.row,cell.row);row<=Math.max(a.row,cell.row);row++)
-          for(let col=Math.min(a.col,cell.col);col<=Math.max(a.col,cell.col);col++){
-            const item=makeGridFillCell(row,col);gridFillSelected.set(item.key,item);
-          }
-        gridFillFirst=null;
-      }
-    } else if(gridFillSelected.has(cell.key)) gridFillSelected.delete(cell.key);
-    else if(gridFillSelected.size<500) gridFillSelected.set(cell.key,cell);
-    else alert("1回の選択は500マス以内にしてください。");
-    refreshGridFillSelection();
+  function gridFillHull(cells) {
+    const points=[...cells].sort((a,b)=>a.col-b.col || a.row-b.row);
+    const cross=(a,b,c)=>(b.col-a.col)*(c.row-a.row)-(b.row-a.row)*(c.col-a.col);
+    const lower=[],upper=[];
+    for(const p of points){while(lower.length>1 && cross(lower.at(-2),lower.at(-1),p)<=0)lower.pop();lower.push(p);}
+    for(const p of [...points].reverse()){while(upper.length>1 && cross(upper.at(-2),upper.at(-1),p)<=0)upper.pop();upper.push(p);}
+    return lower.slice(0,-1).concat(upper.slice(0,-1));
   }
 
-  function endGridFillSelection() {
-    gridFillSelecting=false;gridFillFirst=null;gridFillSelected.clear();
+  function gridFillInside(row,col,hull) {
+    return hull.every((a,i)=>{const b=hull[(i+1)%hull.length];return (b.col-a.col)*(row-a.row)-(b.row-a.row)*(col-a.col)>=-1e-9;});
+  }
+
+  function selectGridFillCell(latlng) {
+    if (!gridFillSelecting) return;
+    const cell=gridFillCellAt(latlng);
+    if (!cell) return;
+    const mode=document.getElementById("gridFillSelection").value;
+    if (mode==="range") {
+      if (!gridFillFirst) {gridFillSelected.clear();gridFillFirst=cell;gridFillSelected.set(cell.key,cell);refreshGridFillSelection();return;}
+      const a=gridFillFirst,count=(Math.abs(a.row-cell.row)+1)*(Math.abs(a.col-cell.col)+1);
+      if(count>500){alert("1回の反映は500マス以内にしてください。");return;}
+      gridFillSelected.clear();
+      for(let row=Math.min(a.row,cell.row);row<=Math.max(a.row,cell.row);row++)
+        for(let col=Math.min(a.col,cell.col);col<=Math.max(a.col,cell.col);col++){
+          const item=makeGridFillCell(row,col);gridFillSelected.set(item.key,item);
+        }
+      gridFillFirst=null;
+    } else if(mode==="corners") {
+      if(gridFillCorners.some(p=>p.key===cell.key))return;
+      gridFillCorners.push(cell);gridFillSelected.set(cell.key,cell);
+      if(gridFillCorners.length<4){refreshGridFillSelection();return;}
+      const hull=gridFillHull(gridFillCorners);
+      if(hull.length!==4){alert("四隅になる異なる4マスを選んでください。選択をやり直します。");gridFillCorners=[];gridFillSelected.clear();refreshGridFillSelection();return;}
+      const r0=Math.min(...hull.map(p=>p.row)),r1=Math.max(...hull.map(p=>p.row));
+      const c0=Math.min(...hull.map(p=>p.col)),c1=Math.max(...hull.map(p=>p.col));
+      if((r1-r0+1)*(c1-c0+1)>10000){alert("選択範囲が広すぎます。小さい範囲に分けてください。");gridFillCorners=[];gridFillSelected.clear();refreshGridFillSelection();return;}
+      gridFillSelected.clear();
+      for(let row=r0;row<=r1;row++)for(let col=c0;col<=c1;col++)if(gridFillInside(row,col,hull)){
+        const item=makeGridFillCell(row,col);gridFillSelected.set(item.key,item);
+        if(gridFillSelected.size>500){alert("1回の反映は500マス以内にしてください。");gridFillCorners=[];gridFillSelected.clear();refreshGridFillSelection();return;}
+      }
+      gridFillCorners=[];
+    } else if(mode==="single") {gridFillSelected.clear();gridFillSelected.set(cell.key,cell);}
+    else return;
+    applyGridFillSelection(document.getElementById("gridFillAction").value==="erase");
+  }
+
+  function beginGridFillSelection() {
+    endGridFillSelection(false);
+    const method=document.getElementById("gridFillSelection");
+    if(!method.value)return;
+    if(!getGridInfo()){alert("グリッド幅を設定してください。");method.value="";return;}
+    if(measureSettings.active || subtractDrawing || drawSettings.type!=="none"){alert("計測・図形の作図を終了してから選択してください。");method.value="";return;}
+    gridFillSelecting=true;document.getElementById("gridFillModeBanner").hidden=false;refreshGridFillSelection();
+  }
+
+  function endGridFillSelection(resetMethod=true) {
+    gridFillSelecting=false;gridFillFirst=null;gridFillCorners=[];gridFillSelected.clear();
+    if(resetMethod){const method=document.getElementById("gridFillSelection");if(method)method.value="";}
     if(gridFillPreview)gridFillPreview.clearLayers();
     const banner=document.getElementById("gridFillModeBanner");if(banner)banner.hidden=true;
     const status=document.getElementById("gridFillStatus");if(status)status.textContent="選択を終了しました。";
@@ -681,8 +722,10 @@ window.addEventListener("DOMContentLoaded", () => {
         finishDrawingLayer(L.rectangle(cell.bounds,{interactive:false}),meta);
       }
     }
-    endGridFillSelection();renderGridFillLegend();
-    document.getElementById("gridFillStatus").textContent=erase?"選択マスの着色を解除しました。":"選択マスを着色しました。";
+    const applied=gridFillSelected.size;gridFillFirst=null;gridFillCorners=[];gridFillSelected.clear();
+    if(gridFillPreview)gridFillPreview.clearLayers();
+    renderGridFillLegend();refreshGridFillSelection();
+    document.getElementById("gridFillStatus").textContent=`${applied}マスを${erase?"解除":"着色"}しました。続けて選択できます。`;
   }
 
   function renderGridFillLegend() {
@@ -700,19 +743,13 @@ window.addEventListener("DOMContentLoaded", () => {
   function setupGridFillControls() {
     gridFillPreview=L.layerGroup().addTo(map);
     document.getElementById("openGridFillBtn").addEventListener("click",()=>{setSettingSection("fill");renderGridFillLegend();});
-    document.getElementById("gridFillStart").addEventListener("click",()=>{
-      if(!getGridInfo()){alert("グリッド幅を設定してください。");return;}
-      if(measureSettings.active || subtractDrawing || drawSettings.type !== "none"){alert("計測・図形の作図を終了してから選択してください。");return;}
-      endGridFillSelection();gridFillSelecting=true;document.getElementById("gridFillModeBanner").hidden=false;refreshGridFillSelection();
-    });
-    document.getElementById("gridFillApply").addEventListener("click",()=>applyGridFillSelection(false));
-    document.getElementById("gridFillErase").addEventListener("click",()=>applyGridFillSelection(true));
-    for(const id of ["gridFillEnd","gridFillBannerEnd"])document.getElementById(id).addEventListener("click",endGridFillSelection);
+    for(const id of ["gridFillEnd","gridFillBannerEnd"])document.getElementById(id).addEventListener("click",()=>endGridFillSelection());
     document.getElementById("gridFillUndo").addEventListener("click",()=>{
       if(!gridFillUndoData)return;endGridFillSelection();const restore=gridFillUndoData;gridFillUndoData=null;
       removeGridFillItems(()=>true);restore.forEach(item=>createShapeFromData(item));renderGridFillLegend();
     });
-    document.getElementById("gridFillSelection").addEventListener("change",()=>{gridFillFirst=null;gridFillSelected.clear();refreshGridFillSelection();});
+    document.getElementById("gridFillSelection").addEventListener("change",beginGridFillSelection);
+    document.getElementById("gridFillAction").addEventListener("change",()=>{if(document.getElementById("gridFillSelection").value)beginGridFillSelection();});
     document.getElementById("gridFillOpacity").addEventListener("input",event=>document.getElementById("gridFillOpacityText").textContent=event.target.value);
     document.getElementById("gridFillVisible").addEventListener("change",()=>applyLayerVisibility());
     document.addEventListener("keydown",event=>{if(event.key==="Escape")endGridFillSelection();});
