@@ -441,7 +441,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       texts: (data.y || []).map(v => ({text:v?.[0]||"",lat:Number(v?.[1]),lng:Number(v?.[2]),color:v?.[3]||"#e60000",backgroundEnabled:v?.[4]!==false,backgroundColor:v?.[5]||"#ffffff",fontFamily:v?.[6]||"sans-serif",fontSize:Number(v?.[7]||28),bold:v?.[8]!==false,orientation:v?.[9]==="vertical"?"vertical":"horizontal",boxWidth:Number(v?.[10]||240),boxHeight:Number(v?.[11]||80),backgroundOpacity:Number.isFinite(Number(v?.[12]))?Math.max(0,Math.min(1,Number(v[12]))):1})).filter(v=>v.text&&Number.isFinite(v.lat)&&Number.isFinite(v.lng)),
       tracks: (data.x || []).map(expandTrack).filter(Boolean),
       measurements: (data.m || []).map(expandMeasurement).filter(Boolean),
-      activityHistory: (data.a || []).map(expandHistory).filter(Boolean)
+      activityHistory: (data.a || []).map(expandHistory).filter(Boolean),
+      water: Array.isArray(data.w) ? data.w : []
     };
   }
 
@@ -689,7 +690,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     grid:true, pins:true, pinFire:true, pinRescue:true, pinEmergency:true, pinOther:true,
     pinUnassigned:true, pinActive:true, pinCompleted:true, drawings:true, drawingLine:true,
     drawingPolyline:true, drawingRectangle:true, drawingCircle:true, drawingArrow:true,
-    drawingFreehand:true, measurements:true, texts:true, tracks:true, hazards:true
+    drawingFreehand:true, measurements:true, texts:true, tracks:true, hazards:true,
+    water:true, waterHydrant:true, waterTank:true, waterNatural:true, waterAvailable:true, waterUnavailable:true
   });
   let viewerLayerVisibility = (() => {
     try {
@@ -1491,11 +1493,46 @@ window.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  let viewerWaterGroup = null;
+  function drawViewerWater() {
+    if (!map || !currentData) return;
+    if (viewerWaterGroup) map.removeLayer(viewerWaterGroup);
+    viewerWaterGroup = L.layerGroup().addTo(map);
+    if (viewerLayerVisibility.water === false || !Array.isArray(currentData.water)) return;
+    const metersPerPixel = 156543.03392804097 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2,map.getZoom());
+    if (metersPerPixel * 96 / 0.0254 > 20000) return;
+    const visible = map.getBounds();
+    const disaster = currentBounds;
+    let count = 0;
+    for (const r of currentData.water) {
+      if (!Array.isArray(r) || r.length < 4) continue;
+      const type = Number(r[0]), lat = Number(r[1]), lng = Number(r[2]), usable = r[3] !== 0;
+      if (![0,1,2].includes(type) || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>90 || Math.abs(lng)>180) continue;
+      if ((type===0 && viewerLayerVisibility.waterHydrant===false) || (type===1 && viewerLayerVisibility.waterTank===false) || (type===2 && viewerLayerVisibility.waterNatural===false)) continue;
+      if ((usable && viewerLayerVisibility.waterAvailable===false) || (!usable && viewerLayerVisibility.waterUnavailable===false)) continue;
+      const point = L.latLng(lat,lng);
+      if (!visible.contains(point) || (disaster && !disaster.contains(point))) continue;
+      if (++count > 1500) break;
+      const color = !usable ? '#171717' : type===0 ? '#d71920' : type===1 ? '#063bb2' : '#16843a';
+      const icon = L.divIcon({className:'',html:`<div style="width:25px;height:25px;border-radius:50%;background:${color};color:white;border:1.5px solid white;box-shadow:0 1px 3px #3339;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px">${type===0?'消':'水'}</div>`,iconSize:[25,25],iconAnchor:[12,12]});
+      const name = escapeHtml(String(r[4]||'名称未登録'));
+      const diameter = escapeHtml(String(r[5]||'未登録'));
+      const capacity = escapeHtml(String(r[6]||'未登録'));
+      const tooltip = `<strong>${['消火栓','防火水槽','自然水利'][type]}｜${name}</strong><div>口径：${diameter}${r[5]?' mm':''}</div><div>水量：${capacity}${r[6]?' t':''}</div><div>使用の有無：${usable?'使用可':'使用不能'}</div><div>緯度：${escapeHtml(formatDmsValue(lat,'lat'))}</div><div>経度：${escapeHtml(formatDmsValue(lng,'lng'))}</div>`;
+      L.marker(point,{icon,keyboard:false}).bindTooltip(tooltip,{direction:'top',opacity:0.98}).addTo(viewerWaterGroup);
+    }
+  }
+
   function renderViewerData(data, options={}) {
     const initial = Boolean(options.initial);
     const preservedCenter = !initial && map ? map.getCenter() : null;
     const preservedZoom = !initial && map ? map.getZoom() : null;
 
+    if (!map.__gLinkWaterEvents) {
+      map.on('moveend zoomend', drawViewerWater);
+      map.__gLinkWaterEvents = true;
+    }
+    viewerWaterGroup = null;
     currentData = data;
     currentBounds = boundsFromData(data);
 
@@ -1530,6 +1567,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (viewerLayerVisibility.drawings !== false) renderDrawings(map, {...data, drawings:(data.drawings || []).filter(drawingVisibleInViewer)});
     if (viewerLayerVisibility.texts !== false) renderTexts(map, data);
     if (viewerLayerVisibility.measurements !== false) renderMeasurements(map, data);
+
+    drawViewerWater();
 
     if (!initial && preservedCenter && Number.isFinite(preservedZoom)) {
       map.setView(preservedCenter, preservedZoom, { animate:false });

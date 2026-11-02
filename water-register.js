@@ -1,4 +1,4 @@
-/* 水利CSV一時表示：D1、保存センター、共有Viewerへ書き込まない。 */
+/* 水利CSV一時表示：保存センターへは保存せず、現場閲覧モードへは表示用の最小データのみ共有する。 */
 window.addEventListener('DOMContentLoaded', () => {
   'use strict';
   const context = window.glinkWaterMapContext;
@@ -30,6 +30,17 @@ window.addEventListener('DOMContentLoaded', () => {
   const renderer = L.canvas({padding: 0.2});
   let records = [];
   let activeMarkers = [];
+  // 共有にはCSV本文を送らず、必要な属性のみを転送する。過大な通信を防ぐため件数上限を設ける。
+  window.glinkGetViewerWater = () => {
+    const bounds = getDisasterBounds();
+    if (!bounds || !bounds.isValid()) return [];
+    return records.filter(r => bounds.contains(L.latLng(r.lat,r.lng))).slice(0, 1500)
+      .map(r => [r.type === 'hydrant' ? 0 : r.type === 'tank' ? 1 : 2,
+        Number(r.lat.toFixed(8)), Number(r.lng.toFixed(8)),
+        r.availability === '使用不能' ? 0 : 1,
+        String(r.name || '').slice(0,60), String(r.diameter || '').slice(0,20), String(r.capacity || '').slice(0,20)]);
+  };
+
   const MAX_CSV_BYTES = 8 * 1024 * 1024;
   const MAX_RECORDS = 50000;
   const MAX_DRAWN = 1500;
