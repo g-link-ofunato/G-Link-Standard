@@ -2141,7 +2141,8 @@ window.addEventListener("DOMContentLoaded", () => {
       y: (data.texts || []).map(item => [compactText(item.text,200),Number(item.lat),Number(item.lng),compactText(item.color||"#e60000",12),item.backgroundEnabled!==false,compactText(item.backgroundColor||"#ffffff",12),compactText(item.fontFamily||"sans-serif",12),Number(item.fontSize||28),item.bold!==false,compactText(item.orientation||"horizontal",12),Number(item.boxWidth||240),Number(item.boxHeight||80),Number.isFinite(Number(item.backgroundOpacity))?Math.max(0,Math.min(1,Number(item.backgroundOpacity))):1]),
       x: (data.tracks || []).map(item => [compactText(item.name, 60), compactText(item.color || "#facc15", 12), Number(item.weight || 5), Number(item.opacity ?? 1), (item.points || []).map(compactPoint)]),
       m: (data.measurements || []).map(compactMeasurement),
-      a: (data.activityHistory || []).map(compactHistory)
+      a: (data.activityHistory || []).map(compactHistory),
+      w: data.water || []
     };
   }
 
@@ -2210,7 +2211,8 @@ window.addEventListener("DOMContentLoaded", () => {
       texts: serializeTexts(),
       tracks: serializeTracks(),
       measurements: serializeMeasurements(),
-      activityHistory: activityHistory.map(item => ({ ...item }))
+      activityHistory: activityHistory.map(item => ({ ...item })),
+      water: typeof window.glinkGetViewerWater === "function" ? window.glinkGetViewerWater() : []
     };
   }
 
@@ -8344,7 +8346,8 @@ window.addEventListener("DOMContentLoaded", () => {
       texts: serializeTexts(),
       tracks: serializeTracks(),
       measurements: serializeMeasurements(),
-      activityHistory: activityHistory.map(item => ({ ...item }))
+      activityHistory: activityHistory.map(item => ({ ...item })),
+      water: typeof window.glinkGetViewerWater === "function" ? window.glinkGetViewerWater() : []
     };
   }
  
