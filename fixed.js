@@ -604,6 +604,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let gridFillCorners = [];
   let gridFillPreview = null;
   let gridFillUndoData = null;
+  let gridFillUndoSources = null;
 
   function gridFillCellAt(latlng) {
     const info = getGridInfo();
@@ -615,10 +616,10 @@ window.addEventListener("DOMContentLoaded", () => {
     return makeGridFillCell(row,col,info);
   }
 
-  function makeGridFillCell(row,col,info=getGridInfo()) {
+  function makeGridFillCell(row,col,info=getGridInfo(),gridSize=Number(session.gridSize)) {
     const north=info.northLine-row*info.latStep,west=info.westLine+col*info.lngStep;
     return {row,col,label:getColumnName(col)+"-"+(row+1),
-      key:[session.gridSize,info.northLine.toFixed(10),info.westLine.toFixed(10),row,col].join(":"),
+      key:[gridSize,info.northLine.toFixed(10),info.westLine.toFixed(10),row,col].join(":"),
       bounds:[[north-info.latStep,west],[north,west+info.lngStep]]};
   }
 
@@ -704,11 +705,100 @@ window.addEventListener("DOMContentLoaded", () => {
     applyDrawingLayerFilter();
   }
 
+  // Original geographic footprints survive grid-size changes and .glink saves.
+  // They are kept in session, not copied into each live-share cell.
+  function gridFillSourceBounds(points) {
+    const coords=[];
+    function visit(p){
+      if(Array.isArray(p)){if(p.length===2 && p.every(Number.isFinite))coords.push({lat:p[0],lng:p[1]});else p.forEach(visit);}
+      else if(p && Number.isFinite(p.lat) && Number.isFinite(p.lng))coords.push(p);
+    }
+    visit(points);if(!coords.length)return null;
+    return [Math.min(...coords.map(p=>p.lat)),Math.min(...coords.map(p=>p.lng)),Math.max(...coords.map(p=>p.lat)),Math.max(...coords.map(p=>p.lng))];
+  }
+
+  function getGridFillSources() {
+    if(!Array.isArray(session.gridFillSources)) {
+      session.gridFillSources=drawings.filter(item=>item.meta?.gridFill).map(item=>{
+        const data=getShapeData(item.layer),bounds=gridFillSourceBounds(data?.latlngs);
+        return bounds ? {bounds,color:item.meta.color,opacity:Number(item.meta.fillOpacity??0.3),name:item.meta.gridFill.name||"マス着色"} : null;
+      }).filter(Boolean);
+    }
+    return session.gridFillSources;
+  }
+
+  function subtractGridFillRect(source,cut) {
+    const [s,w,n,e]=source.bounds,[cs,cw,cn,ce]=cut;
+    const a=Math.max(s,cs),b=Math.max(w,cw),c=Math.min(n,cn),d=Math.min(e,ce);
+    if(c-a<=1e-12 || d-b<=1e-12)return [source];
+    return [[s,w,a,e],[c,w,n,e],[a,w,c,b],[a,d,c,e]]
+      .filter(p=>p[2]-p[0]>1e-12 && p[3]-p[1]>1e-12).map(bounds=>({...source,bounds}));
+  }
+
+  function updateGridFillSources(cells,erase) {
+    let sources=getGridFillSources().map(s=>({...s,bounds:[...s.bounds]}));
+    for(const cell of cells) {
+      const cut=[cell.bounds[0][0],cell.bounds[0][1],cell.bounds[1][0],cell.bounds[1][1]];
+      sources=sources.flatMap(source=>subtractGridFillRect(source,cut));
+      if(!erase)sources.push({bounds:cut,color:document.getElementById("gridFillColor").value,
+        opacity:Number(document.getElementById("gridFillOpacity").value)/100,name:"マス着色"});
+      if(sources.length>8000)throw new Error("元の着色範囲が細かくなりすぎています。これ以上の編集は範囲を整理してから行ってください。");
+    }
+    return sources;
+  }
+
+  function projectGridFillSources(sources,gridSize) {
+    const info=getGridInfo(gridSize);if(!info)return [];
+    const cols=Math.round((info.eastLine-info.westLine)/info.lngStep),rows=Math.round((info.northLine-info.southLine)/info.latStep);
+    const cells=new Map();
+    sources.forEach((source,order)=>{
+      const b=source.bounds;
+      if(!Array.isArray(b)||b.length!==4||!b.every(Number.isFinite)||b[2]<=b[0]||b[3]<=b[1])return;
+      const [s,w,n,e]=b;
+      const c0=Math.max(0,Math.floor((w-info.westLine)/info.lngStep+1e-8));
+      const c1=Math.min(cols-1,Math.ceil((e-info.westLine)/info.lngStep-1e-8)-1);
+      const r0=Math.max(0,Math.floor((info.northLine-n)/info.latStep+1e-8));
+      const r1=Math.min(rows-1,Math.ceil((info.northLine-s)/info.latStep-1e-8)-1);
+      if((c1-c0+1)*(r1-r0+1)>10000)throw new Error("引継ぎ範囲が広すぎます。より大きいグリッド幅を選んでください。");
+      for(let row=r0;row<=r1;row++)for(let col=c0;col<=c1;col++){
+        const cell=makeGridFillCell(row,col,info,gridSize),[[ss,ww],[nn,ee]]=cell.bounds;
+        const height=Math.min(n,nn)-Math.max(s,ss),width=Math.min(e,ee)-Math.max(w,ww);
+        if(height<=1e-12 || width<=1e-12)continue; // Touching an edge or corner is not overlap.
+        let target=cells.get(cell.key);if(!target){target={cell,colors:new Map()};cells.set(cell.key,target);}
+        const group=target.colors.get(source.color)||{area:0,order:-1,source};
+        group.area+=height*width;if(order>=group.order){group.order=order;group.source=source;}target.colors.set(source.color,group);
+        if(cells.size>2000)throw new Error("引継ぎ後の着色が2000マスを超えます。より大きいグリッド幅を選んでください。");
+      }
+    });
+    return [...cells.values()].map(({cell,colors})=>{
+      let best=null;for(const group of colors.values()){
+        const tolerance=Math.max(group.area,best?.area||0)*1e-8;
+        if(!best||group.area>best.area+tolerance||(Math.abs(group.area-best.area)<=tolerance&&group.order>best.order))best=group;
+      }
+      return {cell,source:best.source};
+    });
+  }
+
+  function renderProjectedGridFill(projected) {
+    removeGridFillItems(()=>true);
+    for(const {cell,source} of projected) {
+      const meta={id:crypto.randomUUID(),type:"rectangle",color:source.color,weight:1,style:"solid",opacity:0.4,fillMode:"semi",fillOpacity:source.opacity,
+        gridFill:{key:cell.key,label:cell.label,name:source.name||"マス着色",size:Number(session.gridSize)}};
+      finishDrawingLayer(L.rectangle(cell.bounds,{interactive:false}),meta);
+    }
+    renderGridFillLegend();
+  }
+
   function applyGridFillSelection(erase=false) {
     if(!gridFillSelected.size || gridFillFirst){alert("着色するマスの選択を完了してください。");return;}
     const remaining=drawings.filter(item=>item.meta?.gridFill && !gridFillSelected.has(item.meta.gridFill.key)).length;
     if(!erase && remaining+gridFillSelected.size>2000){alert("着色は全体で2000マス以内にしてください。");return;}
+    let nextSources;
+    try { nextSources=updateGridFillSources([...gridFillSelected.values()],erase); }
+    catch(error){alert(error.message);return;}
+    gridFillUndoSources=JSON.parse(JSON.stringify(getGridFillSources()));
     gridFillUndoData=drawings.filter(item=>item.meta?.gridFill).map(item=>getShapeData(item.layer));
+    session.gridFillSources=nextSources;
     removeGridFillItems(fill=>gridFillSelected.has(fill.key));
     if(!erase){
       const color=document.getElementById("gridFillColor").value;
@@ -744,6 +834,7 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("gridFillEnd").addEventListener("click",()=>endGridFillSelection());
     document.getElementById("gridFillUndo").addEventListener("click",()=>{
       if(!gridFillUndoData)return;endGridFillSelection();const restore=gridFillUndoData;gridFillUndoData=null;
+      if(gridFillUndoSources)session.gridFillSources=gridFillUndoSources;gridFillUndoSources=null;
       removeGridFillItems(()=>true);restore.forEach(item=>createShapeFromData(item));renderGridFillLegend();
     });
     document.getElementById("gridFillSelection").addEventListener("change",beginGridFillSelection);
@@ -3928,13 +4019,13 @@ window.addEventListener("DOMContentLoaded", () => {
     return index - 1;
   }
  
-  function getGridInfo() {
-    if (!fixedBounds || !session.gridSize || session.gridSize === 0) return null;
+  function getGridInfo(gridSize=Number(session.gridSize || 0)) {
+    if (!fixedBounds || !Number.isFinite(gridSize) || gridSize <= 0) return null;
  
     const meterPerLat = 111320;
     const baseLat = fixedBounds.getCenter().lat;
-    const latStep = session.gridSize / meterPerLat;
-    const lngStep = session.gridSize / (111320 * Math.cos(baseLat * Math.PI / 180));
+    const latStep = gridSize / meterPerLat;
+    const lngStep = gridSize / (111320 * Math.cos(baseLat * Math.PI / 180));
  
     return {
       latStep,
@@ -4063,13 +4154,20 @@ window.addEventListener("DOMContentLoaded", () => {
     const preservedCenter = map && map._loaded ? map.getCenter() : null;
     const preservedZoom = map && map._loaded ? map.getZoom() : null;
 
-    if (drawings.some(item => item.meta?.gridFill)) {
-      if (!window.confirm("グリッド幅を変更すると、マス着色は解除されます。変更しますか？")) { fixedGridSizeSelect.value = String(current); return; }
-      removeGridFillItems(() => true);
-      gridFillUndoData = null;
+    const sources=getGridFillSources();
+    let projected=[];
+    if(sources.length){
+      try { projected=projectGridFillSources(sources,requested); }
+      catch(error){alert(error.message);fixedGridSizeSelect.value=String(current);return;}
+      const message=requested===0
+        ? "グリッドなしではマス着色を非表示にします。元の範囲は保持し、グリッド幅を再設定すると復元します。変更しますか？"
+        : `変更後は${projected.length}マスに着色を引き継ぎます。\n元の着色範囲と面積が重なるマスを着色するため、着色表示が実際の指定範囲より広くなる場合があります。\n色が重なる場合は重複面積の大きい色、同面積なら後から着色した色を優先します。\n変更しますか？`;
+      if(!window.confirm(message)){fixedGridSizeSelect.value=String(current);return;}
     }
+    gridFillUndoData=null;gridFillUndoSources=null;
     endGridFillSelection();
     session.gridSize = requested;
+    renderProjectedGridFill(projected);
     persistCurrentGridSize();
     drawGridLines();
     drawGridOverlay();
@@ -6845,6 +6943,9 @@ window.addEventListener("DOMContentLoaded", () => {
  
     drawingLayer.clearLayers();
     drawings = [];
+    session.gridFillSources = [];
+    gridFillUndoData = null; gridFillUndoSources = null;
+    renderGridFillLegend();
     applyDrawingLayerFilter();
     selectedShape = null;
     shapeEditPanel.style.display = "none";
@@ -8739,6 +8840,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!data.session) return;
       glinkDiagLog("fixed loadGlinkData applying session", { beforeSession: session, incomingSession: data.session });
       Object.assign(session, data.session);
+      if(!Array.isArray(data.session.gridFillSources))delete session.gridFillSources;
       const normalizedDataBounds = normalizePlainBoundsForStartup(data.session.bounds || data.bounds);
       if (normalizedDataBounds) {
         const restoredBounds = L.latLngBounds(
