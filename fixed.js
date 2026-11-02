@@ -626,7 +626,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (gridFillPreview) gridFillPreview.clearLayers();
     for (const cell of gridFillSelected.values()) L.rectangle(cell.bounds,{color:"#0066ff",weight:2,fillOpacity:0.12,interactive:false}).addTo(gridFillPreview);
     const mode=document.getElementById("gridFillSelection").value;
-    const action=document.getElementById("gridFillAction").value==="erase" ? "解除" : "着色";
+    const action="着色";
     const instruction=mode==="corners" ? `四隅を選択 ${gridFillCorners.length}/4点` : mode==="range" ? (gridFillFirst ? "対角の2点目を選択" : "対角の1点目を選択") : "マスをクリック";
     const message=`${action}：${instruction}`;
     document.getElementById("gridFillStatus").textContent=message;
@@ -678,7 +678,7 @@ window.addEventListener("DOMContentLoaded", () => {
       gridFillCorners=[];
     } else if(mode==="single") {gridFillSelected.clear();gridFillSelected.set(cell.key,cell);}
     else return;
-    applyGridFillSelection(document.getElementById("gridFillAction").value==="erase");
+    applyGridFillSelection(false);
   }
 
   function beginGridFillSelection() {
@@ -715,7 +715,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if(!erase){
       const color=document.getElementById("gridFillColor").value;
       const opacity=Number(document.getElementById("gridFillOpacity").value)/100;
-      const name=document.getElementById("gridFillName").value.trim().slice(0,40)||"マス着色";
+      const name="マス着色";
       for(const cell of gridFillSelected.values()){
         const meta={id:crypto.randomUUID(),type:"rectangle",color,weight:1,style:"solid",opacity:0.4,fillMode:"semi",fillOpacity:opacity,
           gridFill:{key:cell.key,label:cell.label,name,size:Number(session.gridSize)}};
@@ -749,7 +749,6 @@ window.addEventListener("DOMContentLoaded", () => {
       removeGridFillItems(()=>true);restore.forEach(item=>createShapeFromData(item));renderGridFillLegend();
     });
     document.getElementById("gridFillSelection").addEventListener("change",beginGridFillSelection);
-    document.getElementById("gridFillAction").addEventListener("change",()=>{if(document.getElementById("gridFillSelection").value)beginGridFillSelection();});
     document.getElementById("gridFillOpacity").addEventListener("input",event=>document.getElementById("gridFillOpacityText").textContent=event.target.value);
     document.getElementById("gridFillVisible").addEventListener("change",()=>applyLayerVisibility());
     document.addEventListener("keydown",event=>{if(event.key==="Escape")endGridFillSelection();});
