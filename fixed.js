@@ -598,6 +598,126 @@ window.addEventListener("DOMContentLoaded", () => {
   let coordinateType = loadCoordinateType();
  
   let drawings = [];
+  let gridFillSelecting = false;
+  let gridFillSelected = new Map();
+  let gridFillFirst = null;
+  let gridFillPreview = null;
+  let gridFillUndoData = null;
+
+  function gridFillCellAt(latlng) {
+    const info = getGridInfo();
+    if (!info || !getGridNumber(latlng)) return null;
+    const cols = Math.round((info.eastLine-info.westLine)/info.lngStep);
+    const rows = Math.round((info.northLine-info.southLine)/info.latStep);
+    const col = Math.min(cols-1,Math.max(0,Math.floor((latlng.lng-info.westLine)/info.lngStep)));
+    const row = Math.min(rows-1,Math.max(0,Math.floor((info.northLine-latlng.lat)/info.latStep)));
+    return makeGridFillCell(row,col,info);
+  }
+
+  function makeGridFillCell(row,col,info=getGridInfo()) {
+    const north=info.northLine-row*info.latStep,west=info.westLine+col*info.lngStep;
+    return {row,col,label:getColumnName(col)+"-"+(row+1),
+      key:[session.gridSize,info.northLine.toFixed(10),info.westLine.toFixed(10),row,col].join(":"),
+      bounds:[[north-info.latStep,west],[north,west+info.lngStep]]};
+  }
+
+  function refreshGridFillSelection() {
+    if (gridFillPreview) gridFillPreview.clearLayers();
+    for (const cell of gridFillSelected.values()) L.rectangle(cell.bounds,{color:"#0066ff",weight:2,fillOpacity:0.12,interactive:false}).addTo(gridFillPreview);
+    const message = `${gridFillSelected.size}マス選択` + (gridFillFirst ? "・対角のマスを選択してください" : "");
+    document.getElementById("gridFillStatus").textContent=message;
+    document.getElementById("gridFillBannerCount").textContent=message;
+  }
+
+  function selectGridFillCell(latlng) {
+    const cell=gridFillCellAt(latlng);
+    if (!cell) return;
+    if (document.getElementById("gridFillSelection").value==="range") {
+      if (!gridFillFirst) {gridFillSelected.clear();gridFillFirst=cell;gridFillSelected.set(cell.key,cell);}
+      else {
+        const a=gridFillFirst; const count=(Math.abs(a.row-cell.row)+1)*(Math.abs(a.col-cell.col)+1);
+        if(count>500){alert("1回の選択は500マス以内にしてください。");return;}
+        gridFillSelected.clear();
+        for(let row=Math.min(a.row,cell.row);row<=Math.max(a.row,cell.row);row++)
+          for(let col=Math.min(a.col,cell.col);col<=Math.max(a.col,cell.col);col++){
+            const item=makeGridFillCell(row,col);gridFillSelected.set(item.key,item);
+          }
+        gridFillFirst=null;
+      }
+    } else if(gridFillSelected.has(cell.key)) gridFillSelected.delete(cell.key);
+    else if(gridFillSelected.size<500) gridFillSelected.set(cell.key,cell);
+    else alert("1回の選択は500マス以内にしてください。");
+    refreshGridFillSelection();
+  }
+
+  function endGridFillSelection() {
+    gridFillSelecting=false;gridFillFirst=null;gridFillSelected.clear();
+    if(gridFillPreview)gridFillPreview.clearLayers();
+    const banner=document.getElementById("gridFillModeBanner");if(banner)banner.hidden=true;
+    const status=document.getElementById("gridFillStatus");if(status)status.textContent="選択を終了しました。";
+  }
+
+  function removeGridFillItems(predicate) {
+    drawings=drawings.filter(item=>{
+      if(!item.meta?.gridFill || !predicate(item.meta.gridFill))return true;
+      drawingLayer.removeLayer(item.layer);return false;
+    });
+    applyDrawingLayerFilter();
+  }
+
+  function applyGridFillSelection(erase=false) {
+    if(!gridFillSelected.size || gridFillFirst){alert("着色するマスの選択を完了してください。");return;}
+    const remaining=drawings.filter(item=>item.meta?.gridFill && !gridFillSelected.has(item.meta.gridFill.key)).length;
+    if(!erase && remaining+gridFillSelected.size>2000){alert("着色は全体で2000マス以内にしてください。");return;}
+    gridFillUndoData=drawings.filter(item=>item.meta?.gridFill).map(item=>getShapeData(item.layer));
+    removeGridFillItems(fill=>gridFillSelected.has(fill.key));
+    if(!erase){
+      const color=document.getElementById("gridFillColor").value;
+      const opacity=Number(document.getElementById("gridFillOpacity").value)/100;
+      const name=document.getElementById("gridFillName").value.trim().slice(0,40)||"マス着色";
+      for(const cell of gridFillSelected.values()){
+        const meta={id:crypto.randomUUID(),type:"rectangle",color,weight:1,style:"solid",opacity:0.4,fillMode:"semi",fillOpacity:opacity,
+          gridFill:{key:cell.key,label:cell.label,name,size:Number(session.gridSize)}};
+        finishDrawingLayer(L.rectangle(cell.bounds,{interactive:false}),meta);
+      }
+    }
+    endGridFillSelection();renderGridFillLegend();
+    document.getElementById("gridFillStatus").textContent=erase?"選択マスの着色を解除しました。":"選択マスを着色しました。";
+  }
+
+  function renderGridFillLegend() {
+    const target=document.getElementById("gridFillLegend");if(!target)return;
+    target.replaceChildren();const groups=new Map();
+    for(const item of drawings){const fill=item.meta?.gridFill;if(!fill)continue;
+      const key=JSON.stringify([fill.name,item.meta.color]);const group=groups.get(key)||{name:fill.name,color:item.meta.color,count:0};group.count++;groups.set(key,group);}
+    for(const group of groups.values()){
+      const row=document.createElement("p"),swatch=document.createElement("span");
+      swatch.style.cssText="display:inline-block;width:14px;height:14px;margin-right:6px;border:1px solid #64748b";
+      swatch.style.backgroundColor=group.color;row.append(swatch,document.createTextNode(`${group.name}：${group.count}マス`));target.append(row);
+    }
+  }
+
+  function setupGridFillControls() {
+    gridFillPreview=L.layerGroup().addTo(map);
+    document.getElementById("openGridFillBtn").addEventListener("click",()=>{setSettingSection("fill");renderGridFillLegend();});
+    document.getElementById("gridFillStart").addEventListener("click",()=>{
+      if(!getGridInfo()){alert("グリッド幅を設定してください。");return;}
+      if(measureSettings.active || subtractDrawing || drawSettings.type !== "none"){alert("計測・図形の作図を終了してから選択してください。");return;}
+      endGridFillSelection();gridFillSelecting=true;document.getElementById("gridFillModeBanner").hidden=false;refreshGridFillSelection();
+    });
+    document.getElementById("gridFillApply").addEventListener("click",()=>applyGridFillSelection(false));
+    document.getElementById("gridFillErase").addEventListener("click",()=>applyGridFillSelection(true));
+    for(const id of ["gridFillEnd","gridFillBannerEnd"])document.getElementById(id).addEventListener("click",endGridFillSelection);
+    document.getElementById("gridFillUndo").addEventListener("click",()=>{
+      if(!gridFillUndoData)return;endGridFillSelection();const restore=gridFillUndoData;gridFillUndoData=null;
+      removeGridFillItems(()=>true);restore.forEach(item=>createShapeFromData(item));renderGridFillLegend();
+    });
+    document.getElementById("gridFillSelection").addEventListener("change",()=>{gridFillFirst=null;gridFillSelected.clear();refreshGridFillSelection();});
+    document.getElementById("gridFillOpacity").addEventListener("input",event=>document.getElementById("gridFillOpacityText").textContent=event.target.value);
+    document.getElementById("gridFillVisible").addEventListener("change",()=>applyLayerVisibility());
+    document.addEventListener("keydown",event=>{if(event.key==="Escape")endGridFillSelection();});
+  }
+
   let texts = [];
   let selectedTextItem = null;
   let tracks = [];
@@ -809,7 +929,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function isDrawingVisibleByLayer(item) {
-    if (!item || layerVisibility.drawings === false) return false;
+    if (!item) return false;
+    if (item.meta?.gridFill) return document.getElementById("gridFillVisible")?.checked !== false;
+    if (layerVisibility.drawings === false) return false;
     const type = item.meta?.type || item.layer?._fireGridMeta?.type || "polyline";
     const key = { line:"drawingLine", polyline:"drawingPolyline", rectangle:"drawingRectangle", circle:"drawingCircle", arrow:"drawingArrow", freehand:"drawingFreehand" }[type] || "drawingPolyline";
     return layerVisibility[key] !== false;
@@ -825,6 +947,7 @@ window.addEventListener("DOMContentLoaded", () => {
         if (!drawingLayer.hasLayer(item.layer)) drawingLayer.addLayer(item.layer);
       } else if (drawingLayer.hasLayer(item.layer)) drawingLayer.removeLayer(item.layer);
     });
+    renderGridFillLegend();
     if (layerDrawingsCount) layerDrawingsCount.textContent = String(drawings.length);
     Object.entries(layerDrawingCountElements).forEach(([key, el]) => { if (el) el.textContent = String(counts[key] || 0); });
   }
@@ -932,7 +1055,7 @@ window.addEventListener("DOMContentLoaded", () => {
     applyPinLayerFilter();
     setLayerGroupVisible(pinLayer, layerVisibility.pins);
     applyDrawingLayerFilter();
-    setLayerGroupVisible(drawingLayer, layerVisibility.drawings);
+    setLayerGroupVisible(drawingLayer, layerVisibility.drawings || document.getElementById("gridFillVisible")?.checked !== false);
     applyTextLayerFilter();
     applyMeasurementLayerFilter();
     setLayerGroupVisible(measureLayer, layerVisibility.measurements);
@@ -1898,7 +2021,11 @@ window.addEventListener("DOMContentLoaded", () => {
   function setSettingSection(sectionName) {
     const isMap = sectionName === "map";
     const isCoordinate = sectionName === "coordinate";
-    const isGrid = !isMap && !isCoordinate;
+    const isFill = sectionName === "fill";
+    const isGrid = !isMap && !isCoordinate && !isFill;
+    document.getElementById("openGridFillBtn")?.classList.toggle("active", isFill);
+    document.getElementById("gridFillSection")?.classList.toggle("active", isFill);
+    if (!isFill) endGridFillSelection();
     if (openGridSettingBtn) openGridSettingBtn.classList.toggle("active", isGrid);
     if (openMapTypeSettingBtn) openMapTypeSettingBtn.classList.toggle("active", isMap);
     if (openCoordinateSettingBtn) openCoordinateSettingBtn.classList.toggle("active", isCoordinate);
@@ -1944,6 +2071,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function setupSettingMenuEvents() {
+    setupGridFillControls();
     if (openGridSettingBtn) {
       openGridSettingBtn.addEventListener("click", () => setSettingSection("grid"));
     }
@@ -2066,7 +2194,8 @@ window.addEventListener("DOMContentLoaded", () => {
         w: meta.weight || 4,
         o: meta.opacity ?? 1,
         s: meta.style || "solid",
-        f: meta.fillMode || "none"
+        f: meta.fillMode || "none",
+        ...(meta.gridFill ? {g:meta.gridFill,fo:meta.fillOpacity} : {})
       },
       l: Array.isArray(item?.latlngs) ? item.latlngs : null,
       cc: compactPoint(item?.circleCenter),
@@ -2793,6 +2922,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function openToolPanel(panelId) {
+    if (panelId !== "settingPanel") endGridFillSelection();
     if (panelId !== "editToolPanel") {
       cancelDrawMode();
     }
@@ -2826,6 +2956,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   function closeToolPanelFunc() {
+    endGridFillSelection();
     cancelDrawMode();
     toolPanel.style.display = "none";
     toolButtons.forEach(btn => btn.classList.remove("active"));
@@ -3204,7 +3335,7 @@ window.addEventListener("DOMContentLoaded", () => {
     function fillCanvasPath(ctx, points, meta = {}, fallbackColor = "#0066ff") {
       if (!points || points.length < 3) return;
       const fillMode = meta.fillMode || "none";
-      const fillOpacity = fillMode === "semi" ? 0.25 : Number(meta.fillOpacity ?? meta.opacity ?? 0);
+      const fillOpacity = meta.gridFill ? Number(meta.fillOpacity ?? 0.3) : (fillMode === "semi" ? 0.25 : Number(meta.fillOpacity ?? meta.opacity ?? 0));
       if (fillMode !== "semi" && fillOpacity <= 0) return;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, fillOpacity));
@@ -3248,7 +3379,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
  
     function drawManualDrawings(ctx, crop) {
-      if (!layerVisibility.drawings) return;
       const shapeList = typeof serializeDrawings === "function" ? serializeDrawings() : [];
       shapeList.forEach(shape => {
         if (!shape || !shape.meta) return;
@@ -3262,7 +3392,7 @@ window.addEventListener("DOMContentLoaded", () => {
           arrow: "drawingArrow",
           freehand: "drawingFreehand"
         }[type] || "drawingPolyline";
-        if (layerVisibility[visibilityKey] === false) return;
+        if (meta.gridFill ? document.getElementById("gridFillVisible")?.checked === false : (layerVisibility.drawings === false || layerVisibility[visibilityKey] === false)) return;
         ctx.save();
         applyCanvasLineStyle(ctx, meta, "#0066ff");
  
@@ -3892,6 +4022,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const preservedCenter = map && map._loaded ? map.getCenter() : null;
     const preservedZoom = map && map._loaded ? map.getZoom() : null;
 
+    if (drawings.some(item => item.meta?.gridFill)) {
+      if (!window.confirm("グリッド幅を変更すると、マス着色は解除されます。変更しますか？")) { fixedGridSizeSelect.value = String(current); return; }
+      removeGridFillItems(() => true);
+      gridFillUndoData = null;
+    }
+    endGridFillSelection();
     session.gridSize = requested;
     persistCurrentGridSize();
     drawGridLines();
@@ -4157,7 +4293,8 @@ window.addEventListener("DOMContentLoaded", () => {
       weight: meta.weight,
       style: meta.style,
       opacity: meta.opacity,
-      fillMode: meta.fillMode
+      fillMode: meta.fillMode,
+      ...(meta.gridFill ? {gridFill:{...meta.gridFill},fillOpacity:meta.fillOpacity} : {})
     };
   }
  
@@ -4211,7 +4348,7 @@ window.addEventListener("DOMContentLoaded", () => {
       dashArray: dashArrayFromStyle(meta.style),
       fill: meta.fillMode === "semi",
       fillColor: meta.color,
-      fillOpacity: meta.fillMode === "semi" ? 0.25 : 0
+      fillOpacity: meta.gridFill ? Math.max(0, Math.min(1, Number(meta.fillOpacity ?? 0.3))) : (meta.fillMode === "semi" ? 0.25 : 0)
     };
   }
  
@@ -4584,7 +4721,7 @@ window.addEventListener("DOMContentLoaded", () => {
       dashArray: dashArrayFromStyle(meta.style),
       fill: meta.fillMode === "semi",
       fillColor: meta.color,
-      fillOpacity: meta.fillMode === "semi" ? 0.25 : 0
+      fillOpacity: meta.gridFill ? Math.max(0, Math.min(1, Number(meta.fillOpacity ?? 0.3))) : (meta.fillMode === "semi" ? 0.25 : 0)
     };
  
     if (layer.setStyle) {
@@ -4717,7 +4854,8 @@ window.addEventListener("DOMContentLoaded", () => {
    function finishDrawingLayer(layer, meta) {
     layer._fireGridMeta = meta;
     applyStyleToLayer(layer, meta);
-    attachShapeEvents(layer, meta, layer);
+    if (!meta.gridFill) attachShapeEvents(layer, meta, layer);
+    else { layer.options.interactive = false; layer.on("add", () => layer.getElement()?.setAttribute("pointer-events", "none")); }
     drawingLayer.addLayer(layer);
     drawings.push({ id: meta.id, layer, meta });
     applyDrawingLayerFilter();
@@ -7746,6 +7884,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
  
   map.on("click", e => {
+    if (gridFillSelecting) { selectGridFillCell(e.latlng); return; }
     if (subtractDrawing) {
       const pts = subtractDrawing.points;
       if (!pts.length || e.latlng.distanceTo(pts[pts.length - 1]) > 0.2) pts.push(e.latlng);

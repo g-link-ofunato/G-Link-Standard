@@ -6,7 +6,7 @@
   <title>G-Link〈災害情報共有システム〉（固定表示モード）</title>
  
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="fixed.css?v=Build1838">
+  <link rel="stylesheet" href="fixed.css?v=Build1912">
   <link rel="stylesheet" href="license-auth.css?v=Build1445" />
 </head>
  
@@ -548,8 +548,25 @@
           <button type="button" id="openMapTypeSettingBtn" class="settingMenuTab">地図種類</button>
           <button type="button" id="openCoordinateSettingBtn" class="settingMenuTab">座標種類</button>
           <button type="button" id="reconfigureDisasterAreaBtn" class="settingMenuTab">災害エリアを再設定</button>
+          <button type="button" id="openGridFillBtn" class="settingMenuTab">マス着色（試験）</button>
         </div>
  
+        <div id="gridFillSection" class="settingSubSection">
+          <p class="settingHelp">マスを選び、着色または解除を押してください。地図の移動はドラッグで行えます。</p>
+          <div class="settingBlock"><label for="gridFillColor">着色する色</label><input id="gridFillColor" type="color" value="#ff3300"></div>
+          <div class="settingBlock"><label for="gridFillOpacity">濃さ：<span id="gridFillOpacityText">30</span>%</label><input id="gridFillOpacity" type="range" min="5" max="80" value="30"></div>
+          <div class="settingBlock"><label for="gridFillName">名称（凡例）</label><input id="gridFillName" type="text" maxlength="40" placeholder="延焼区域・第1方面など"></div>
+          <div class="settingBlock"><label for="gridFillSelection">選択方法</label><select id="gridFillSelection"><option value="single">1マスずつ</option><option value="range">四角い範囲（対角の2マス）</option></select></div>
+          <button id="gridFillStart" type="button" class="primaryButton">マスを選択</button>
+          <p id="gridFillStatus" role="status">選択なし</p>
+          <button id="gridFillApply" type="button" class="primaryButton">選択マスを着色</button>
+          <button id="gridFillErase" type="button" class="secondaryButton">選択マスの着色を解除</button>
+          <button id="gridFillUndo" type="button" class="secondaryButton">1操作戻す</button>
+          <button id="gridFillEnd" type="button" class="secondaryButton">選択を終了</button>
+          <label><input id="gridFillVisible" type="checkbox" checked>マス着色を表示</label>
+          <p class="settingHelp">試験版：1回最大500マス、全体最大2000マス。グリッド幅を変更する際は着色を解除します。</p>
+          <div id="gridFillLegend"></div>
+        </div>
         <div id="gridSettingSection" class="settingSubSection active">
           <div class="settingBlock">
             <label for="fixedGridSizeSelect">グリッド幅</label>
@@ -1012,9 +1029,12 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/html2canvas/html2canvas.min.js"></script>
   <script src="vendor/qrcodejs/qrcode.min.js"></script>
-  <script src="fixed.js?v=Build1838"></script>
-  <script src="water-register.js?v=Build1838"></script>
+  <script src="fixed.js?v=Build1912"></script>
+  <script src="water-register.js?v=Build1912"></script>
  
   <script src="license-auth.js?v=Build1445"></script>
+  <div id="gridFillModeBanner" hidden style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:4000;background:#fff3cd;color:#332600;padding:10px;border:2px solid #e0a800;border-radius:8px;max-width:90vw;">
+    マス選択中 <span id="gridFillBannerCount">0マス</span> <button id="gridFillBannerEnd" type="button">終了</button>
+  </div>
 </body>
 </html>
