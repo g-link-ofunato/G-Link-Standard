@@ -630,7 +630,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const instruction=mode==="corners" ? `四隅を選択 ${gridFillCorners.length}/4点` : mode==="range" ? (gridFillFirst ? "対角の2点目を選択" : "対角の1点目を選択") : "マスをクリック";
     const message=`${action}：${instruction}`;
     document.getElementById("gridFillStatus").textContent=message;
-    document.getElementById("gridFillBannerCount").textContent=message;
   }
 
   function gridFillHull(cells) {
@@ -687,14 +686,13 @@ window.addEventListener("DOMContentLoaded", () => {
     if(!method.value)return;
     if(!getGridInfo()){alert("グリッド幅を設定してください。");method.value="";return;}
     if(measureSettings.active || subtractDrawing || drawSettings.type!=="none"){alert("計測・図形の作図を終了してから選択してください。");method.value="";return;}
-    gridFillSelecting=true;document.getElementById("gridFillModeBanner").hidden=false;refreshGridFillSelection();
+    gridFillSelecting=true;refreshGridFillSelection();
   }
 
   function endGridFillSelection(resetMethod=true) {
     gridFillSelecting=false;gridFillFirst=null;gridFillCorners=[];gridFillSelected.clear();
     if(resetMethod){const method=document.getElementById("gridFillSelection");if(method)method.value="";}
     if(gridFillPreview)gridFillPreview.clearLayers();
-    const banner=document.getElementById("gridFillModeBanner");if(banner)banner.hidden=true;
     const status=document.getElementById("gridFillStatus");if(status)status.textContent="選択を終了しました。";
   }
 
@@ -743,7 +741,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function setupGridFillControls() {
     gridFillPreview=L.layerGroup().addTo(map);
     document.getElementById("openGridFillBtn").addEventListener("click",()=>{setSettingSection("fill");renderGridFillLegend();});
-    for(const id of ["gridFillEnd","gridFillBannerEnd"])document.getElementById(id).addEventListener("click",()=>endGridFillSelection());
+    document.getElementById("gridFillEnd").addEventListener("click",()=>endGridFillSelection());
     document.getElementById("gridFillUndo").addEventListener("click",()=>{
       if(!gridFillUndoData)return;endGridFillSelection();const restore=gridFillUndoData;gridFillUndoData=null;
       removeGridFillItems(()=>true);restore.forEach(item=>createShapeFromData(item));renderGridFillLegend();
