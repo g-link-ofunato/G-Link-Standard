@@ -378,6 +378,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const gridNo = document.getElementById("gridNo");
   const incidentNo = document.getElementById("incidentNo");
+  const pinMgrs10 = document.getElementById("pinMgrs10");
+  const pinMgrs10Apply = document.getElementById("pinMgrs10Apply");
+  const pinMgrs10Error = document.getElementById("pinMgrs10Error");
   const disasterArea = document.getElementById("disasterArea");
   const summary = document.getElementById("summary");
   const units = document.getElementById("units");
@@ -1548,6 +1551,31 @@ window.addEventListener("DOMContentLoaded", () => {
     pinLatLng.value = `${pinCoordText(data.lat, "lat")}, ${pinCoordText(data.lng, "lng")}`;
   }
  
+  function refreshPinMgrs10(pin) {
+    if (!pinMgrs10 || !pin || !pin.data) return;
+    try { pinMgrs10.value = window.GLinkMGRS10.encode(Number(pin.data.lat), Number(pin.data.lng)); }
+    catch (_) { pinMgrs10.value = ""; }
+    if (pinMgrs10Error) { pinMgrs10Error.textContent = ""; pinMgrs10Error.style.display = "none"; }
+  }
+  function commitPinMgrs10() {
+    if (!selectedPin || !pinMgrs10) return;
+    try {
+      const pos = window.GLinkMGRS10.decode(pinMgrs10.value);
+      // Decode first; never mutate the marker when input is invalid.
+      selectedPin.setLatLng([pos.lat, pos.lng]);
+      updatePinPositionAfterDrag(selectedPin);
+      refreshPinMgrs10(selectedPin);
+    } catch (err) {
+      if (pinMgrs10Error) { pinMgrs10Error.textContent = err.message || "MGRS番号が不正です。"; pinMgrs10Error.style.display = "block"; }
+      pinMgrs10.focus();
+    }
+  }
+  if (pinMgrs10Apply) pinMgrs10Apply.addEventListener("click", commitPinMgrs10);
+  if (pinMgrs10) pinMgrs10.addEventListener("keydown", event => {
+    if (event.key === "Enter") { event.preventDefault(); commitPinMgrs10(); }
+    if (event.key === "Escape") { event.preventDefault(); refreshPinMgrs10(selectedPin); }
+  });
+
   function resetPinCoordinateEdit() {
     if (selectedPin && selectedPin.data) updatePinLatLngField(selectedPin.data);
   }
@@ -7552,6 +7580,7 @@ window.addEventListener("DOMContentLoaded", () => {
     data.type = normalizePinType(data.type);
     pinType.value = data.type;
     updatePinLatLngField(data);
+    refreshPinMgrs10(pin);
     gridNo.value = data.gridNo || "";
     incidentNo.value = data.incidentNo || "";
     disasterArea.value = data.disasterArea || "";
@@ -7961,6 +7990,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if (selectedPin === pin && editPanel.style.display !== "none") {
       updatePinLatLngField(pin.data);
+      refreshPinMgrs10(pin);
       gridNo.value = pin.data.gridNo || "";
     }
 
