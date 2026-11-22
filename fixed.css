@@ -3811,3 +3811,7 @@ body {
 .pinCoordinateRow #pinCoordinateEditBtn,
 .pinCoordinateRow #pinMgrs10Apply { flex:0 0 38px; width:38px; min-width:38px; box-sizing:border-box; padding:6px 1px; border:0; border-radius:4px; background:#2563eb; color:#fff; font-weight:600; cursor:pointer; white-space:nowrap; }
 .pinCoordinateRow #pinLatLng:not([readonly]) { background:#fff; border-color:#2563eb; }
+
+/* Pin information banner: widen 40px while keeping coordinates on one line. */
+#editPanel { width:320px; max-width:calc(100vw - 54px); box-sizing:content-box; }
+#editPanel #pinLatLng { white-space:nowrap; }
